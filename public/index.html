@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>기사 작성기</title>
+  <link rel="stylesheet" href="assets/css/common.css" />
+  <style>
+    /* ── Layout ──────────────────────────────────────────── */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } }
+
+    /* ── Input Panel ─────────────────────────────────────── */
+    .panel { display: flex; flex-direction: column; gap: 1rem; }
+
+    .section-label {
+      font-size: 0.78rem; font-weight: 700;
+      color: var(--text-secondary); text-transform: uppercase;
+      letter-spacing: 0.04em; margin-bottom: 0.4rem;
+    }
+
+    textarea {
+      width: 100%; padding: 0.85rem 1rem;
+      border: 1.5px solid var(--border); border-radius: var(--radius-md);
+      font-size: 0.9rem; font-family: var(--font-sans);
+      color: var(--text-primary); background: var(--bg-card);
+      resize: vertical; outline: none; transition: border-color 0.15s;
+      line-height: 1.7;
+    }
+    textarea:focus { border-color: var(--primary); }
+    textarea::placeholder { color: var(--text-muted); }
+
+    /* ── Style Options ───────────────────────────────────── */
+    .options-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.9rem;
+    }
+    .option-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .radio-group  { display: flex; flex-direction: column; gap: 0.3rem; }
+    .radio-item {
+      display: flex; align-items: center; gap: 0.45rem;
+      cursor: pointer; font-size: 0.85rem; color: var(--text-primary);
+      padding: 0.3rem 0.5rem; border-radius: var(--radius-sm);
+      transition: background 0.1s; user-select: none;
+    }
+    .radio-item:hover { background: var(--primary-light); }
+    .radio-item input[type="radio"] { accent-color: var(--primary); flex-shrink: 0; }
+
+    .checkbox-item {
+      display: flex; align-items: center; gap: 0.45rem;
+      cursor: pointer; font-size: 0.85rem; color: var(--text-primary);
+      padding: 0.3rem 0.5rem; border-radius: var(--radius-sm);
+      transition: background 0.1s; user-select: none;
+    }
+    .checkbox-item:hover { background: var(--primary-light); }
+    .checkbox-item input[type="checkbox"] { accent-color: var(--primary); flex-shrink: 0; width: 15px; height: 15px; }
+
+    /* ── Generate Button ─────────────────────────────────── */
+    .btn-generate {
+      width: 100%; padding: 0.85rem;
+      background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius-md);
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn-generate:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-generate:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* ── Output Panel ────────────────────────────────────── */
+    .output-card {
+      background: var(--bg-card); border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      display: flex; flex-direction: column; min-height: 520px;
+    }
+    .output-header {
+      padding: 0.85rem 1.1rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    }
+    .output-title { font-weight: 700; font-size: 0.92rem; color: var(--text-primary); }
+    .output-meta  { font-size: 0.75rem; color: var(--text-muted); }
+
+    .output-actions { display: flex; gap: 0.4rem; }
+    .btn-action {
+      padding: 0.3rem 0.8rem; border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border); background: var(--bg);
+      color: var(--text-secondary); font-size: 0.78rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-action:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .output-body {
+      flex: 1; padding: 1.25rem 1.35rem;
+      font-size: 0.92rem; line-height: 1.85;
+      color: var(--text-primary); white-space: pre-wrap;
+      overflow-y: auto;
+    }
+    .output-body.empty {
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 0.6rem;
+      color: var(--text-muted); font-size: 0.88rem;
+    }
+    .output-body .empty-icon { font-size: 2.5rem; }
+
+    /* ── Streaming cursor ────────────────────────────────── */
+    .cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: var(--primary); margin-left: 1px;
+      animation: blink 0.8s step-end infinite; vertical-align: text-bottom;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Char counter ────────────────────────────────────── */
+    .char-counter {
+      text-align: right; font-size: 0.75rem; color: var(--text-muted); padding: 0 0.2rem;
+    }
+    .char-counter.warn { color: var(--warning); }
+  </style>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <div class="header-logo">
+            <span class="logo-icon">📰</span>
+            <span class="logo-text">기사 작성기</span>
+          </div>
+          <span class="header-sub">AI 기반 자동 기사 생성</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="workspace">
+
+        <!-- ══ 입력 패널 ══ -->
+        <div class="panel">
+
+          <!-- 원문 입력 -->
+          <div>
+            <div class="section-label">원문 / 정보</div>
+            <textarea id="inputText" rows="10"
+              placeholder="기사로 작성할 내용을 입력하세요.&#10;&#10;예) 인물 소개, 사건 개요, 주요 발언, 날짜·장소·수치 등&#10;구조가 없어도 됩니다. AI가 기사로 정리합니다."></textarea>
+            <div class="char-counter" id="charCounter">0자</div>
+          </div>
+
+          <!-- 스타일 옵션 -->
+          <div>
+            <div class="section-label">스타일 설정</div>
+            <div class="options-grid">
+
+              <div class="option-group">
+                <div class="section-label" style="margin-bottom:0.2rem">기사 형식</div>
+                <div class="radio-group">
+                  <label class="radio-item"><input type="radio" name="format" value="news" checked /> 뉴스 기사</label>
+                  <label class="radio-item"><input type="radio" name="format" value="press" /> 보도자료</label>
+                  <label class="radio-item"><input type="radio" name="format" value="interview" /> 인터뷰</label>
+                  <label class="radio-item"><input type="radio" name="format" value="feature" /> 특집/기획</label>
+                </div>
+              </div>
+
+              <div class="option-group">
+                <div class="section-label" style="margin-bottom:0.2rem">톤</div>
+                <div class="radio-group">
+                  <label class="radio-item"><input type="radio" name="tone" value="formal" checked /> 공식적</label>
+                  <label class="radio-item"><input type="radio" name="tone" value="neutral" /> 중립적</label>
+                  <label class="radio-item"><input type="radio" name="tone" value="friendly" /> 친근한</label>
+                </div>
+
+                <div class="section-label" style="margin-top:0.8rem; margin-bottom:0.2rem">길이</div>
+                <div class="radio-group">
+                  <label class="radio-item"><input type="radio" name="length" value="short" /> 짧게 (~300자)</label>
+                  <label class="radio-item"><input type="radio" name="length" value="medium" checked /> 보통 (~700자)</label>
+                  <label class="radio-item"><input type="radio" name="length" value="long" /> 길게 (~1200자)</label>
+                </div>
+              </div>
+
+            </div>
+
+            <label class="checkbox-item" style="margin-top:0.75rem">
+              <input type="checkbox" id="includeHeadline" checked />
+              헤드라인(제목) 포함
+            </label>
+          </div>
+
+          <button class="btn-generate" id="btnGenerate" onclick="generate()">
+            <span id="btnIcon">✍️</span>
+            <span id="btnText">기사 생성</span>
+          </button>
+        </div>
+
+        <!-- ══ 출력 패널 ══ -->
+        <div class="output-card">
+          <div class="output-header">
+            <span class="output-title">생성된 기사</span>
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <span class="output-meta" id="outputMeta"></span>
+              <div class="output-actions">
+                <button class="btn-action" id="btnCopy" onclick="copyArticle()" disabled>복사</button>
+                <button class="btn-action" id="btnClear" onclick="clearOutput()" disabled>지우기</button>
+              </div>
+            </div>
+          </div>
+          <div class="output-body empty" id="outputBody">
+            <span class="empty-icon">📄</span>
+            <span>원문을 입력하고 기사 생성 버튼을 누르세요</span>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <p>© 2025 기사 작성기 · Powered by Claude AI</p>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── 상수 ──────────────────────────────────────────────
+    // 로컬: /api/generate (server.js 프록시)
+    // 프로덕션: Lambda URL로 교체
+    const API_ENDPOINT = '/api/generate';
+
+    // ── 글자수 카운터 ──────────────────────────────────────
+    document.getElementById('inputText').addEventListener('input', function () {
+      const len = this.value.length;
+      const el = document.getElementById('charCounter');
+      el.textContent = `${len.toLocaleString()}자`;
+      el.className = 'char-counter' + (len > 3000 ? ' warn' : '');
+    });
+
+    // ── 기사 생성 ──────────────────────────────────────────
+    async function generate() {
+      const text = document.getElementById('inputText').value.trim();
+      if (!text) { showToast('원문 내용을 입력해주세요.', 'error'); return; }
+
+      const style = {
+        format:          document.querySelector('input[name="format"]:checked').value,
+        tone:            document.querySelector('input[name="tone"]:checked').value,
+        length:          document.querySelector('input[name="length"]:checked').value,
+        includeHeadline: document.getElementById('includeHeadline').checked,
+      };
+
+      setLoading(true);
+      clearOutput(true);
+
+      const body = document.getElementById('outputBody');
+      body.className = 'output-body';
+      body.textContent = '';
+
+      let cursorEl = document.createElement('span');
+      cursorEl.className = 'cursor';
+      body.appendChild(cursorEl);
+
+      let fullText = '';
+      let startTime = Date.now();
+
+      try {
+        const res = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, style }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (raw === '[DONE]') break;
+            try {
+              const data = JSON.parse(raw);
+              if (data.error) throw new Error(data.error);
+              if (data.text) {
+                fullText += data.text;
+                body.textContent = fullText;
+                body.appendChild(cursorEl);
+              }
+            } catch {}
+          }
+        }
+
+        // 완료 처리
+        cursorEl.remove();
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        const charCount = fullText.length;
+        document.getElementById('outputMeta').textContent = `${charCount.toLocaleString()}자 · ${elapsed}초`;
+        document.getElementById('btnCopy').disabled = false;
+        document.getElementById('btnClear').disabled = false;
+
+      } catch (err) {
+        cursorEl.remove();
+        body.className = 'output-body empty';
+        body.innerHTML = `<span class="empty-icon">⚠️</span><span>${err.message}</span>`;
+        showToast('기사 생성 실패: ' + err.message, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // ── 복사 ──────────────────────────────────────────────
+    async function copyArticle() {
+      const text = document.getElementById('outputBody').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('클립보드에 복사되었습니다.', 'success');
+      } catch {
+        showToast('복사 실패 — 텍스트를 직접 선택해주세요.', 'error');
+      }
+    }
+
+    // ── 지우기 ────────────────────────────────────────────
+    function clearOutput(silent) {
+      const body = document.getElementById('outputBody');
+      body.className = 'output-body empty';
+      body.innerHTML = '<span class="empty-icon">📄</span><span>원문을 입력하고 기사 생성 버튼을 누르세요</span>';
+      document.getElementById('outputMeta').textContent = '';
+      document.getElementById('btnCopy').disabled = true;
+      document.getElementById('btnClear').disabled = true;
+      if (!silent) showToast('지웠습니다.', 'info');
+    }
+
+    // ── 로딩 상태 ─────────────────────────────────────────
+    function setLoading(on) {
+      const btn = document.getElementById('btnGenerate');
+      document.getElementById('btnIcon').textContent = on ? '⏳' : '✍️';
+      document.getElementById('btnText').textContent = on ? '생성 중...' : '기사 생성';
+      btn.disabled = on;
+    }
+
+    // ── Toast ─────────────────────────────────────────────
+    let toastTimer;
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.className = `toast ${type}`; }, 2800);
+    }
+  </script>
+</body>
+</html>

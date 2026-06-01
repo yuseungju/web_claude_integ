@@ -1,0 +1,117 @@
+/* ── Design Tokens ─────────────────────────────────────── */
+:root {
+  --primary:        #4f46e5;
+  --primary-dark:   #3730a3;
+  --primary-light:  #eef2ff;
+  --success:        #10b981;
+  --success-light:  #d1fae5;
+  --danger:         #ef4444;
+  --danger-light:   #fee2e2;
+  --warning:        #f59e0b;
+  --warning-light:  #fef3c7;
+  --text-primary:   #1e293b;
+  --text-secondary: #64748b;
+  --text-muted:     #94a3b8;
+  --border:         #e2e8f0;
+  --bg:             #f8fafc;
+  --bg-card:        #ffffff;
+  --shadow-sm:      0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:      0 4px 16px rgba(0,0,0,.10);
+  --radius-sm:      6px;
+  --radius-md:      12px;
+  --radius-lg:      20px;
+  --font-sans:      'Segoe UI', 'Malgun Gothic', sans-serif;
+  --font-mono:      'Consolas', 'D2Coding', monospace;
+}
+
+/* ── Reset ─────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* ── App Shell ─────────────────────────────────────────── */
+.app-wrap    { display: flex; flex-direction: column; min-height: 100vh; }
+.container   { max-width: 1300px; margin: 0 auto; padding: 2rem 1.5rem; flex: 1; }
+
+/* ── App Header ────────────────────────────────────────── */
+.app-header {
+  background: var(--primary);
+  color: #fff;
+  padding: 0.65rem 0;
+  box-shadow: var(--shadow-md);
+}
+.header-inner  { max-width: 1300px; margin: 0 auto; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.7rem; }
+.header-inner > .header-left { margin-right: auto; }
+.header-left   { display: flex; flex-direction: column; }
+.header-logo   { display: flex; align-items: center; gap: 0.45rem; }
+.logo-icon     { font-size: 1.15rem; }
+.logo-text     { font-size: 1.1rem; font-weight: 700; letter-spacing: -.3px; }
+.header-sub    { font-size: 0.73rem; opacity: 0.75; margin-top: 0.1rem; }
+
+/* ── Card ──────────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.card-header {
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ── Status Bar ────────────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.status-bar.success { background: var(--success-light); color: #065f46; }
+.status-bar.error   { background: var(--danger-light);  color: #991b1b; }
+.status-bar.info    { background: var(--primary-light); color: var(--primary-dark); }
+
+/* ── App Footer ────────────────────────────────────────── */
+.app-footer {
+  padding: 1.1rem;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+  margin-top: auto;
+}
+
+/* ── Toast ─────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 2rem; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: 0.55rem 1.25rem; border-radius: var(--radius-sm);
+  font-size: 0.83rem; font-weight: 600;
+  pointer-events: none; opacity: 0; transition: all 0.25s; z-index: 2000;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { background: var(--success-light); color: #065f46; border: 1px solid #6ee7b7; }
+.toast.error   { background: var(--danger-light);  color: #991b1b; border: 1px solid #fca5a5; }
+.toast.info    { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
+
+@media (max-width: 600px) {
+  .header-inner { padding: 0 0.85rem; }
+}
