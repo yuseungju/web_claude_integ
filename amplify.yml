@@ -1,11 +1,4 @@
 version: 1
-backend:
-  phases:
-    build:
-      commands:
-        - cd lambda && npm install --omit=dev
-        - cd lambda && zip -r /tmp/article-lambda.zip .
-        - aws lambda update-function-code --function-name article-generate --zip-file fileb:///tmp/article-lambda.zip --region ap-southeast-2
 frontend:
   phases:
     preBuild:

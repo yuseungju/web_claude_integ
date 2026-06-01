@@ -1,0 +1,30 @@
+name: Deploy Lambda
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lambda/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: cd lambda && npm install --omit=dev
+
+      - name: Zip Lambda
+        run: cd lambda && zip -r /tmp/article-lambda.zip .
+
+      - name: Deploy to Lambda
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ap-southeast-2
+        run: |
+          aws lambda update-function-code \
+            --function-name article-generate \
+            --zip-file fileb:///tmp/article-lambda.zip
