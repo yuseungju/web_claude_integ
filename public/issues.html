@@ -6,81 +6,107 @@
   <title>이슈보드</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
+    /* ── Toolbar ── */
     .toolbar {
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.6rem;
+      margin-bottom: 0.9rem; flex-wrap: wrap; gap: 0.5rem;
     }
-    .toolbar-title { font-size: 1.15rem; font-weight: 800; }
-    .toolbar-btns  { display: flex; gap: 0.5rem; }
+    .toolbar-title { font-size: 1rem; font-weight: 800; }
+    .toolbar-btns  { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
 
     .btn {
-      padding: 0.48rem 1rem; border-radius: var(--radius-sm);
-      font-size: 0.84rem; font-weight: 700; cursor: pointer;
+      padding: 0.38rem 0.85rem; border-radius: var(--radius-sm);
+      font-size: 0.78rem; font-weight: 700; cursor: pointer;
       border: 1.5px solid var(--border); background: var(--bg-card);
-      color: var(--text-secondary); transition: all 0.15s;
-      font-family: var(--font-sans);
+      color: var(--text-secondary); transition: all 0.15s; font-family: var(--font-sans);
+      white-space: nowrap;
     }
     .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
     .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .btn.primary:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
+    .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
     .btn.ai { background: #7c3aed; border-color: #7c3aed; color: #fff; }
-    .btn.ai:hover:not(:disabled) { background: #6d28d9; border-color: #6d28d9; }
-    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn.ai:hover:not(:disabled) { background: #6d28d9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* 테이블 */
-    .issue-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+    /* ── 컴팩트 테이블 (네이버 뉴스형) ── */
+    .issue-table {
+      width: 100%; border-collapse: collapse;
+      background: var(--bg-card); border-radius: var(--radius-md);
+      overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
     .issue-table th {
-      padding: 0.7rem 1rem; text-align: left; font-size: 0.78rem; font-weight: 700;
-      color: var(--text-secondary); background: var(--bg); border-bottom: 1px solid var(--border);
-      white-space: nowrap;
+      padding: 0.5rem 0.75rem; text-align: left; font-size: 0.72rem; font-weight: 700;
+      color: var(--text-secondary); background: #f1f5f9;
+      border-bottom: 1px solid var(--border); white-space: nowrap;
     }
     .issue-table td {
-      padding: 0.8rem 1rem; font-size: 0.88rem; border-bottom: 1px solid var(--border);
-      vertical-align: middle;
+      padding: 0.45rem 0.75rem; border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle; line-height: 1.4;
     }
     .issue-table tr:last-child td { border-bottom: none; }
-    .issue-table tbody tr:hover { background: var(--primary-light); }
+    .issue-table tbody tr:not(.inline-row):hover { background: #f8f9fe; }
 
+    .col-no     { width: 42px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
     .col-title  { width: auto; }
-    .col-author { width: 120px; white-space: nowrap; }
-    .col-date   { width: 110px; white-space: nowrap; color: var(--text-muted); font-size: 0.8rem; }
-    .col-status { width: 70px; text-align: center; }
+    .col-author { width: 80px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; }
+    .col-date   { width: 82px; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
+    .col-status { width: 52px; text-align: center; }
+    .col-action { width: 86px; text-align: right; white-space: nowrap; }
 
+    .title-cell { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
     .title-link {
-      color: var(--text-primary); text-decoration: none; font-weight: 600;
-      display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: var(--text-primary); text-decoration: none; font-weight: 500;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1;
     }
-    .title-link:hover { color: var(--primary); }
+    .title-link:hover { color: var(--primary); text-decoration: underline; }
 
-    .badge {
-      display: inline-block; font-size: 0.68rem; padding: 0.15rem 0.5rem;
-      border-radius: 100px; font-weight: 700;
-    }
+    .badge { display: inline-block; font-size: 0.62rem; padding: 0.1rem 0.4rem; border-radius: 100px; font-weight: 700; }
     .badge-draft { background: var(--warning-light); color: #92400e; }
     .badge-done  { background: var(--success-light);  color: #065f46; }
 
+    /* 편집/삭제 버튼 */
+    .act-btn {
+      padding: 0.18rem 0.5rem; font-size: 0.68rem; font-weight: 700;
+      border-radius: 3px; cursor: pointer; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-secondary);
+      font-family: var(--font-sans); transition: all 0.12s;
+    }
+    .act-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .act-btn.del { border-color: #fca5a5; color: #dc2626; }
+    .act-btn.del:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+
     /* 인라인 입력 행 */
-    .inline-row td { background: var(--primary-light); padding: 0.5rem 1rem; }
+    .inline-row td { background: #eef2ff; padding: 0.4rem 0.75rem; }
     .inline-input {
-      width: 100%; padding: 0.5rem 0.7rem; border: 1.5px solid var(--primary);
-      border-radius: var(--radius-sm); font-size: 0.88rem; font-family: var(--font-sans);
+      width: 100%; padding: 0.38rem 0.6rem; border: 1.5px solid var(--primary);
+      border-radius: var(--radius-sm); font-size: 0.82rem; font-family: var(--font-sans);
       background: #fff; outline: none; color: var(--text-primary);
     }
-    .inline-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+    .inline-acts { display: flex; gap: 0.3rem; justify-content: flex-end; }
     .btn-sm {
-      padding: 0.35rem 0.8rem; border-radius: var(--radius-sm); font-size: 0.78rem;
-      font-weight: 700; cursor: pointer; border: 1.5px solid var(--border);
-      background: var(--bg-card); color: var(--text-secondary); font-family: var(--font-sans);
-      transition: all 0.15s; white-space: nowrap;
+      padding: 0.25rem 0.6rem; border-radius: 3px; font-size: 0.72rem;
+      font-weight: 700; cursor: pointer; border: 1px solid var(--border);
+      background: var(--bg-card); color: var(--text-secondary); font-family: var(--font-sans); transition: all 0.12s;
     }
     .btn-sm.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
     .btn-sm.primary:hover { background: var(--primary-dark); }
-    .btn-sm:hover { border-color: var(--text-secondary); }
 
-    .empty-state { text-align: center; padding: 3.5rem 1rem; color: var(--text-muted); }
-    .empty-state .empty-icon { font-size: 2.5rem; display: block; margin-bottom: 0.8rem; }
-    .empty-state p { font-size: 0.88rem; }
-    .loading { text-align: center; padding: 3rem; color: var(--text-muted); font-size: 0.88rem; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+    .empty-state .ei { font-size: 2rem; display: block; margin-bottom: 0.6rem; }
+    .empty-state p { font-size: 0.82rem; }
+    .loading { text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 0.82rem; }
+
+    .login-notice {
+      font-size: 0.75rem; color: var(--text-muted);
+      padding: 0.25rem 0.6rem; border: 1px dashed var(--border); border-radius: var(--radius-sm);
+    }
+
+    @media (max-width: 600px) {
+      .col-author, .col-date { display: none; }
+      .col-no { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -100,12 +126,8 @@
     <main class="container">
       <div class="toolbar">
         <span class="toolbar-title">이슈 목록</span>
-        <div class="toolbar-btns">
-          <button class="btn ai" id="btnAI" onclick="addAIIssue()">🤖 AI 이슈 만들기</button>
-          <button class="btn primary" onclick="addInlineRow()">✏️ 이슈 만들기</button>
-        </div>
+        <div class="toolbar-btns" id="toolbarBtns"></div>
       </div>
-
       <div id="tableWrap" class="loading">불러오는 중...</div>
     </main>
 
@@ -113,101 +135,132 @@
       <p>© 2025 이슈보드 · Powered by Claude AI</p>
     </footer>
   </div>
-
   <div class="toast" id="toast"></div>
 
   <script src="assets/js/auth.js"></script>
   <script>
-    if (!requireAuth()) { /* redirected */ }
-    else {
-      renderHeader('#headerUser');
-      loadIssues();
+    const isLoggedIn = !!getToken();
+    const me = getUser();
+
+    if (isLoggedIn) renderHeader('#headerUser');
+    else document.getElementById('headerUser').innerHTML =
+      '<a href="index.html" class="btn-header-login">로그인 / 회원가입</a>';
+
+    if (isLoggedIn) {
+      document.getElementById('toolbarBtns').innerHTML = `
+        <button class="btn ai" id="btnAI" onclick="addAIIssue()">🤖 AI 이슈 만들기</button>
+        <button class="btn primary" onclick="addInlineRow()">✏️ 이슈 만들기</button>`;
+    } else {
+      document.getElementById('toolbarBtns').innerHTML =
+        '<span class="login-notice">🔒 로그인하면 이슈를 만들 수 있습니다</span>';
     }
 
     let issuesData = [];
+    loadIssues();
 
     async function loadIssues() {
-      const wrap = document.getElementById('tableWrap');
       try {
-        const res = await api('/issues');
+        const res = await fetch(API + '/issues');
         if (!res.ok) throw new Error();
         const { issues } = await res.json();
         issuesData = issues;
         renderTable(issues);
       } catch {
-        wrap.innerHTML = '<div class="empty-state"><span class="empty-icon">⚠️</span><p>목록을 불러오지 못했습니다.</p></div>';
+        document.getElementById('tableWrap').innerHTML =
+          '<div class="empty-state"><span class="ei">⚠️</span><p>목록을 불러오지 못했습니다.</p></div>';
       }
     }
 
     function renderTable(issues) {
-      const wrap = document.getElementById('tableWrap');
-      wrap.innerHTML = `
+      const total = issues.length;
+      document.getElementById('tableWrap').innerHTML = `
         <table class="issue-table">
-          <thead>
-            <tr>
-              <th class="col-title">제목</th>
-              <th class="col-author">작성자</th>
-              <th class="col-date">작성일</th>
-              <th class="col-status">상태</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th class="col-no">번호</th>
+            <th class="col-title">제목</th>
+            <th class="col-author">작성자</th>
+            <th class="col-date">작성일</th>
+            <th class="col-status">상태</th>
+            <th class="col-action"></th>
+          </tr></thead>
           <tbody id="issueBody">
-            ${issues.length === 0 ? `<tr><td colspan="4"><div class="empty-state"><span class="empty-icon">📄</span><p>이슈가 없습니다.<br>새 이슈를 만들어보세요.</p></div></td></tr>` : issues.map(renderRow).join('')}
+            ${total === 0
+              ? `<tr><td colspan="6"><div class="empty-state"><span class="ei">📄</span><p>이슈가 없습니다.</p></div></td></tr>`
+              : issues.map((issue, idx) => renderRow(issue, total - idx)).join('')}
           </tbody>
         </table>`;
     }
 
-    function renderRow(issue) {
+    function renderRow(issue, num) {
       const date = new Date(issue.created_at).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit' });
       const badge = issue.is_draft
         ? '<span class="badge badge-draft">작성중</span>'
         : '<span class="badge badge-done">완료</span>';
-      return `
-        <tr>
-          <td class="col-title"><a href="write.html?id=${issue.id}" class="title-link">${escHtml(issue.title)}</a></td>
-          <td class="col-author">${escHtml(issue.author)}</td>
-          <td class="col-date">${date}</td>
-          <td class="col-status">${badge}</td>
-        </tr>`;
+      const isMyPost = isLoggedIn && me && issue.user_id === me.id;
+      const actions = isMyPost ? `
+        <button class="act-btn" onclick="event.stopPropagation();editIssue(${issue.id})">편집</button>
+        <button class="act-btn del" onclick="event.stopPropagation();deleteIssue(${issue.id}, this)">삭제</button>` : '';
+      return `<tr>
+        <td class="col-no">${num}</td>
+        <td class="col-title">
+          <div class="title-cell">
+            <a href="write.html?id=${issue.id}" class="title-link">${escHtml(issue.title)}</a>
+          </div>
+        </td>
+        <td class="col-author">${escHtml(issue.author)}</td>
+        <td class="col-date">${date}</td>
+        <td class="col-status">${badge}</td>
+        <td class="col-action">${actions}</td>
+      </tr>`;
+    }
+
+    function editIssue(id) {
+      location.href = `write.html?id=${id}&mode=edit`;
+    }
+
+    async function deleteIssue(id, btn) {
+      if (!confirm('이 이슈를 삭제하시겠습니까?')) return;
+      btn.disabled = true;
+      try {
+        const res = await api(`/issues/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        issuesData = issuesData.filter(i => i.id !== id);
+        renderTable(issuesData);
+        showToast('삭제됐습니다.', 'success');
+      } catch (e) { showToast(e.message || '삭제 실패', 'error'); btn.disabled = false; }
     }
 
     function addInlineRow() {
-      if (document.getElementById('inlineRow')) {
-        document.getElementById('inlineTitle').focus();
-        return;
-      }
-      ensureTable();
+      if (!isLoggedIn) { showToast('로그인이 필요합니다.', 'error'); return; }
+      if (document.getElementById('inlineRow')) { document.getElementById('inlineTitle').focus(); return; }
+      if (!document.querySelector('.issue-table')) renderTable([]);
       const tbody = document.getElementById('issueBody');
       const tr = document.createElement('tr');
-      tr.id = 'inlineRow';
-      tr.className = 'inline-row';
+      tr.id = 'inlineRow'; tr.className = 'inline-row';
       tr.innerHTML = `
-        <td class="col-title">
-          <input type="text" id="inlineTitle" class="inline-input" placeholder="이슈 제목을 입력하세요" maxlength="200" />
+        <td></td>
+        <td class="col-title" colspan="3">
+          <input type="text" id="inlineTitle" class="inline-input" placeholder="이슈 제목 입력 후 Enter" maxlength="200" />
         </td>
-        <td colspan="2"></td>
-        <td class="col-status">
-          <div class="inline-actions">
+        <td></td>
+        <td class="col-action">
+          <div class="inline-acts">
             <button class="btn-sm primary" onclick="saveInlineIssue()">저장</button>
             <button class="btn-sm" onclick="cancelInlineRow()">취소</button>
           </div>
         </td>`;
       tbody.insertBefore(tr, tbody.firstChild);
-      document.getElementById('inlineTitle').focus();
-      document.getElementById('inlineTitle').addEventListener('keydown', e => {
+      const inp = document.getElementById('inlineTitle');
+      inp.focus();
+      inp.addEventListener('keydown', e => {
         if (e.key === 'Enter') saveInlineIssue();
         if (e.key === 'Escape') cancelInlineRow();
       });
     }
 
-    function ensureTable() {
-      const wrap = document.getElementById('tableWrap');
-      if (!wrap.querySelector('.issue-table')) renderTable([]);
-    }
-
     function cancelInlineRow() {
-      const row = document.getElementById('inlineRow');
-      if (row) row.remove();
+      document.getElementById('inlineRow')?.remove();
     }
 
     async function saveInlineIssue() {

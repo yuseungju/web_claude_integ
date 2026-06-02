@@ -26,20 +26,16 @@ const CORS = {
 function resp(code, body) {
   return { statusCode: code, headers: CORS, body: JSON.stringify(body) };
 }
-
 function getMethod(e) {
   return (e.requestContext?.http?.method || e.httpMethod || 'GET').toUpperCase();
 }
-
 function getPath(e) {
   return e.requestContext?.http?.path || e.path || '/';
 }
-
 function getBody(e) {
   if (!e.body) return {};
   try { return JSON.parse(e.body); } catch { return {}; }
 }
-
 function verifyToken(e) {
   const auth = e.headers?.authorization || e.headers?.Authorization || '';
   const token = auth.replace('Bearer ', '');
@@ -49,23 +45,32 @@ function verifyToken(e) {
 
 exports.handler = async (event) => {
   const method = getMethod(event);
-  const path = getPath(event);
+  const path   = getPath(event);
 
   if (method === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
 
+  // Auth
   if (path === '/auth/register'    && method === 'POST') return register(event);
   if (path === '/auth/login'       && method === 'POST') return login(event);
   if (path === '/auth/check-email' && method === 'POST') return checkEmail(event);
 
+  // Issues (public GET)
   if (path === '/issues' && method === 'GET')  return getIssues(event);
   if (path === '/issues' && method === 'POST') return createIssue(event);
 
-  const issueMatch    = path.match(/^\/issues\/(\d+)$/);
-  const sectionsMatch = path.match(/^\/issues\/(\d+)\/sections$/);
+  const issueM    = path.match(/^\/issues\/(\d+)$/);
+  const sectionsM = path.match(/^\/issues\/(\d+)\/sections$/);
+  const sectionM  = path.match(/^\/issues\/(\d+)\/sections\/(\d+)$/);
+  const editorsM  = path.match(/^\/issues\/(\d+)\/editors$/);
+  const editorM   = path.match(/^\/issues\/(\d+)\/editors\/(\d+)$/);
 
-  if (issueMatch    && method === 'GET')  return getIssue(event, issueMatch[1]);
-  if (issueMatch    && method === 'PUT')  return updateIssue(event, issueMatch[1]);
-  if (sectionsMatch && method === 'POST') return saveSections(event, sectionsMatch[1]);
+  if (issueM    && method === 'GET')    return getIssue(event, issueM[1]);
+  if (issueM    && method === 'PUT')    return updateIssue(event, issueM[1]);
+  if (issueM    && method === 'DELETE') return deleteIssue(event, issueM[1]);
+  if (sectionsM && method === 'POST')   return saveSections(event, sectionsM[1]);
+  if (sectionM  && method === 'PUT')    return saveSection(event, sectionM[1], sectionM[2]);
+  if (editorsM  && method === 'POST')   return setEditor(event, editorsM[1]);
+  if (editorM   && method === 'DELETE') return removeEditor(event, editorM[1], editorM[2]);
 
   if (path === '/topics/ai' && method === 'POST') return aiTopic(event);
   if (path === '/generate'  && method === 'POST') return generateArticle(event);
@@ -112,12 +117,11 @@ async function checkEmail(event) {
   } catch (e) { return resp(500, { error: '서버 오류' }); }
 }
 
+// 비로그인 공개
 async function getIssues(event) {
-  const user = verifyToken(event);
-  if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
     const r = await pool.query(
-      `SELECT i.id, i.title, i.is_draft, i.created_at, i.updated_at, u.name AS author, i.user_id
+      `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
        FROM issues i JOIN users u ON i.user_id = u.id
        ORDER BY i.created_at DESC`
     );
@@ -139,22 +143,46 @@ async function createIssue(event) {
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
+// 비로그인 공개, editors 정보 포함
 async function getIssue(event, id) {
-  const user = verifyToken(event);
-  if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
     const ir = await pool.query(
       'SELECT i.*, u.name AS author FROM issues i JOIN users u ON i.user_id=u.id WHERE i.id=$1', [id]
     );
     if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+
     const sr = await pool.query(
       'SELECT section_no, content FROM issue_sections WHERE issue_id=$1 ORDER BY section_no', [id]
     );
     const sections = [1,2,3,4,5].map(n => {
-      const found = sr.rows.find(r => r.section_no === n);
-      return found ? found.content : '';
+      const f = sr.rows.find(r => r.section_no === n);
+      return f ? f.content : '';
     });
-    return resp(200, { issue: ir.rows[0], sections });
+
+    const er = await pool.query(
+      `SELECT ise.section_no, ise.user_id, u.email, u.name AS editor_name
+       FROM issue_section_editors ise JOIN users u ON ise.user_id = u.id
+       WHERE ise.issue_id = $1`, [id]
+    );
+    // editors: 5개 배열, null이면 미지정
+    const editors = [1,2,3,4,5].map(n => {
+      const f = er.rows.find(r => r.section_no === n);
+      return f ? { user_id: f.user_id, email: f.email, name: f.editor_name } : null;
+    });
+
+    return resp(200, { issue: ir.rows[0], sections, editors });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function deleteIssue(event, id) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const check = await pool.query('SELECT user_id FROM issues WHERE id=$1', [id]);
+    if (!check.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '삭제 권한이 없습니다.' });
+    await pool.query('DELETE FROM issues WHERE id=$1', [id]);
+    return resp(200, { ok: true });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
@@ -172,6 +200,7 @@ async function updateIssue(event, id) {
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
+// 작성자: 전체 5개 섹션 저장
 async function saveSections(event, id) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
@@ -196,6 +225,73 @@ async function saveSections(event, id) {
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
+// 편집자: 단일 섹션 저장
+async function saveSection(event, id, sectionNo) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { content } = getBody(event);
+  try {
+    const issue = await pool.query('SELECT user_id FROM issues WHERE id=$1', [id]);
+    if (!issue.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+
+    const isAuthor = issue.rows[0].user_id === user.id;
+    if (!isAuthor) {
+      const edCheck = await pool.query(
+        'SELECT id FROM issue_section_editors WHERE issue_id=$1 AND section_no=$2 AND user_id=$3',
+        [id, sectionNo, user.id]
+      );
+      if (!edCheck.rows.length) return resp(403, { error: '편집 권한이 없습니다.' });
+    }
+    await pool.query(
+      `INSERT INTO issue_sections (issue_id, section_no, content, updated_at)
+       VALUES ($1,$2,$3,NOW())
+       ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, updated_at=NOW()`,
+      [id, sectionNo, content || '']
+    );
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+// 작성자: 섹션 편집자 지정
+async function setEditor(event, id) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { section_no, email } = getBody(event);
+  if (!section_no || !email) return resp(400, { error: '섹션 번호와 이메일을 입력하세요.' });
+  try {
+    const check = await pool.query('SELECT user_id FROM issues WHERE id=$1', [id]);
+    if (!check.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '작성자만 편집자를 지정할 수 있습니다.' });
+
+    const target = await pool.query('SELECT id, name FROM users WHERE email=$1', [email]);
+    if (!target.rows.length) return resp(404, { error: '해당 이메일의 사용자가 없습니다.' });
+    const editor = target.rows[0];
+
+    await pool.query(
+      `INSERT INTO issue_section_editors (issue_id, section_no, user_id)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (issue_id, section_no) DO UPDATE SET user_id=$3`,
+      [id, section_no, editor.id]
+    );
+    return resp(200, { editor: { user_id: editor.id, name: editor.name, email } });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+// 작성자: 섹션 편집자 해제
+async function removeEditor(event, id, sectionNo) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const check = await pool.query('SELECT user_id FROM issues WHERE id=$1', [id]);
+    if (!check.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+    await pool.query(
+      'DELETE FROM issue_section_editors WHERE issue_id=$1 AND section_no=$2', [id, sectionNo]
+    );
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
     https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
@@ -211,11 +307,10 @@ async function aiTopic(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
-    // 여러 키워드로 최신 뉴스 수집
     const queries = [
-      '%EB%AC%B8%ED%99%94+%EC%98%88%EC%88%A0',   // 문화 예술
-      '%EA%B3%B5%EC%97%B0+%EC%A0%84%EC%8B%9C',   // 공연 전시
-      '%EC%98%81%ED%99%94+%EC%9D%8C%EC%95%85',    // 영화 음악
+      '%EB%AC%B8%ED%99%94+%EC%98%88%EC%88%A0',
+      '%EA%B3%B5%EC%97%B0+%EC%A0%84%EC%8B%9C',
+      '%EC%98%81%ED%99%94+%EC%9D%8C%EC%95%85',
     ];
     const q = queries[Math.floor(Math.random() * queries.length)];
     const rss = await fetchUrl(`https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`);
@@ -229,10 +324,7 @@ async function aiTopic(event) {
     }
     if (!titles.length) throw new Error('뉴스를 가져올 수 없습니다.');
 
-    // 랜덤 셔플 후 상위 12개만 전달 → 매번 다른 주제 선택
     const shuffled = titles.sort(() => Math.random() - 0.5).slice(0, 12);
-
-    // 기존 이슈 제목 조회 (중복 방지)
     const existing = await pool.query('SELECT title FROM issues ORDER BY created_at DESC LIMIT 20');
     const existingTitles = existing.rows.map(r => r.title).join('\n');
 

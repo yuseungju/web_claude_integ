@@ -103,6 +103,15 @@ body {
   flex-wrap: wrap;
 }
 
+/* ── Header Login Button (비로그인) ────────────────────── */
+.btn-header-login {
+  display: inline-block; padding: 0.28rem 0.9rem;
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4);
+  color: #fff; border-radius: var(--radius-sm); font-size: 0.78rem;
+  font-weight: 600; text-decoration: none; transition: background 0.15s;
+}
+.btn-header-login:hover { background: rgba(255,255,255,0.28); }
+
 /* ── App Footer ────────────────────────────────────────── */
 .app-footer {
   padding: 1.1rem;
