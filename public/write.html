@@ -441,11 +441,10 @@
       bar.style.display = 'flex';
 
       let html = '';
-      if (isAuthor) html += `<button class="btn" onclick="tempSave()">📌 임시저장</button>`;
       html += `<div class="btn-spacer"></div>`;
       html += `<button class="btn" onclick="location.href='issues.html'">취소</button>`;
       if (canSave) {
-        html += `<button class="btn primary" id="btnSave" onclick="saveIssue(true)">💾 저장</button>`;
+        html += `<button class="btn primary" id="btnSave" onclick="saveIssue(true)">📌 임시저장</button>`;
       }
       if (isAuthor && issueId) {
         html += `<button class="btn success" id="btnComplete" onclick="saveIssue(false)">✅ 기사 작성 완료</button>`;
@@ -569,7 +568,7 @@
       } finally {
         if (activeBtn) {
           activeBtn.disabled = false;
-          activeBtn.textContent = isDraft ? '💾 저장' : '✅ 기사 작성 완료';
+          activeBtn.textContent = isDraft ? '📌 임시저장' : '✅ 기사 작성 완료';
         }
       }
     }
