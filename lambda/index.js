@@ -211,22 +211,37 @@ async function aiTopic(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
-    const rss = await fetchUrl('https://news.google.com/rss/search?q=%EB%AC%B8%ED%99%94+%EC%98%88%EC%88%A0&hl=ko&gl=KR&ceid=KR:ko');
+    // 여러 키워드로 최신 뉴스 수집
+    const queries = [
+      '%EB%AC%B8%ED%99%94+%EC%98%88%EC%88%A0',   // 문화 예술
+      '%EA%B3%B5%EC%97%B0+%EC%A0%84%EC%8B%9C',   // 공연 전시
+      '%EC%98%81%ED%99%94+%EC%9D%8C%EC%95%85',    // 영화 음악
+    ];
+    const q = queries[Math.floor(Math.random() * queries.length)];
+    const rss = await fetchUrl(`https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`);
+
     const titles = [];
     const re = /<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g;
     let m;
-    while ((m = re.exec(rss)) !== null && titles.length < 15) {
+    while ((m = re.exec(rss)) !== null && titles.length < 25) {
       const t = m[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
       if (t && !t.toLowerCase().includes('google')) titles.push(t);
     }
     if (!titles.length) throw new Error('뉴스를 가져올 수 없습니다.');
+
+    // 랜덤 셔플 후 상위 12개만 전달 → 매번 다른 주제 선택
+    const shuffled = titles.sort(() => Math.random() - 0.5).slice(0, 12);
+
+    // 기존 이슈 제목 조회 (중복 방지)
+    const existing = await pool.query('SELECT title FROM issues ORDER BY created_at DESC LIMIT 20');
+    const existingTitles = existing.rows.map(r => r.title).join('\n');
 
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 150,
       messages: [{
         role: 'user',
-        content: `아래 뉴스 제목 중 문화·예술·공연·전시 관련 기사 주제로 가장 적합한 것을 하나 골라, 한국어 기사 제목 형식으로 다듬어 제목만 출력하세요. 설명 없이 제목 텍스트만 출력하세요.\n\n${titles.slice(0, 12).join('\n')}`
+        content: `아래 최신 뉴스 제목 중 문화·예술·공연·전시·영화·음악 관련 기사 주제로 적합한 것을 하나 골라, 한국어 기사 제목 형식으로 다듬어 제목만 출력하세요.\n이미 존재하는 이슈와 중복되지 않게 선택하세요.\n설명 없이 제목 텍스트만 출력하세요.\n\n[이미 있는 이슈]\n${existingTitles || '없음'}\n\n[최신 뉴스]\n${shuffled.join('\n')}`
       }]
     });
 
