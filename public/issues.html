@@ -85,12 +85,12 @@
 
     /* ── 테이블 ── */
     .table-scroll-wrap {
-      width: 100%; overflow-x: auto;
+      width: 100%; overflow-x: hidden;
       border-radius: var(--radius-md); border: 1px solid var(--border);
       box-shadow: var(--shadow-sm);
     }
     .issue-table {
-      width: 100%; border-collapse: collapse;
+      width: 100%; border-collapse: collapse; table-layout: fixed;
       background: var(--bg-card);
       font-size: 0.82rem;
     }
@@ -106,14 +106,14 @@
     .issue-table tr:last-child td { border-bottom: none; }
     .issue-table tbody tr:not(.inline-row):hover { background: #f8f9fe; }
 
-    .col-no       { width: 42px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
-    .col-title    { width: auto; }
-    .col-category { width: 62px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); }
-    .col-views    { width: 88px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
-    .col-author   { width: 80px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; }
-    .col-date     { width: 82px; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
-    .col-status   { width: 58px; text-align: center; white-space: nowrap; }
-    .col-action   { width: 86px; text-align: right; white-space: nowrap; }
+    .col-no       { width: 36px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
+    .col-title    { }
+    .col-category { width: 52px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
+    .col-views    { width: 76px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
+    .col-author   { width: 68px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
+    .col-date     { width: 90px; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
+    .col-status   { width: 52px; text-align: center; white-space: nowrap; }
+    .col-action   { width: 80px; text-align: right; white-space: nowrap; }
 
     .title-cell { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
     .title-link {
