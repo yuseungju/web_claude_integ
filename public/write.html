@@ -805,12 +805,18 @@
         if (btn) {
           btn.disabled = false;
           btn.textContent = `🔍 관련글 ${items.length}건 ✓`;
-          btn.style.color = 'var(--success)';
+          btn.style.color = '#065f46';
           btn.style.borderColor = 'var(--success)';
+          btn.style.background = 'var(--success-light)';
         }
+        // 제목 변경 시 버튼 초기화 (다시 검색 유도)
+        document.getElementById('titleInput')?.addEventListener('input', () => {
+          const b = document.getElementById('btnSearchRelated');
+          if (b) { b.textContent = '🔍 관련글 검색'; b.style.color = ''; b.style.borderColor = ''; b.style.background = ''; }
+        }, { once: false });
       } catch (e) {
         panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--danger)">${escHtml(e.message || '검색 실패')}</div>`;
-        if (btn) { btn.disabled = false; btn.textContent = '🔍 관련글 검색'; btn.style.color = ''; btn.style.borderColor = ''; }
+        if (btn) { btn.disabled = false; btn.textContent = '🔍 관련글 검색'; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
       }
     }
 

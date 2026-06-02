@@ -806,8 +806,6 @@ async function searchRelated(event, issueId) {
     if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
     const { title, category } = ir.rows[0];
 
-    // 제목 앞 4단어 + 분류로 검색 (전체 제목은 너무 구체적이어서 결과 0건)
-    const keywords = title.split(/\s+/).slice(0, 4).join(' ');
     const catExtra = {
       '문화': '예술 공연 전시',   '정치': '국회 정책 정부',
       '경제': '산업 금융 주식',   '사회': '사건 복지 환경',
@@ -815,6 +813,23 @@ async function searchRelated(event, issueId) {
       'IT/과학': '인공지능 기술', '국제': '외교 세계 해외',
       '교육': '학교 입시 대학',   '건강': '의료 병원 질병',
     };
+
+    // Haiku로 핵심 키워드 4개 추출 (흔하지 않고 구체적인 단어)
+    let keywords;
+    try {
+      const kwMsg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 40,
+        messages: [{
+          role: 'user',
+          content: `기사 제목에서 검색에 유용한 핵심 명사 4개만 추출하세요. 흔하지 않고 구체적인 고유명사·전문용어 위주. 쉼표 없이 띄어쓰기로만 구분해서 단어들만 출력.\n제목: ${title}`
+        }]
+      });
+      keywords = kwMsg.content[0].text.trim().replace(/,/g, ' ').replace(/\s+/g, ' ');
+    } catch {
+      keywords = title.split(/\s+/).slice(0, 4).join(' ');
+    }
+
     const extra = catExtra[category] || '';
     const q = encodeURIComponent(`${keywords} ${extra}`.trim());
 
