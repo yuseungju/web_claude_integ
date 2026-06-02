@@ -200,6 +200,76 @@
     }
     .ref-list a:hover { text-decoration: underline; opacity: 0.75; }
 
+    /* ── 댓글 섹션 ── */
+    .comments-section {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 1.1rem 1.25rem;
+      margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);
+    }
+    .comments-header {
+      font-size: 0.88rem; font-weight: 800; color: var(--text-primary);
+      margin-bottom: 1rem; display: flex; align-items: center; gap: 0.4rem;
+      padding-bottom: 0.65rem; border-bottom: 1px solid var(--border);
+    }
+    .comment-count-badge {
+      font-size: 0.7rem; padding: 0.06rem 0.4rem; border-radius: 100px;
+      background: var(--primary-light); color: var(--primary); font-weight: 700;
+    }
+    .comment-item {
+      padding: 0.78rem 0; border-bottom: 1px solid #f1f5f9;
+    }
+    .comment-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .comment-meta {
+      display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.3rem;
+    }
+    .comment-author { font-size: 0.78rem; font-weight: 700; color: var(--text-primary); }
+    .comment-date   { font-size: 0.68rem; color: var(--text-muted); }
+    .comment-body {
+      font-size: 0.85rem; line-height: 1.7; color: var(--text-primary);
+      white-space: pre-wrap; word-break: break-word; margin-bottom: 0.42rem;
+    }
+    .comment-actions { display: flex; align-items: center; gap: 0.28rem; }
+    .react-btn {
+      padding: 0.15rem 0.5rem; border: 1px solid var(--border); border-radius: 100px;
+      font-size: 0.7rem; font-weight: 600; cursor: pointer; background: var(--bg);
+      color: var(--text-secondary); font-family: var(--font-sans);
+      transition: all 0.12s; display: inline-flex; align-items: center; gap: 0.18rem;
+    }
+    .react-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .react-btn.active-like    { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+    .react-btn.active-dislike { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+    .comment-del-btn {
+      margin-left: auto; padding: 0.15rem 0.45rem; border: 1px solid #fca5a5;
+      border-radius: var(--radius-sm); font-size: 0.66rem; color: #dc2626;
+      cursor: pointer; background: none; font-family: var(--font-sans); transition: all 0.12s;
+    }
+    .comment-del-btn:hover { background: #dc2626; color: #fff; }
+    .empty-comments {
+      text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.8rem;
+    }
+    .comment-form { margin-top: 0.9rem; display: flex; flex-direction: column; gap: 0.42rem; }
+    .comment-textarea {
+      width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.85rem; font-family: var(--font-sans);
+      resize: vertical; min-height: 70px; outline: none; background: var(--bg);
+      color: var(--text-primary); line-height: 1.6; transition: border-color 0.15s;
+    }
+    .comment-textarea:focus { border-color: var(--primary); }
+    .comment-submit-row { display: flex; justify-content: flex-end; }
+    .btn-comment-submit {
+      padding: 0.42rem 1.05rem; background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: 0.82rem;
+      font-weight: 700; cursor: pointer; font-family: var(--font-sans); transition: background 0.15s;
+    }
+    .btn-comment-submit:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-comment-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .comment-login-notice {
+      margin-top: 0.85rem; text-align: center; padding: 0.72rem; font-size: 0.78rem;
+      color: var(--text-muted); border: 1px dashed var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; transition: all 0.12s;
+    }
+    .comment-login-notice:hover { border-color: var(--primary); color: var(--primary); }
+
     /* ── 반응형 ── */
     @media (max-width: 768px) {
       .issue-meta { padding: 0.75rem 1rem; }
@@ -256,6 +326,7 @@
         <div style="flex:1;min-width:0">
           <div id="titleArea"></div>
           <div class="issue-sub" id="issueSub"></div>
+          <div id="issueReactBar" style="display:none;margin-top:0.45rem;display:flex;gap:0.3rem;align-items:center"></div>
         </div>
         <div id="topActions" style="display:flex;gap:0.4rem;flex-shrink:0;flex-wrap:wrap"></div>
       </div>
@@ -277,6 +348,16 @@
         </div>
         <textarea id="aiBody" class="ai-panel-body"
           placeholder="AI로 정리하거나, 가져오기로 섹션 내용을 불러오거나, 직접 입력하세요."></textarea>
+      </div>
+
+      <!-- 댓글 -->
+      <div class="comments-section" id="commentsSection" style="display:none">
+        <div class="comments-header">
+          💬 댓글
+          <span class="comment-count-badge" id="commentCountBadge">0</span>
+        </div>
+        <div id="commentList"></div>
+        <div id="commentFormWrap"></div>
       </div>
     </main>
 
@@ -364,6 +445,7 @@
           `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')} · 조회 ${issue.view_count ?? 0}`;
 
         renderTopActions(issue);
+        if (!isEditMode) renderIssueReactBar(issue);
         renderRefLinks(issue.reference_links);
         renderSections();
         renderActionBar();
@@ -374,6 +456,7 @@
         renderAiPanelActs();
 
         if (isEditMode && isAuthor) loadCookie();
+        if (!isEditMode) loadComments();
       } catch {
         showToast('이슈를 불러오지 못했습니다.', 'error');
       }
@@ -392,6 +475,30 @@
         }
       }
       div.innerHTML = btns.join('');
+    }
+
+    function renderIssueReactBar(issue) {
+      const bar = document.getElementById('issueReactBar');
+      if (!bar) return;
+      bar.style.display = 'flex';
+      const likeClass    = issue.my_reaction === 'like'    ? ' active-like'    : '';
+      const dislikeClass = issue.my_reaction === 'dislike' ? ' active-dislike' : '';
+      bar.innerHTML = `
+        <button class="react-btn${likeClass}"    id="issLikeBtn"    onclick="reactIssue('like')">👍 <span id="issLikes">${issue.likes || 0}</span></button>
+        <button class="react-btn${dislikeClass}" id="issDislikeBtn" onclick="reactIssue('dislike')">👎 <span id="issDislikes">${issue.dislikes || 0}</span></button>`;
+    }
+
+    async function reactIssue(reaction) {
+      if (!isLoggedIn) { openLoginModal(); return; }
+      try {
+        const res = await api(`/issues/${issueId}/react`, { method: 'POST', body: JSON.stringify({ reaction }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        document.getElementById('issLikes').textContent    = data.likes;
+        document.getElementById('issDislikes').textContent = data.dislikes;
+        document.getElementById('issLikeBtn').className    = `react-btn${data.my_reaction === 'like'    ? ' active-like'    : ''}`;
+        document.getElementById('issDislikeBtn').className = `react-btn${data.my_reaction === 'dislike' ? ' active-dislike' : ''}`;
+      } catch (e) { showToast(e.message || '처리 실패', 'error'); }
     }
 
     function renderRefLinks(links) {
@@ -704,6 +811,120 @@
       if (!text) { showToast('복사할 내용이 없습니다.', 'error'); return; }
       try { await navigator.clipboard.writeText(text); showToast('복사됐습니다.', 'success'); }
       catch { showToast('복사 실패', 'error'); }
+    }
+
+    /* ── 댓글 ── */
+    async function loadComments() {
+      const sec = document.getElementById('commentsSection');
+      if (!sec || !issueId) return;
+      sec.style.display = '';
+      try {
+        const headers = isLoggedIn ? { Authorization: `Bearer ${getToken()}` } : {};
+        const res = await fetch(API + `/issues/${issueId}/comments`, { headers });
+        if (!res.ok) throw new Error();
+        const { comments } = await res.json();
+        renderCommentList(comments);
+        renderCommentForm();
+      } catch {
+        document.getElementById('commentList').innerHTML = '<div class="empty-comments">댓글을 불러오지 못했습니다.</div>';
+      }
+    }
+
+    function renderCommentList(comments) {
+      document.getElementById('commentCountBadge').textContent = comments.length;
+      document.getElementById('commentList').innerHTML = comments.length
+        ? comments.map(renderCommentItem).join('')
+        : '<div class="empty-comments">첫 댓글을 작성해보세요.</div>';
+    }
+
+    function renderCommentItem(c) {
+      const date = new Date(c.created_at).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+      const isMyComment  = isLoggedIn && me && c.user_id === me.id;
+      const likeClass    = c.my_reaction === 'like'    ? ' active-like'    : '';
+      const dislikeClass = c.my_reaction === 'dislike' ? ' active-dislike' : '';
+      const delBtn = isMyComment
+        ? `<button class="comment-del-btn" onclick="removeComment(${c.id})">삭제</button>` : '';
+      return `
+        <div class="comment-item" id="comment-${c.id}">
+          <div class="comment-meta">
+            <span class="comment-author">${escHtml(c.author)}</span>
+            <span class="comment-date">${date}</span>
+            ${delBtn}
+          </div>
+          <div class="comment-body">${escHtml(c.content)}</div>
+          <div class="comment-actions">
+            <button class="react-btn${likeClass}" onclick="reactComment(${c.id},'like')">👍 <span id="like-${c.id}">${c.likes}</span></button>
+            <button class="react-btn${dislikeClass}" onclick="reactComment(${c.id},'dislike')">👎 <span id="dislike-${c.id}">${c.dislikes}</span></button>
+          </div>
+        </div>`;
+    }
+
+    function renderCommentForm() {
+      const wrap = document.getElementById('commentFormWrap');
+      if (!wrap) return;
+      if (!isLoggedIn) {
+        wrap.innerHTML = `<div class="comment-login-notice" onclick="openLoginModal()">🔒 로그인하면 댓글을 작성할 수 있습니다</div>`;
+        return;
+      }
+      wrap.innerHTML = `
+        <div class="comment-form">
+          <textarea id="commentInput" class="comment-textarea" placeholder="댓글을 입력하세요..." rows="3"></textarea>
+          <div class="comment-submit-row">
+            <button class="btn-comment-submit" id="btnCommentSubmit" onclick="submitComment()">댓글 등록</button>
+          </div>
+        </div>`;
+    }
+
+    async function submitComment() {
+      const input = document.getElementById('commentInput');
+      const content = input?.value.trim();
+      if (!content) { showToast('댓글 내용을 입력하세요.', 'error'); return; }
+      const btn = document.getElementById('btnCommentSubmit');
+      btn.disabled = true; btn.textContent = '등록 중...';
+      try {
+        const res = await api(`/issues/${issueId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        input.value = '';
+        const list = document.getElementById('commentList');
+        list.querySelector('.empty-comments')?.remove();
+        list.insertAdjacentHTML('beforeend', renderCommentItem(data.comment));
+        const badge = document.getElementById('commentCountBadge');
+        badge.textContent = parseInt(badge.textContent || '0') + 1;
+        showToast('댓글이 등록됐습니다.', 'success');
+      } catch (e) { showToast(e.message || '등록 실패', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '댓글 등록'; }
+    }
+
+    async function reactComment(commentId, reaction) {
+      if (!isLoggedIn) { openLoginModal(); return; }
+      try {
+        const res = await api(`/comments/${commentId}/react`, { method: 'POST', body: JSON.stringify({ reaction }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        document.getElementById(`like-${commentId}`).textContent    = data.likes;
+        document.getElementById(`dislike-${commentId}`).textContent = data.dislikes;
+        const item = document.getElementById(`comment-${commentId}`);
+        const [likeBtn, dislikeBtn] = item.querySelectorAll('.react-btn');
+        likeBtn.className    = `react-btn${data.my_reaction === 'like'    ? ' active-like'    : ''}`;
+        dislikeBtn.className = `react-btn${data.my_reaction === 'dislike' ? ' active-dislike' : ''}`;
+      } catch (e) { showToast(e.message || '처리 실패', 'error'); }
+    }
+
+    async function removeComment(commentId) {
+      if (!confirm('댓글을 삭제하시겠습니까?')) return;
+      try {
+        const res = await api(`/comments/${commentId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        document.getElementById(`comment-${commentId}`)?.remove();
+        const badge = document.getElementById('commentCountBadge');
+        badge.textContent = Math.max(0, parseInt(badge.textContent || '1') - 1);
+        if (!document.querySelector('.comment-item')) {
+          document.getElementById('commentList').innerHTML = '<div class="empty-comments">첫 댓글을 작성해보세요.</div>';
+        }
+        showToast('댓글이 삭제됐습니다.', 'success');
+      } catch (e) { showToast(e.message || '삭제 실패', 'error'); }
     }
 
     function escHtml(s) {

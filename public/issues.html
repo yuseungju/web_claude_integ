@@ -157,6 +157,26 @@
     .empty-state p { font-size: 0.82rem; }
     .loading { text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 0.82rem; }
 
+    /* 좋아요/싫어요 행 색상 */
+    tr.row-liked    td { background: #eff6ff; }
+    tr.row-disliked td { background: #fff7ed; }
+    tr.row-liked:hover    td { background: #dbeafe; }
+    tr.row-disliked:hover td { background: #ffedd5; }
+
+    /* 베스트 섹션 */
+    .best-section {
+      margin-bottom: 0.75rem; background: var(--bg-card);
+      border: 1.5px solid #fbbf24; border-radius: var(--radius-md);
+      overflow: hidden; box-shadow: var(--shadow-sm);
+    }
+    .best-header {
+      padding: 0.42rem 0.85rem; background: #fffbeb;
+      font-size: 0.75rem; font-weight: 800; color: #92400e;
+      border-bottom: 1px solid #fde68a; display: flex; align-items: center; gap: 0.3rem;
+    }
+    .best-row td { background: #fffbeb !important; }
+    .best-row:hover td { background: #fef3c7 !important; }
+
     /* ── 페이지네이션 ── */
     .pagination {
       display: flex; align-items: center; justify-content: center;
@@ -235,6 +255,7 @@
         <button class="f-search" onclick="doSearch()">검색</button>
       </div>
 
+      <div id="bestWrap"></div>
       <div id="tableWrap"><div class="loading">불러오는 중...</div></div>
       <div id="pagination"></div>
     </main>
@@ -367,6 +388,25 @@
 
     function renderTable(issues, page, total) {
       const offset = (page - 1) * LIMIT;
+
+      // 베스트: 완료 글 중 좋아요 최다 1개 (첫 페이지만)
+      const bestWrap = document.getElementById('bestWrap');
+      if (page === 1) {
+        const done = issues.filter(i => !i.is_draft && (i.likes || 0) > 0);
+        if (done.length) {
+          const best = done.reduce((a, b) => (b.likes || 0) > (a.likes || 0) ? b : a);
+          bestWrap.innerHTML = `
+            <div class="best-section">
+              <div class="best-header">🏆 베스트 글</div>
+              <div class="table-scroll-wrap" style="border:none;border-radius:0;box-shadow:none">
+                <table class="issue-table">
+                  <tbody><tr class="best-row">${renderRow(best, '', true)}</tr></tbody>
+                </table>
+              </div>
+            </div>`;
+        } else { bestWrap.innerHTML = ''; }
+      } else { bestWrap.innerHTML = ''; }
+
       document.getElementById('tableWrap').innerHTML = `
         <div class="table-scroll-wrap">
           <table class="issue-table">
@@ -382,7 +422,7 @@
             </tr></thead>
             <tbody id="issueBody">
               ${issues.length === 0
-                ? `<tr><td colspan="6"><div class="empty-state"><span class="ei">📄</span><p>이슈가 없습니다.</p></div></td></tr>`
+                ? `<tr><td colspan="8"><div class="empty-state"><span class="ei">📄</span><p>이슈가 없습니다.</p></div></td></tr>`
                 : issues.map((issue, idx) => renderRow(issue, total - offset - idx)).join('')}
             </tbody>
           </table>
@@ -409,7 +449,7 @@
       el.innerHTML = html;
     }
 
-    function renderRow(issue, num) {
+    function renderRow(issue, num, isBest = false) {
       const date = new Date(issue.created_at).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit' });
       const badge = issue.is_draft
         ? '<span class="badge badge-draft">작성중</span>'
@@ -418,11 +458,15 @@
       const actions = isMyPost ? `
         <button class="act-btn" onclick="event.stopPropagation();editIssue(${issue.id})">편집</button>
         <button class="act-btn del" onclick="event.stopPropagation();deleteIssue(${issue.id}, this)">삭제</button>` : '';
-      return `<tr>
+      const likes    = issue.likes    || 0;
+      const dislikes = issue.dislikes || 0;
+      const rowClass = isBest ? '' : likes > dislikes && likes > 0 ? ' row-liked' : dislikes > likes && dislikes > 0 ? ' row-disliked' : '';
+      const bestBadge = isBest ? '<span class="badge" style="background:#fef3c7;color:#92400e">🏆 베스트</span> ' : '';
+      return `<tr class="${rowClass}">
         <td class="col-no">${num}</td>
         <td class="col-title">
           <div class="title-cell">
-            <a href="write.html?id=${issue.id}${issue.is_draft ? '&mode=edit' : ''}" class="title-link">${escHtml(issue.title)}</a>
+            <a href="write.html?id=${issue.id}${issue.is_draft ? '&mode=edit' : ''}" class="title-link">${bestBadge}${escHtml(issue.title)}</a>
           </div>
         </td>
         <td class="col-category">${escHtml(issue.category || '문화')}</td>

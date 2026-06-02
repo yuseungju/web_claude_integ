@@ -79,6 +79,19 @@ exports.handler = async (event) => {
   if (path === '/topics/ai' && method === 'POST') return aiTopic(event);
   if (path === '/generate'  && method === 'POST') return generateArticle(event);
 
+  // Issue reactions
+  const issueReactM = path.match(/^\/issues\/(\d+)\/react$/);
+  if (issueReactM && method === 'POST') return reactIssue(event, issueReactM[1]);
+
+  // Comments
+  const commentM      = path.match(/^\/issues\/(\d+)\/comments$/);
+  const commentIdM    = path.match(/^\/comments\/(\d+)$/);
+  const commentReactM = path.match(/^\/comments\/(\d+)\/react$/);
+  if (commentM      && method === 'GET')    return getComments(event, commentM[1]);
+  if (commentM      && method === 'POST')   return createComment(event, commentM[1]);
+  if (commentIdM    && method === 'DELETE') return deleteComment(event, commentIdM[1]);
+  if (commentReactM && method === 'POST')   return reactComment(event, commentReactM[1]);
+
   // Mypage
   const sampleM = path.match(/^\/mypage\/samples\/(\d+)$/);
   if (path === '/mypage'         && method === 'GET')    return getMypage(event);
@@ -175,8 +188,13 @@ async function getIssues(event) {
     const total  = parseInt(countR.rows[0].count);
 
     const dataR = await pool.query(
-      `SELECT i.id, i.title, i.is_draft, i.category, i.view_count, i.created_at, u.name AS author, i.user_id
-       ${base} ORDER BY i.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
+      `SELECT i.id, i.title, i.is_draft, i.category, i.view_count, i.created_at, u.name AS author, i.user_id,
+        COALESCE(SUM(CASE WHEN ir.reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN ir.reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes
+       FROM issues i JOIN users u ON i.user_id = u.id
+       LEFT JOIN issue_reactions ir ON ir.issue_id = i.id
+       ${where} GROUP BY i.id, u.name
+       ORDER BY i.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, limit, offset]
     );
 
@@ -248,7 +266,16 @@ async function getIssue(event, id) {
       return f ? { user_id: f.user_id, email: f.email, name: f.editor_name } : null;
     });
 
-    return resp(200, { issue: ir.rows[0], sections, editors });
+    // 좋아요/싫어요 집계
+    const rr = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+        MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
+      FROM issue_reactions WHERE issue_id=$2
+    `, [user?.id || -1, id]);
+
+    return resp(200, { issue: { ...ir.rows[0], ...rr.rows[0] }, sections, editors });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
@@ -555,4 +582,108 @@ async function deleteSample(event, id) {
     await pool.query('DELETE FROM user_samples WHERE id=$1', [id]);
     return resp(200, { ok: true });
   } catch (e) { console.error(e); return resp(500, { error: e.message || '삭제 실패' }); }
+}
+
+async function reactIssue(event, issueId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '로그인이 필요합니다.' });
+  const { reaction } = getBody(event);
+  if (!['like', 'dislike'].includes(reaction)) return resp(400, { error: '잘못된 요청' });
+  try {
+    const cur = await pool.query(
+      'SELECT reaction FROM issue_reactions WHERE issue_id=$1 AND user_id=$2', [issueId, user.id]
+    );
+    if (cur.rows.length && cur.rows[0].reaction === reaction) {
+      await pool.query('DELETE FROM issue_reactions WHERE issue_id=$1 AND user_id=$2', [issueId, user.id]);
+    } else {
+      await pool.query(
+        `INSERT INTO issue_reactions (issue_id, user_id, reaction) VALUES($1,$2,$3)
+         ON CONFLICT (issue_id, user_id) DO UPDATE SET reaction=$3`,
+        [issueId, user.id, reaction]
+      );
+    }
+    const c = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+        MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
+      FROM issue_reactions WHERE issue_id=$2
+    `, [user.id, issueId]);
+    return resp(200, c.rows[0]);
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function getComments(event, issueId) {
+  const user = verifyToken(event);
+  const uid  = user?.id || -1;
+  try {
+    const r = await pool.query(`
+      SELECT c.id, c.content, c.created_at, u.name AS author, c.user_id,
+        COALESCE(SUM(CASE WHEN cr.reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN cr.reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+        MAX(CASE WHEN cr.user_id=$1 THEN cr.reaction END) AS my_reaction
+      FROM comments c
+      JOIN users u ON c.user_id = u.id
+      LEFT JOIN comment_reactions cr ON cr.comment_id = c.id
+      WHERE c.issue_id = $2
+      GROUP BY c.id, u.name, c.user_id
+      ORDER BY c.created_at ASC
+    `, [uid, issueId]);
+    return resp(200, { comments: r.rows });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function createComment(event, issueId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '로그인이 필요합니다.' });
+  const { content } = getBody(event);
+  if (!content?.trim()) return resp(400, { error: '내용을 입력하세요.' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO comments (issue_id, user_id, content) VALUES($1,$2,$3) RETURNING id, content, created_at',
+      [issueId, user.id, content.trim()]
+    );
+    return resp(201, { comment: { ...r.rows[0], author: user.name, user_id: user.id, likes: 0, dislikes: 0, my_reaction: null } });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function deleteComment(event, commentId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const r = await pool.query('SELECT user_id FROM comments WHERE id=$1', [commentId]);
+    if (!r.rows.length) return resp(404, { error: '댓글을 찾을 수 없습니다.' });
+    if (r.rows[0].user_id !== user.id) return resp(403, { error: '삭제 권한이 없습니다.' });
+    await pool.query('DELETE FROM comments WHERE id=$1', [commentId]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function reactComment(event, commentId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '로그인이 필요합니다.' });
+  const { reaction } = getBody(event);
+  if (!['like', 'dislike'].includes(reaction)) return resp(400, { error: '잘못된 요청' });
+  try {
+    const cur = await pool.query(
+      'SELECT reaction FROM comment_reactions WHERE comment_id=$1 AND user_id=$2', [commentId, user.id]
+    );
+    if (cur.rows.length && cur.rows[0].reaction === reaction) {
+      await pool.query('DELETE FROM comment_reactions WHERE comment_id=$1 AND user_id=$2', [commentId, user.id]);
+    } else {
+      await pool.query(
+        `INSERT INTO comment_reactions (comment_id, user_id, reaction) VALUES($1,$2,$3)
+         ON CONFLICT (comment_id, user_id) DO UPDATE SET reaction=$3`,
+        [commentId, user.id, reaction]
+      );
+    }
+    const c = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+        MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
+      FROM comment_reactions WHERE comment_id=$2
+    `, [user.id, commentId]);
+    return resp(200, c.rows[0]);
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
