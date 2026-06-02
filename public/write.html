@@ -292,6 +292,29 @@
       transition: border-color 0.15s;
     }
     .sec-name-input:focus { border-bottom-color: var(--primary); color: var(--text-primary); }
+    /* 참고링크 편집 패널 */
+    .ref-edit-add {
+      display: flex; gap: .3rem; align-items: center; margin-top: .5rem; flex-wrap: wrap;
+    }
+    .ref-url-input {
+      flex: 1; min-width: 160px; padding: .28rem .55rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: .74rem; font-family: var(--font-sans);
+      outline: none; background: var(--bg); color: var(--text-primary); transition: border-color .15s;
+    }
+    .ref-url-input:focus { border-color: var(--primary); }
+    .btn-ref-add {
+      padding: .28rem .7rem; background: var(--primary); color: #fff; border: none;
+      border-radius: var(--radius-sm); font-size: .72rem; font-weight: 700; cursor: pointer;
+      font-family: var(--font-sans); white-space: nowrap; transition: background .12s;
+    }
+    .btn-ref-add:hover { background: var(--primary-dark); }
+    .ref-del-btn {
+      flex-shrink: 0; padding: .05rem .32rem; border: 1px solid #fca5a5; border-radius: 3px;
+      font-size: .65rem; color: #dc2626; cursor: pointer; background: none;
+      font-family: var(--font-sans); transition: all .12s; line-height: 1;
+    }
+    .ref-del-btn:hover { background: #dc2626; color: #fff; }
+
     .ai-side-hint {
       font-size: 0.64rem; color: var(--text-muted); padding: 0.22rem 0.9rem 0.35rem;
       border-top: 1px dashed var(--border); font-style: italic;
@@ -482,6 +505,7 @@
     let articleStyleData   = '';
     let userLabelDefaults  = ['', '', '', '', ''];
     let relatedItemsCache  = [];
+    let editableRefLinks   = []; // { title, url }
 
     renderHeader('#headerUser');
 
@@ -731,6 +755,63 @@
       } catch { showToast('저장 실패', 'error'); }
     }
 
+    /* ── 참고링크 편집 패널 ── */
+    function renderEditRefPanel() {
+      const panel = document.getElementById('relatedPanel');
+      if (!panel) return;
+      if (!editableRefLinks.length) {
+        panel.innerHTML = '<div class="related-panel-header">🔍 관련 최신글 — 결과 없음</div>';
+        panel.style.display = editableRefLinks.length > 0 ? '' : 'none';
+        updateAutoFillBtnState();
+        return;
+      }
+      panel.style.display = '';
+      panel.innerHTML = `
+        <div class="related-panel-header">
+          📎 참고링크 <span style="font-size:.68rem;background:var(--primary-light);color:var(--primary);padding:.05rem .35rem;border-radius:100px;font-weight:700">${editableRefLinks.length}건</span>
+        </div>
+        <ul class="ref-list" style="max-height:200px;overflow-y:auto">
+          ${editableRefLinks.map((l, i) => `
+            <li>
+              <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title || l.url)}</a>
+              ${l.pubDate ? `<span style="font-size:.62rem;color:var(--text-muted);flex-shrink:0">${fmtPubDate(l.pubDate)}</span>` : ''}
+              <button class="ref-del-btn" onclick="removeRefLink(${i})">✕</button>
+            </li>`).join('')}
+        </ul>
+        <div class="ref-edit-add">
+          <input type="url" id="refUrlIn" class="ref-url-input" placeholder="https://... URL 직접 추가" />
+          <input type="text" id="refTitleIn" class="ref-url-input" style="max-width:140px" placeholder="제목(선택)" />
+          <button class="btn-ref-add" onclick="addManualRefLink()">+ 추가</button>
+        </div>`;
+      updateAutoFillBtnState();
+    }
+
+    function addManualRefLink() {
+      const url   = document.getElementById('refUrlIn')?.value.trim();
+      const title = document.getElementById('refTitleIn')?.value.trim();
+      if (!url || !/^https?:\/\//i.test(url)) { showToast('올바른 URL을 입력하세요.', 'error'); return; }
+      editableRefLinks.push({ title: title || url, url });
+      renderEditRefPanel();
+    }
+
+    function removeRefLink(idx) {
+      editableRefLinks.splice(idx, 1);
+      renderEditRefPanel();
+    }
+
+    function updateAutoFillBtnState() {
+      const btn = document.getElementById('btnAutoFill');
+      if (!btn) return;
+      const ok = editableRefLinks.length > 0;
+      btn.disabled = !ok;
+      btn.title = ok ? '' : '참고링크를 먼저 가져오세요';
+    }
+
+    function onSecInput(n) {
+      const btn = document.getElementById(`btnAiSec${n}`);
+      if (btn) btn.disabled = !document.getElementById(`sec${n}`)?.value.trim();
+    }
+
     /* ── 섹션 툴바 (관련글 검색 + 자동채우기) ── */
     function renderSectionToolbar() {
       const bar = document.getElementById('sectionToolbar');
@@ -740,7 +821,9 @@
       bar.style.display = 'flex';
       bar.innerHTML = `
         <button class="btn" id="btnSearchRelated" onclick="searchRelatedArticles()">🔍 관련글 검색</button>
-        <button class="btn" id="btnAutoFill" onclick="autoFillSections()">🤖 섹션 자동채우기</button>`;
+        <button class="btn" id="btnAutoFill" onclick="autoFillSections()" disabled title="참고링크를 먼저 가져오세요">🤖 섹션 자동채우기</button>`;
+      // 이미 링크가 있으면 활성화
+      if (editableRefLinks.length) updateAutoFillBtnState();
     }
 
     async function autoFillSections() {
@@ -749,7 +832,10 @@
       try {
         const res = await api(`/issues/${issueId}/auto-sections`, {
           method: 'POST',
-          body: JSON.stringify({ relatedItems: relatedItemsCache }),
+          body: JSON.stringify({
+            relatedItems: relatedItemsCache,
+            linkUrls: editableRefLinks.map(l => l.url),
+          }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -784,24 +870,12 @@
         if (!res.ok) throw new Error(data.error);
         const items = data.items || [];
         relatedItemsCache = items;
+        editableRefLinks  = items.map(i => ({ title: i.title, url: i.url, pubDate: i.pubDate || '' }));
+        renderEditRefPanel();
         if (!items.length) {
-          panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--text-muted);padding:.3rem 0">관련 기사를 찾지 못했습니다.</div>`;
           if (btn) { btn.disabled = false; btn.textContent = '🔍 관련글 검색'; }
           return;
         }
-        panel.innerHTML = `
-          <div class="related-panel-header">🔍 관련 최신글 (${items.length}건)</div>
-          <ul class="ref-list">
-            ${items.map(l => {
-              const date   = fmtPubDate(l.pubDate);
-              const reason = l.reason ? escHtml(l.reason) : '';
-              const meta   = [date, reason].filter(Boolean).join(' · ');
-              return `<li>
-                <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title)}</a>
-                ${meta ? `<span style="font-size:.62rem;color:var(--text-muted);flex-shrink:0">${meta}</span>` : ''}
-              </li>`;
-            }).join('')}
-          </ul>`;
         if (btn) {
           btn.disabled = false;
           btn.textContent = `🔍 관련글 ${items.length}건 ✓`;
@@ -987,12 +1061,14 @@
 
         const myBadge   = isMyEdit ? `<span class="my-sec-badge">내 편집 구역</span>` : '';
         const hasGuide = guide.trim().length >= 4;
+        const contentEmpty = !content.trim();
         const controlBar = editable
           ? `<div class="section-controls">
                <button class="btn-guide-open${hasGuide ? ' has-guide' : ''}" id="btnGuide${n}" onclick="openGuideModal(${n})">
                  📝 ${hasGuide ? '가이드 설정됨' : '작성 가이드 설정'}
                </button>
-               <button class="btn-ai-sec" id="btnAiSec${n}" onclick="aiWriteSection(${n})">✨ AI작성</button>
+               <button class="btn-ai-sec" id="btnAiSec${n}" onclick="aiWriteSection(${n})"
+                 ${contentEmpty ? 'disabled title="좌측 내용을 먼저 입력하세요"' : ''}>✨ AI작성</button>
              </div>` : '';
 
         const aiSide = `
@@ -1005,7 +1081,7 @@
           </div>`;
 
         const bodyHtml = editable
-          ? `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="4">${escHtml(content)}</textarea>${aiSide}</div>`
+          ? `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="4" oninput="onSecInput(${n})">${escHtml(content)}</textarea>${aiSide}</div>`
           : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="${HINTS[i]}" rows="4">${escHtml(content)}</textarea>${aiSide}</div>`;
 
         const edFormHtml = (isAuthor && issueId)

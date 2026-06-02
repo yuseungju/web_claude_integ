@@ -921,7 +921,8 @@ async function saveArticleStyle(event) {
 async function autoFillSections(event, issueId) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { relatedItems } = getBody(event);
+  const body = getBody(event);
+  const { relatedItems } = body;
   try {
     const [ir, labelR, guideR] = await Promise.all([
       pool.query('SELECT title, category, reference_links FROM issues WHERE id=$1', [issueId]),
@@ -948,19 +949,44 @@ async function autoFillSections(event, issueId) {
 
     if (!toGenerate.length) return resp(200, { sections: [], labels: [] });
 
-    // 관련글 캐시 우선, 없으면 저장된 참고자료 사용
     const refs = Array.isArray(reference_links) ? reference_links : [];
+
+    // 참고링크 URL 실제 내용 조회 (병렬, URL당 3초 타임아웃)
+    const linkUrls = Array.isArray(body.linkUrls) ? body.linkUrls : [];
+    let fetchedContent = '';
+    if (linkUrls.length) {
+      const withTimeout = url => Promise.race([
+        fetchUrl(url),
+        new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 3000))
+      ]).catch(() => '');
+      const fetched = await Promise.allSettled(linkUrls.slice(0, 4).map(withTimeout));
+      const parts = [];
+      for (const f of fetched) {
+        if (f.status === 'fulfilled' && f.value?.length > 200) {
+          const text = f.value
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ').trim().slice(0, 1200);
+          if (text.length > 100) parts.push(text);
+        }
+      }
+      fetchedContent = parts.join('\n\n---\n\n');
+    }
+
     const contextSource = (Array.isArray(relatedItems) && relatedItems.length) ? relatedItems : refs;
-    const refContext = contextSource.slice(0, 8).map(r => r.title).join('\n');
+    const refContext = fetchedContent
+      || contextSource.slice(0, 8).map(r => r.title).join('\n');
     const sectionSpecs = toGenerate.map(s =>
       `[${s.no}] ${s.label}${s.guide ? ` (가이드: ${s.guide})` : ''}`
     ).join('\n');
 
+    const contextLabel = fetchedContent ? '참고자료 본문' : '참고 뉴스';
     const batchMsg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001', max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `기사 제목: ${title}\n참고: ${refContext || '없음'}\n\n각 섹션을 2~3문장으로 간결하게 작성하세요.\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용`
+        content: `기사 제목: ${title}\n\n[${contextLabel}]\n${refContext || '없음'}\n\n위 내용을 바탕으로 각 섹션을 2~3문장으로 작성하세요.\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용`
       }]
     });
 
