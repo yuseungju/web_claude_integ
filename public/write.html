@@ -6,7 +6,7 @@
   <title>이슈 – 이슈보드</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
-    /* ── 공통 ── */
+    /* ── 공통 버튼 ── */
     .btn {
       padding: 0.55rem 1rem; border-radius: var(--radius-sm); font-size: 0.84rem;
       font-weight: 700; cursor: pointer; border: 1.5px solid var(--border);
@@ -18,6 +18,8 @@
     .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
     .btn.ai { background: #7c3aed; border-color: #7c3aed; color: #fff; }
     .btn.ai:hover:not(:disabled) { background: #6d28d9; }
+    .btn.success { background: var(--success); border-color: var(--success); color: #fff; }
+    .btn.success:hover:not(:disabled) { background: #059669; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── 이슈 헤더 ── */
@@ -71,7 +73,7 @@
     .section-textarea::placeholder { color: var(--text-muted); }
     .section-textarea[readonly] { background: #f8fafc; cursor: default; }
 
-    /* 편집자 지정 UI (작성자 편집모드) */
+    /* 편집자 지정 UI */
     .editor-zone { margin-left: auto; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
     .editor-chip {
       font-size: 0.67rem; padding: 0.1rem 0.45rem; border-radius: 100px; font-weight: 600;
@@ -108,7 +110,6 @@
       font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: var(--font-sans);
     }
 
-    /* 편집 가능 섹션 표시 */
     .my-sec-badge {
       font-size: 0.64rem; padding: 0.08rem 0.4rem; border-radius: 100px;
       background: #d1fae5; color: #065f46; font-weight: 700;
@@ -118,25 +119,34 @@
     .action-bar { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 1.25rem; align-items: center; }
     .btn-spacer { flex: 1; }
 
-    /* ── AI 결과 ── */
-    .ai-panel { background: var(--bg-card); border: 1.5px solid #c4b5fd; border-radius: var(--radius-md); overflow: hidden; }
+    /* ── 기사 본문 패널 ── */
+    .ai-panel {
+      background: var(--bg-card); border: 1.5px solid #c4b5fd;
+      border-radius: var(--radius-md); overflow: hidden; margin-bottom: 1.25rem;
+    }
     .ai-panel-header {
-      padding: 0.6rem 1rem; background: #f5f3ff; border-bottom: 1px solid #ddd6fe;
+      padding: 0.55rem 1rem; background: #f5f3ff; border-bottom: 1px solid #ddd6fe;
       display: flex; align-items: center; justify-content: space-between;
-      font-size: 0.8rem; font-weight: 700; color: #5b21b6;
+      font-size: 0.8rem; font-weight: 700; color: #5b21b6; gap: 0.4rem; flex-wrap: wrap;
     }
+    .ai-panel-acts { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
     .ai-panel-body {
-      padding: 1.1rem; font-size: 0.88rem; line-height: 1.9;
-      white-space: pre-wrap; color: var(--text-primary); min-height: 80px;
+      width: 100%; padding: 1.1rem; font-size: 0.88rem; line-height: 1.9;
+      color: var(--text-primary); min-height: 180px; border: none; outline: none;
+      font-family: var(--font-sans); resize: vertical; background: var(--bg-card);
+      display: block;
     }
-    .ai-panel-body.empty { display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.82rem; min-height: 60px; }
-    .btn-copy-ai {
-      padding: 0.18rem 0.6rem; border: 1px solid #c4b5fd; background: #fff;
+    .ai-panel-body::placeholder { color: var(--text-muted); font-style: italic; }
+    .ai-panel-body[readonly] { background: #fafafa; cursor: default; }
+    .btn-panel-sm {
+      padding: 0.2rem 0.6rem; border: 1px solid #c4b5fd; background: #fff;
       border-radius: var(--radius-sm); font-size: 0.7rem; font-weight: 600;
-      cursor: pointer; color: #7c3aed; transition: all 0.15s;
+      cursor: pointer; color: #7c3aed; transition: all 0.15s; font-family: var(--font-sans);
     }
-    .btn-copy-ai:hover { background: #7c3aed; color: #fff; }
-    .btn-copy-ai:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-panel-sm:hover:not(:disabled) { background: #7c3aed; color: #fff; }
+    .btn-panel-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-panel-sm.import { border-color: #a7f3d0; color: #065f46; background: #fff; }
+    .btn-panel-sm.import:hover { background: #10b981; color: #fff; border-color: #10b981; }
 
     /* ── 반응형 ── */
     @media (max-width: 768px) {
@@ -144,21 +154,21 @@
       .section-label { padding: 0.45rem 0.85rem; }
       .section-body-view, .section-textarea { padding: 0.75rem 0.85rem; }
       .editor-form { padding: 0.45rem 0.85rem; }
+      .ai-panel-body { padding: 0.85rem; }
     }
     @media (max-width: 600px) {
       .issue-meta { flex-direction: column; gap: 0.5rem; }
-      .topactions-wrap { flex-direction: row; flex-wrap: wrap; }
       .btn { padding: 0.5rem 0.85rem; font-size: 0.82rem; min-height: 40px; }
       .issue-title-view { font-size: 0.98rem; }
-      .issue-title-input { font-size: 16px; } /* iOS 줌 방지 */
-      .section-textarea { font-size: 16px; min-height: 90px; } /* iOS 줌 방지 */
+      .issue-title-input { font-size: 16px; }
+      .section-textarea { font-size: 16px; min-height: 90px; }
       .action-bar { gap: 0.4rem; }
       .btn-spacer { display: none; }
-      .action-bar .btn.primary { order: -1; width: 100%; }
-      .editor-email-in { font-size: 16px; width: 100%; } /* iOS 줌 방지 */
+      .action-bar .btn.success { order: -1; width: 100%; }
+      .editor-email-in { font-size: 16px; width: 100%; }
       .section-label { flex-wrap: wrap; gap: 0.35rem; }
       .editor-zone { margin-left: 0; width: 100%; }
-      .ai-panel-body { font-size: 0.85rem; padding: 0.9rem; }
+      .ai-panel-body { font-size: 16px; }
     }
     @media (max-width: 380px) {
       .btn { font-size: 0.78rem; padding: 0.45rem 0.65rem; }
@@ -202,13 +212,14 @@
       <!-- 하단 액션바 -->
       <div class="action-bar" id="actionBar" style="display:none"></div>
 
-      <!-- AI 결과 -->
-      <div class="ai-panel" id="aiPanel" style="display:none">
+      <!-- 기사 본문 -->
+      <div class="ai-panel" id="aiPanel">
         <div class="ai-panel-header">
-          <span>✨ AI 정리 결과</span>
-          <button class="btn-copy-ai" id="btnCopyAI" onclick="copyAI()" disabled>복사</button>
+          <span>✨ 기사 본문</span>
+          <div class="ai-panel-acts" id="aiPanelActs"></div>
         </div>
-        <div class="ai-panel-body empty" id="aiBody">AI 정리하기 버튼을 눌러 기사를 생성하세요.</div>
+        <textarea id="aiBody" class="ai-panel-body"
+          placeholder="AI로 정리하거나, 가져오기로 섹션 내용을 불러오거나, 직접 입력하세요."></textarea>
       </div>
     </main>
 
@@ -236,17 +247,14 @@
     const me          = getUser();
 
     let isAuthor         = false;
-    let editableSections = []; // 편집 가능한 섹션 번호 (1-based)
+    let editableSections = [];
     let editors          = [null, null, null, null, null];
     let sectionsData     = ['', '', '', '', ''];
-    let aiArticle        = '';
 
-    // 헤더
     if (isLoggedIn) renderHeader('#headerUser');
     else document.getElementById('headerUser').innerHTML =
       '<a href="index.html" class="btn-header-login">로그인</a>';
 
-    // 신규 작성 (id 없음 = 편집모드로 바로)
     if (!issueId) {
       if (!isLoggedIn) { location.href = 'index.html'; }
       else { isAuthor = true; editableSections = [1,2,3,4,5]; renderNewPage(); }
@@ -254,7 +262,7 @@
       loadIssue();
     }
 
-    /* ────────────────────────── 신규 ───────────────────── */
+    /* ── 신규 ── */
     function renderNewPage() {
       document.getElementById('pageTitle').textContent = '새 이슈';
       document.getElementById('titleArea').innerHTML =
@@ -262,9 +270,10 @@
       document.getElementById('issueSub').textContent = '';
       renderSections();
       renderActionBar();
+      renderAiPanelActs();
     }
 
-    /* ────────────────────────── 불러오기 ───────────────── */
+    /* ── 불러오기 ── */
     async function loadIssue() {
       try {
         const headers = isLoggedIn ? { Authorization: `Bearer ${getToken()}` } : {};
@@ -274,8 +283,7 @@
 
         sectionsData = sections;
         editors      = eds;
-
-        isAuthor = isLoggedIn && me && issue.user_id === me.id;
+        isAuthor     = isLoggedIn && me && issue.user_id === me.id;
 
         if (!isAuthor && isLoggedIn && me) {
           editableSections = eds
@@ -285,7 +293,6 @@
           editableSections = [1, 2, 3, 4, 5];
         }
 
-        // 제목 영역
         if (isEditMode && (isAuthor || editableSections.length)) {
           document.getElementById('pageTitle').textContent = '이슈 편집';
           document.getElementById('titleArea').innerHTML = isAuthor
@@ -300,10 +307,14 @@
         document.getElementById('issueSub').textContent =
           `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')}`;
 
-        // 상단 액션 버튼
         renderTopActions(issue);
         renderSections();
         renderActionBar();
+
+        // 기사 본문 로드
+        const articleContent = issue.article_content || '';
+        document.getElementById('aiBody').value = articleContent;
+        renderAiPanelActs();
 
         if (isEditMode && isAuthor) loadCookie();
       } catch {
@@ -311,33 +322,47 @@
       }
     }
 
-    /* ────────────────────────── 상단 버튼 ─────────────── */
+    /* ── 상단 버튼 ── */
     function renderTopActions(issue) {
       const div = document.getElementById('topActions');
       const btns = [];
-      // 조회 모드일 때: 편집 버튼 (author/editor만)
       if (!isEditMode && issueId) {
         if (isAuthor || editableSections.length > 0) {
           btns.push(`<a href="write.html?id=${issueId}&mode=edit" class="btn primary" style="text-decoration:none">✏️ 편집</a>`);
-        }
-        if (isLoggedIn) {
-          btns.push(`<button class="btn ai" onclick="showAI()">✨ AI 정리</button>`);
         }
       }
       div.innerHTML = btns.join('');
     }
 
-    /* ────────────────────────── 섹션 렌더링 ───────────── */
+    /* ── 기사 본문 패널 버튼 ── */
+    function renderAiPanelActs() {
+      const editMode = isEditMode || !issueId;
+      const acts = document.getElementById('aiPanelActs');
+      if (!acts) return;
+      const textarea = document.getElementById('aiBody');
+      textarea.readOnly = !editMode;
+
+      let html = '';
+      if (editMode) {
+        html += `<button class="btn-panel-sm import" onclick="importSections()">📥 가져오기</button>`;
+      }
+      if (isLoggedIn) {
+        html += `<button class="btn-panel-sm" id="btnGenerate" onclick="generateArticle()">🤖 AI 정리</button>`;
+      }
+      html += `<button class="btn-panel-sm" id="btnCopyAI" onclick="copyAI()">복사</button>`;
+      acts.innerHTML = html;
+    }
+
+    /* ── 섹션 렌더링 ── */
     function renderSections() {
       const editMode = isEditMode || !issueId;
       document.getElementById('sectionsWrap').innerHTML = LABELS.map((label, i) => {
-        const n       = i + 1;
+        const n        = i + 1;
         const editable = editMode && editableSections.includes(n);
         const editor   = editors[i];
         const isMyEdit = !isAuthor && editable;
         const content  = sectionsData[i] || '';
 
-        // 편집자 지정 UI (작성자 + 편집모드 + 기존 이슈)
         let editorZone = '';
         if (isAuthor && editMode && issueId) {
           const chip = editor
@@ -384,26 +409,30 @@
       }).join('');
     }
 
-    /* ────────────────────────── 하단 액션바 ───────────── */
+    /* ── 하단 액션바 ── */
     function renderActionBar() {
-      const bar    = document.getElementById('actionBar');
+      const bar      = document.getElementById('actionBar');
       const editMode = isEditMode || !issueId;
       if (!editMode) { bar.style.display = 'none'; return; }
 
       const canSave = isAuthor || editableSections.length > 0;
-      if (!canSave && !isLoggedIn) { bar.style.display = 'none'; return; }
+      if (!canSave) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
 
       let html = '';
-      if (isLoggedIn) html += `<button class="btn ai" id="btnGenerate" onclick="generateArticle()">✨ AI로 관련 글 정리하기</button>`;
-      if (isAuthor)   html += `<button class="btn" onclick="tempSave()">📌 임시저장</button>`;
+      if (isAuthor) html += `<button class="btn" onclick="tempSave()">📌 임시저장</button>`;
       html += `<div class="btn-spacer"></div>`;
       html += `<button class="btn" onclick="location.href='issues.html'">취소</button>`;
-      if (canSave)    html += `<button class="btn primary" id="btnSave" onclick="saveIssue()">💾 저장</button>`;
+      if (canSave) {
+        html += `<button class="btn primary" id="btnSave" onclick="saveIssue(true)">💾 저장</button>`;
+      }
+      if (isAuthor && issueId) {
+        html += `<button class="btn success" id="btnComplete" onclick="saveIssue(false)">✅ 기사 작성 완료</button>`;
+      }
       bar.innerHTML = html;
     }
 
-    /* ────────────────────────── 편집자 ─────────────────── */
+    /* ── 편집자 ── */
     function toggleEditorForm(n) {
       const f = document.getElementById(`eform${n}`);
       if (!f) return;
@@ -442,12 +471,11 @@
       } catch (e) { showToast(e.message || '해제 실패', 'error'); }
     }
 
-    // 섹션 값 보존용
     let _snap = [];
     function saveSectionsSnapshot() { _snap = [1,2,3,4,5].map(i => document.getElementById(`sec${i}`)?.value || ''); }
     function restoreSectionsSnapshot() { _snap.forEach((v, i) => { const el = document.getElementById(`sec${i+1}`); if (el) el.value = v; }); }
 
-    /* ────────────────────────── 임시저장 ──────────────── */
+    /* ── 임시저장 ── */
     function tempSave() {
       if (!issueId) { showToast('먼저 저장하세요.', 'error'); return; }
       const d = { title: document.getElementById('titleInput')?.value, sections: getSections() };
@@ -468,11 +496,14 @@
     function clearCookie() { if (issueId) document.cookie = `draft_${issueId}=;max-age=0;path=/`; }
 
     function getSections() { return [1,2,3,4,5].map(i => document.getElementById(`sec${i}`)?.value || ''); }
+    function getArticleContent() { return document.getElementById('aiBody')?.value || ''; }
 
-    /* ────────────────────────── 저장 ───────────────────── */
-    async function saveIssue() {
-      const btn = document.getElementById('btnSave');
-      if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+    /* ── 저장 ── */
+    async function saveIssue(isDraft = true) {
+      const saveBtn    = document.getElementById('btnSave');
+      const completeBtn = document.getElementById('btnComplete');
+      const activeBtn  = isDraft ? saveBtn : completeBtn;
+      if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = isDraft ? '저장 중...' : '처리 중...'; }
       try {
         if (isAuthor) {
           const title = document.getElementById('titleInput')?.value.trim();
@@ -488,7 +519,11 @@
           await api(`/issues/${issueId}`, { method: 'PUT', body: JSON.stringify({ title }) });
           const r2 = await api(`/issues/${issueId}/sections`, {
             method: 'POST',
-            body: JSON.stringify({ sections: getSections(), is_draft: false }),
+            body: JSON.stringify({
+              sections: getSections(),
+              is_draft: isDraft,
+              article_content: getArticleContent(),
+            }),
           });
           if (!r2.ok) { const d2 = await r2.json(); throw new Error(d2.error); }
         } else {
@@ -501,21 +536,28 @@
           }
         }
         clearCookie();
-        showToast('저장됐습니다.', 'success');
-        setTimeout(() => location.href = `write.html?id=${issueId || ''}`, 800);
+        const msg = isDraft ? '저장됐습니다.' : '기사 작성이 완료됐습니다.';
+        showToast(msg, 'success');
+        setTimeout(() => location.href = `write.html?id=${issueId}`, 800);
       } catch (e) {
         showToast(e.message || '저장 실패', 'error');
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '💾 저장'; }
+        if (activeBtn) {
+          activeBtn.disabled = false;
+          activeBtn.textContent = isDraft ? '💾 저장' : '✅ 기사 작성 완료';
+        }
       }
     }
 
-    /* ────────────────────────── AI ─────────────────────── */
-    function showAI() {
-      document.getElementById('aiPanel').style.display = 'block';
-      document.getElementById('aiPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    /* ── 가져오기: 5개 섹션 → 기사 본문 ── */
+    function importSections() {
+      const parts = getSections().filter(s => s.trim());
+      if (!parts.length) { showToast('섹션 내용을 먼저 입력하세요.', 'error'); return; }
+      document.getElementById('aiBody').value = parts.join('\n\n');
+      showToast('섹션 내용을 가져왔습니다.', 'success');
     }
 
+    /* ── AI 정리 ── */
     async function generateArticle() {
       const title = document.getElementById('titleInput')?.value.trim()
         || document.querySelector('.issue-title-view')?.textContent.trim();
@@ -524,35 +566,31 @@
       const btn = document.getElementById('btnGenerate');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ AI 정리 중...'; }
 
-      document.getElementById('aiPanel').style.display = 'block';
-      document.getElementById('aiBody').className = 'ai-panel-body empty';
-      document.getElementById('aiBody').textContent = 'AI가 글을 정리하고 있습니다...';
-      document.getElementById('btnCopyAI').disabled = true;
+      const textarea = document.getElementById('aiBody');
+      textarea.value = 'AI가 기사를 정리하고 있습니다...';
 
       try {
-        const sections = isEditMode || !issueId ? getSections() : sectionsData;
+        const sections = (isEditMode || !issueId) ? getSections() : sectionsData;
         const res = await api('/generate', {
           method: 'POST',
           body: JSON.stringify({ title, sections }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        aiArticle = data.article;
-        document.getElementById('aiBody').className = 'ai-panel-body';
-        document.getElementById('aiBody').textContent = aiArticle;
-        document.getElementById('btnCopyAI').disabled = false;
-        document.getElementById('aiPanel').scrollIntoView({ behavior: 'smooth' });
+        textarea.value = data.article;
+        textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (e) {
-        document.getElementById('aiBody').className = 'ai-panel-body empty';
-        document.getElementById('aiBody').textContent = '생성 실패: ' + e.message;
-        showToast('AI 정리 실패', 'error');
+        textarea.value = '';
+        showToast('AI 정리 실패: ' + e.message, 'error');
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '✨ AI로 관련 글 정리하기'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 정리'; }
       }
     }
 
     async function copyAI() {
-      try { await navigator.clipboard.writeText(aiArticle); showToast('복사됐습니다.', 'success'); }
+      const text = document.getElementById('aiBody')?.value || '';
+      if (!text) { showToast('복사할 내용이 없습니다.', 'error'); return; }
+      try { await navigator.clipboard.writeText(text); showToast('복사됐습니다.', 'success'); }
       catch { showToast('복사 실패', 'error'); }
     }
 

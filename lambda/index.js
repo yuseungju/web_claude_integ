@@ -128,14 +128,29 @@ async function checkEmail(event) {
   } catch (e) { return resp(500, { error: '서버 오류' }); }
 }
 
-// 비로그인 공개
+// 비로그인: 완료된 이슈만 / 로그인: 완료 + 본인 작성 + 편집 권한 있는 초안
 async function getIssues(event) {
+  const user = verifyToken(event);
   try {
-    const r = await pool.query(
-      `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
-       FROM issues i JOIN users u ON i.user_id = u.id
-       ORDER BY i.created_at DESC`
-    );
+    let r;
+    if (user) {
+      r = await pool.query(
+        `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
+         FROM issues i JOIN users u ON i.user_id = u.id
+         WHERE i.is_draft = false
+            OR i.user_id = $1
+            OR i.id IN (SELECT issue_id FROM issue_section_editors WHERE user_id = $1)
+         ORDER BY i.created_at DESC`,
+        [user.id]
+      );
+    } else {
+      r = await pool.query(
+        `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
+         FROM issues i JOIN users u ON i.user_id = u.id
+         WHERE i.is_draft = false
+         ORDER BY i.created_at DESC`
+      );
+    }
     return resp(200, { issues: r.rows });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
@@ -211,11 +226,11 @@ async function updateIssue(event, id) {
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
-// 작성자: 전체 5개 섹션 저장
+// 작성자: 전체 5개 섹션 + 기사 본문 저장
 async function saveSections(event, id) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { sections, is_draft } = getBody(event);
+  const { sections, is_draft, article_content } = getBody(event);
   if (!Array.isArray(sections) || sections.length !== 5)
     return resp(400, { error: '섹션 데이터가 올바르지 않습니다.' });
   try {
@@ -230,8 +245,11 @@ async function saveSections(event, id) {
         [id, i + 1, sections[i] || '']
       );
     }
-    const draft = is_draft !== undefined ? is_draft : false;
-    await pool.query('UPDATE issues SET is_draft=$1, updated_at=NOW() WHERE id=$2', [draft, id]);
+    const draft = is_draft !== undefined ? is_draft : true;
+    await pool.query(
+      'UPDATE issues SET is_draft=$1, article_content=$2, updated_at=NOW() WHERE id=$3',
+      [draft, article_content ?? '', id]
+    );
     return resp(200, { ok: true });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
