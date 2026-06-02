@@ -101,8 +101,9 @@ exports.handler = async (event) => {
   if (path === '/mypage'                && method === 'GET')    return getMypage(event);
   if (path === '/mypage/style'          && method === 'POST')   return saveStyle(event);
   if (path === '/mypage/upload'         && method === 'POST')   return uploadSample(event);
-  if (path === '/mypage/section-guides' && method === 'GET')    return getSectionGuides(event);
-  if (path === '/mypage/section-guides' && method === 'POST')   return saveSectionGuide(event);
+  if (path === '/mypage/section-guides'  && method === 'GET')    return getSectionGuides(event);
+  if (path === '/mypage/section-guides'  && method === 'POST')   return saveSectionGuide(event);
+  if (path === '/mypage/article-style'   && method === 'POST')   return saveArticleStyle(event);
   if (sampleM                           && method === 'DELETE') return deleteSample(event, sampleM[1]);
 
   return resp(404, { error: 'Not found' });
@@ -551,11 +552,14 @@ async function aiTopic(event) {
 async function generateArticle(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { title, sections } = getBody(event);
-  if (!title || !Array.isArray(sections)) return resp(400, { error: '제목과 섹션 내용을 입력하세요.' });
+  const { title, sections, content } = getBody(event);
+  if (!title) return resp(400, { error: '제목을 입력하세요.' });
   try {
-    const ur = await pool.query('SELECT writing_style FROM users WHERE id=$1', [user.id]);
-    const writingStyle = ur.rows[0]?.writing_style || '';
+    const ur = await pool.query(
+      `SELECT writing_style, COALESCE(article_style,'') AS article_style FROM users WHERE id=$1`, [user.id]
+    );
+    const writingStyle = ur.rows[0]?.writing_style  || '';
+    const articleStyle = ur.rows[0]?.article_style   || '';
 
     const sr = await pool.query('SELECT file_name, s3_key FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC', [user.id]);
     const sampleTexts = [];
@@ -572,24 +576,33 @@ async function generateArticle(event) {
       }
     }
 
-    const labels = ['배경/발단', '주요 내용', '인터뷰/현장', '관련 자료', '결론/전망'];
-    const body = sections.map((s, i) => `[${labels[i]}]\n${s || '(내용 없음)'}`).join('\n\n');
+    let promptContent;
 
-    let personalSection = '';
-    if (writingStyle) personalSection += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
-    if (sampleTexts.length) personalSection += `\n\n[샘플 기사 참고]\n${sampleTexts.join('\n\n')}`;
-
-    const styleNote = personalSection
-      ? '\n위 스타일 가이드와 샘플 기사를 참고하여 작성자의 문체와 형식을 최대한 반영하세요.'
-      : '';
+    if (content?.trim()) {
+      // 다듬기 모드: 가져온 원고를 기사로 다듬기
+      let styleBlock = '';
+      if (articleStyle) styleBlock += `\n\n[기사 완성본 스타일 예시 — 이 형식과 문체에 맞게 작성]\n${articleStyle}`;
+      if (writingStyle) styleBlock += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
+      if (sampleTexts.length) styleBlock += `\n\n[샘플 기사]\n${sampleTexts.join('\n\n')}`;
+      const styleNote = styleBlock ? '\n위 스타일 예시와 가이드를 최대한 반영하세요.' : '';
+      promptContent = `아래 기사 원고를 전문 기자 수준의 완성된 뉴스 기사로 다듬어주세요.\n육하원칙에 맞게 자연스럽게 이어지도록 작성하세요.${styleNote}\n\n기사 제목: ${title}\n\n[원고]\n${content}${styleBlock}`;
+    } else {
+      // 섹션 기반 생성 모드 (기존)
+      if (!Array.isArray(sections)) return resp(400, { error: '섹션 내용을 입력하세요.' });
+      const labels = ['배경/발단', '주요 내용', '인터뷰/현장', '관련 자료', '결론/전망'];
+      const body = sections.map((s, i) => `[${labels[i]}]\n${s || '(내용 없음)'}`).join('\n\n');
+      let personalSection = '';
+      if (articleStyle) personalSection += `\n\n[기사 완성본 스타일 예시]\n${articleStyle}`;
+      if (writingStyle)  personalSection += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
+      if (sampleTexts.length) personalSection += `\n\n[샘플 기사]\n${sampleTexts.join('\n\n')}`;
+      const styleNote = personalSection ? '\n위 스타일 예시와 가이드를 최대한 반영하세요.' : '';
+      promptContent = `아래 제목과 5개 섹션 내용을 바탕으로 완성도 높은 뉴스 기사를 작성해 주세요.\n육하원칙에 따라 자연스럽게 이어지는 기사 형식으로 작성하세요.${styleNote}\n\n제목: ${title}\n\n${body}${personalSection}`;
+    }
 
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
-      messages: [{
-        role: 'user',
-        content: `아래 제목과 5개 섹션 내용을 바탕으로 완성도 높은 뉴스 기사를 작성해 주세요.\n육하원칙에 따라 자연스럽게 이어지는 기사 형식으로 작성하세요.${styleNote}\n\n제목: ${title}\n\n${body}${personalSection}`
-      }]
+      messages: [{ role: 'user', content: promptContent }]
     });
     return resp(200, { article: msg.content[0].text.trim() });
   } catch (e) { console.error(e); return resp(500, { error: e.message || '기사 생성 실패' }); }
@@ -599,14 +612,15 @@ async function getMypage(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
-    const ur = await pool.query('SELECT name, email, writing_style FROM users WHERE id=$1', [user.id]);
+    const ur = await pool.query('SELECT name, email, writing_style, COALESCE(article_style,\'\') AS article_style FROM users WHERE id=$1', [user.id]);
     const sr = await pool.query(
       'SELECT id, file_name, s3_key, file_size, created_at FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC',
       [user.id]
     );
     return resp(200, {
       profile: { name: ur.rows[0].name, email: ur.rows[0].email },
-      writing_style: ur.rows[0]?.writing_style || '',
+      writing_style:  ur.rows[0]?.writing_style  || '',
+      article_style:  ur.rows[0]?.article_style   || '',
       samples: sr.rows,
     });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
@@ -859,6 +873,16 @@ async function aiWriteSection(event, issueId, sectionNo) {
     );
     return resp(200, { ai_content: aiContent });
   } catch (e) { console.error(e); return resp(500, { error: e.message || 'AI 작성 실패' }); }
+}
+
+async function saveArticleStyle(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { article_style } = getBody(event);
+  try {
+    await pool.query('UPDATE users SET article_style=$1 WHERE id=$2', [article_style || '', user.id]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
 async function getSectionGuides(event) {
