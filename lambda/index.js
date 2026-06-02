@@ -260,13 +260,21 @@ async function getIssue(event, id) {
       }
     }
 
-    const sr = await pool.query(
-      `SELECT section_no, content,
-              COALESCE(guide,'')      AS guide,
-              COALESCE(ai_content,'') AS ai_content,
-              COALESCE(label,'')      AS label
-       FROM issue_sections WHERE issue_id=$1 ORDER BY section_no`, [id]
-    );
+    let sr;
+    try {
+      sr = await pool.query(
+        `SELECT section_no, content,
+                COALESCE(guide,'')      AS guide,
+                COALESCE(ai_content,'') AS ai_content,
+                COALESCE(label,'')      AS label
+         FROM issue_sections WHERE issue_id=$1 ORDER BY section_no`, [id]
+      );
+    } catch {
+      sr = await pool.query(
+        `SELECT section_no, content, '' AS guide, '' AS ai_content, '' AS label
+         FROM issue_sections WHERE issue_id=$1 ORDER BY section_no`, [id]
+      );
+    }
     const sections = [1,2,3,4,5].map(n => {
       const f = sr.rows.find(r => r.section_no === n);
       return f ? f.content : '';
@@ -350,12 +358,21 @@ async function saveSections(event, id) {
     if (!check.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
     if (check.rows[0].user_id !== user.id) return resp(403, { error: '수정 권한이 없습니다.' });
     for (let i = 0; i < 5; i++) {
-      await pool.query(
-        `INSERT INTO issue_sections (issue_id, section_no, content, guide, label, updated_at)
-         VALUES ($1,$2,$3,$4,$5,NOW())
-         ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, label=$5, updated_at=NOW()`,
-        [id, i + 1, sections[i] || '', (guides && guides[i]) || '', (labels && labels[i]) || '']
-      );
+      try {
+        await pool.query(
+          `INSERT INTO issue_sections (issue_id, section_no, content, guide, label, updated_at)
+           VALUES ($1,$2,$3,$4,$5,NOW())
+           ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, label=$5, updated_at=NOW()`,
+          [id, i + 1, sections[i] || '', (guides && guides[i]) || '', (labels && labels[i]) || '']
+        );
+      } catch {
+        await pool.query(
+          `INSERT INTO issue_sections (issue_id, section_no, content, updated_at)
+           VALUES ($1,$2,$3,NOW())
+           ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, updated_at=NOW()`,
+          [id, i + 1, sections[i] || '']
+        );
+      }
     }
     const draft = is_draft !== undefined ? is_draft : true;
     await pool.query(
