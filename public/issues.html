@@ -103,9 +103,22 @@
       padding: 0.25rem 0.6rem; border: 1px dashed var(--border); border-radius: var(--radius-sm);
     }
 
+    @media (max-width: 768px) {
+      .btn { padding: 0.42rem 0.75rem; font-size: 0.78rem; }
+      .issue-table { font-size: 0.8rem; }
+      .issue-table td, .issue-table th { padding: 0.42rem 0.6rem; }
+    }
     @media (max-width: 600px) {
-      .col-author, .col-date { display: none; }
-      .col-no { display: none; }
+      .col-author, .col-date, .col-no { display: none; }
+      .toolbar { gap: 0.4rem; }
+      .toolbar-title { font-size: 0.92rem; }
+      .act-btn { padding: 0.22rem 0.45rem; font-size: 0.66rem; }
+      .inline-input { font-size: 16px; } /* iOS 줌 방지 */
+    }
+    @media (max-width: 380px) {
+      .col-status { display: none; }
+      .toolbar-btns { width: 100%; }
+      .btn.ai, .btn.primary { flex: 1; text-align: center; justify-content: center; }
     }
   </style>
 </head>

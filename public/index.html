@@ -6,60 +6,84 @@
   <title>이슈보드 – 로그인</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
-    .auth-wrap { width: 100%; max-width: 420px; padding: 1rem; }
-    .auth-logo { text-align: center; margin-bottom: 2rem; }
-    .auth-logo .logo-icon { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
-    .auth-logo h1 { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
-    .auth-logo p  { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem; }
-    .auth-card { background: var(--bg-card); border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: var(--shadow-md); padding: 2rem; }
-    .auth-tabs { display: flex; margin-bottom: 1.75rem; border-bottom: 2px solid var(--border); }
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); padding: 1rem; }
+    .auth-wrap { width: 100%; max-width: 420px; }
+    .auth-logo { text-align: center; margin-bottom: 1.75rem; }
+    .auth-logo .logo-icon { font-size: 2.2rem; display: block; margin-bottom: 0.4rem; }
+    .auth-logo h1 { font-size: 1.4rem; font-weight: 800; color: var(--primary); }
+    .auth-logo p  { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+    .auth-card {
+      background: var(--bg-card); border-radius: var(--radius-md);
+      border: 1px solid var(--border); box-shadow: var(--shadow-md); padding: 1.75rem;
+    }
+    .auth-tabs { display: flex; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); }
     .auth-tab {
-      flex: 1; text-align: center; padding: 0.6rem;
-      font-size: 0.92rem; font-weight: 700; cursor: pointer;
+      flex: 1; text-align: center; padding: 0.55rem;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
       color: var(--text-muted); border-bottom: 2.5px solid transparent;
-      margin-bottom: -2px; transition: all 0.15s;
+      margin-bottom: -2px; transition: all 0.15s; user-select: none;
     }
     .auth-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-    .form-group { display: flex; flex-direction: column; gap: 0.9rem; }
-    .field { display: flex; flex-direction: column; gap: 0.3rem; }
-    .field label { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.85rem; }
+    .field { display: flex; flex-direction: column; gap: 0.28rem; }
+    .field label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
     .field input {
-      padding: 0.65rem 0.9rem; border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm); font-size: 0.88rem;
+      padding: 0.65rem 0.85rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.9rem;
       font-family: var(--font-sans); outline: none;
-      background: var(--bg); color: var(--text-primary); transition: border-color 0.15s;
+      background: var(--bg); color: var(--text-primary);
+      transition: border-color 0.15s; -webkit-appearance: none;
+      width: 100%;
     }
-    .field input:focus { border-color: var(--primary); background: #fff; }
-    .field input.ok  { border-color: var(--success); }
-    .field input.err { border-color: var(--danger); }
-    .field-hint { font-size: 0.73rem; }
+    .field input:focus  { border-color: var(--primary); background: #fff; }
+    .field input.ok     { border-color: var(--success); }
+    .field input.err    { border-color: var(--danger); }
+    .field-hint { font-size: 0.72rem; }
     .field-hint.ok  { color: #059669; }
     .field-hint.err { color: var(--danger); }
+
     .email-row { display: flex; gap: 0.4rem; }
-    .email-row input { flex: 1; }
+    .email-row input { flex: 1; min-width: 0; }
     .btn-check {
-      padding: 0 0.9rem; white-space: nowrap;
+      padding: 0 0.85rem; white-space: nowrap; flex-shrink: 0;
       border: 1.5px solid var(--primary); background: #fff;
       border-radius: var(--radius-sm); font-size: 0.78rem;
-      font-weight: 700; cursor: pointer; color: var(--primary); transition: all 0.15s; flex-shrink: 0;
+      font-weight: 700; cursor: pointer; color: var(--primary);
+      transition: all 0.15s; font-family: var(--font-sans);
     }
     .btn-check:hover { background: var(--primary); color: #fff; }
+
     .btn-submit {
       width: 100%; padding: 0.75rem; background: var(--primary);
       color: #fff; border: none; border-radius: var(--radius-sm);
       font-size: 0.92rem; font-weight: 700; cursor: pointer;
-      transition: background 0.15s; margin-top: 0.5rem; font-family: var(--font-sans);
+      transition: background 0.15s; margin-top: 0.4rem;
+      font-family: var(--font-sans); min-height: 44px;
     }
     .btn-submit:hover:not(:disabled) { background: var(--primary-dark); }
     .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
-    .msg-box { font-size: 0.82rem; text-align: center; padding: 0.5rem 0.7rem; border-radius: var(--radius-sm); display: none; }
+
+    .msg-box {
+      font-size: 0.82rem; text-align: center; padding: 0.5rem 0.7rem;
+      border-radius: var(--radius-sm); display: none; margin-bottom: 0.5rem;
+    }
     .msg-box.error   { background: var(--danger-light);  color: #991b1b; display: block; }
     .msg-box.success { background: var(--success-light); color: #065f46; display: block; }
-    .pw-rules { display: none; flex-wrap: wrap; gap: 0.3rem; }
+
+    .pw-rules { display: none; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.1rem; }
     .pw-rules.show { display: flex; }
-    .pw-rule { font-size: 0.7rem; padding: 0.1rem 0.45rem; border-radius: 100px; background: #e2e8f0; color: var(--text-muted); transition: all 0.15s; }
+    .pw-rule {
+      font-size: 0.68rem; padding: 0.1rem 0.42rem; border-radius: 100px;
+      background: #e2e8f0; color: var(--text-muted); transition: all 0.15s;
+    }
     .pw-rule.pass { background: var(--success-light); color: #065f46; }
+
+    @media (max-width: 480px) {
+      .auth-card { padding: 1.35rem; }
+      .field input { font-size: 16px; } /* iOS 줌 방지 */
+    }
   </style>
 </head>
 <body>
@@ -76,34 +100,36 @@
       </div>
       <div id="msgBox" class="msg-box"></div>
 
+      <!-- 로그인 -->
       <form id="loginForm" class="form-group" onsubmit="doLogin(event)">
         <div class="field">
           <label>이메일</label>
-          <input type="email" id="loginEmail" placeholder="example@email.com" required />
+          <input type="email" id="loginEmail" placeholder="example@email.com" required autocomplete="email" />
         </div>
         <div class="field">
           <label>비밀번호</label>
-          <input type="password" id="loginPw" placeholder="비밀번호" required />
+          <input type="password" id="loginPw" placeholder="비밀번호" required autocomplete="current-password" />
         </div>
         <button type="submit" class="btn-submit" id="btnLogin">로그인</button>
       </form>
 
+      <!-- 회원가입 -->
       <form id="registerForm" class="form-group" style="display:none" onsubmit="doRegister(event)">
         <div class="field">
           <label>이름</label>
-          <input type="text" id="regName" placeholder="홍길동" required />
+          <input type="text" id="regName" placeholder="홍길동" required autocomplete="name" />
         </div>
         <div class="field">
           <label>이메일</label>
           <div class="email-row">
-            <input type="email" id="regEmail" placeholder="example@email.com" required oninput="resetEmailCheck()" />
+            <input type="email" id="regEmail" placeholder="example@email.com" required oninput="resetEmailCheck()" autocomplete="email" />
             <button type="button" class="btn-check" onclick="checkEmailDup()">중복확인</button>
           </div>
           <span class="field-hint" id="emailHint"></span>
         </div>
         <div class="field">
           <label>비밀번호</label>
-          <input type="password" id="regPw" placeholder="8자 이상" required oninput="updatePwRules()" />
+          <input type="password" id="regPw" placeholder="8자 이상" required oninput="updatePwRules()" autocomplete="new-password" />
           <div class="pw-rules" id="pwRules">
             <span class="pw-rule" id="r-len">8자 이상</span>
             <span class="pw-rule" id="r-upper">대문자</span>
@@ -113,7 +139,7 @@
         </div>
         <div class="field">
           <label>비밀번호 확인</label>
-          <input type="password" id="regPwConfirm" placeholder="비밀번호 재입력" required oninput="checkPwMatch()" />
+          <input type="password" id="regPwConfirm" placeholder="비밀번호 재입력" required oninput="checkPwMatch()" autocomplete="new-password" />
           <span class="field-hint" id="pwHint"></span>
         </div>
         <button type="submit" class="btn-submit" id="btnRegister">회원가입</button>
@@ -135,7 +161,6 @@
       document.getElementById('tabRegister').classList.toggle('active', !isLogin);
       clearMsg();
     }
-
     function showMsg(text, type) {
       const el = document.getElementById('msgBox');
       el.textContent = text; el.className = 'msg-box ' + type;
@@ -154,7 +179,6 @@
       document.getElementById('r-num').classList.toggle('pass', /[0-9]/.test(pw));
       checkPwMatch();
     }
-
     function checkPwMatch() {
       const pw = document.getElementById('regPw').value;
       const c  = document.getElementById('regPwConfirm').value;
@@ -163,14 +187,12 @@
       if (pw === c) { hint.className = 'field-hint ok'; hint.textContent = '비밀번호가 일치합니다.'; }
       else          { hint.className = 'field-hint err'; hint.textContent = '비밀번호가 일치하지 않습니다.'; }
     }
-
     function resetEmailCheck() {
       emailChecked = false;
       const hint = document.getElementById('emailHint');
       hint.className = 'field-hint'; hint.textContent = '';
       document.getElementById('regEmail').className = '';
     }
-
     async function checkEmailDup() {
       const email = document.getElementById('regEmail').value.trim();
       const hint = document.getElementById('emailHint');
@@ -194,7 +216,6 @@
         }
       } catch { hint.className = 'field-hint err'; hint.textContent = '확인 중 오류가 발생했습니다.'; }
     }
-
     async function doLogin(e) {
       e.preventDefault();
       const btn = document.getElementById('btnLogin');
@@ -215,7 +236,6 @@
       } catch { showMsg('서버 연결 오류', 'error'); }
       finally { btn.disabled = false; btn.textContent = '로그인'; }
     }
-
     async function doRegister(e) {
       e.preventDefault();
       if (!emailChecked) { showMsg('이메일 중복확인을 해주세요.', 'error'); return; }
