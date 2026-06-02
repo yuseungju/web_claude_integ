@@ -907,6 +907,7 @@ async function saveArticleStyle(event) {
 async function autoFillSections(event, issueId) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { relatedItems } = getBody(event);
   try {
     const [ir, labelR, guideR] = await Promise.all([
       pool.query('SELECT title, category, reference_links FROM issues WHERE id=$1', [issueId]),
@@ -933,8 +934,10 @@ async function autoFillSections(event, issueId) {
 
     if (!toGenerate.length) return resp(200, { sections: [], labels: [] });
 
+    // 관련글 캐시 우선, 없으면 저장된 참고자료 사용
     const refs = Array.isArray(reference_links) ? reference_links : [];
-    const refContext = refs.slice(0, 5).map(r => r.title).join('\n');
+    const contextSource = (Array.isArray(relatedItems) && relatedItems.length) ? relatedItems : refs;
+    const refContext = contextSource.slice(0, 8).map(r => r.title).join('\n');
     const sectionSpecs = toGenerate.map(s =>
       `[${s.no}] ${s.label}${s.guide ? ` (가이드: ${s.guide})` : ''}`
     ).join('\n');

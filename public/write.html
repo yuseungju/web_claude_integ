@@ -418,6 +418,9 @@
       <!-- 관련글 검색 패널 (편집 모드) -->
       <div class="related-panel" id="relatedPanel" style="display:none"></div>
 
+      <!-- 섹션 툴바 (편집 모드) -->
+      <div id="sectionToolbar" style="display:none;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap"></div>
+
       <!-- 섹션 -->
       <div class="sections-wrap" id="sectionsWrap"></div>
 
@@ -478,6 +481,7 @@
     let hasImported        = false;
     let articleStyleData   = '';
     let userLabelDefaults  = ['', '', '', '', ''];
+    let relatedItemsCache  = [];
 
     renderHeader('#headerUser');
 
@@ -537,17 +541,11 @@
         document.getElementById('issueSub').textContent =
           `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')} · 조회 ${issue.view_count ?? 0}`;
 
-        if (isEditMode) {
-          await loadSectionGuides();
-          // 섹션 전체 비어있고 이슈 작성자이면 자동채우기 버튼 표시
-          const allEmpty = sections.every(s => !s.trim());
-          if (allEmpty && isAuthor && issueId) {
-            setTimeout(() => renderAutoFillBanner(), 200);
-          }
-        }
+        if (isEditMode) await loadSectionGuides();
         renderTopActions(issue);
         if (!isEditMode) renderIssueReactBar(issue);
         renderRefLinks(issue.reference_links);
+        renderSectionToolbar();
         renderSections();
         renderActionBar();
 
@@ -733,27 +731,28 @@
       } catch { showToast('저장 실패', 'error'); }
     }
 
-    /* ── 섹션 자동채우기 ── */
-    function renderAutoFillBanner() {
-      const wrap = document.getElementById('sectionsWrap');
-      if (!wrap || document.getElementById('autoFillBanner')) return;
-      const banner = document.createElement('div');
-      banner.id = 'autoFillBanner';
-      banner.style.cssText = 'background:#eef2ff;border:1px solid #c7d2fe;border-radius:var(--radius-md);padding:.65rem 1rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap';
-      banner.innerHTML = `
-        <span style="font-size:.8rem;color:#3730a3;flex:1">💡 섹션이 비어있습니다. 저장된 라벨·가이드로 AI가 자동 작성할 수 있습니다.</span>
-        <button id="btnAutoFill" onclick="autoFillSections()" style="padding:.35rem .85rem;background:#4f46e5;color:#fff;border:none;border-radius:var(--radius-sm);font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">🤖 섹션 자동채우기</button>`;
-      wrap.parentNode.insertBefore(banner, wrap);
+    /* ── 섹션 툴바 (관련글 검색 + 자동채우기) ── */
+    function renderSectionToolbar() {
+      const bar = document.getElementById('sectionToolbar');
+      if (!bar) return;
+      const editMode = isEditMode || !issueId;
+      if (!editMode || !issueId) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+      bar.innerHTML = `
+        <button class="btn" onclick="searchRelatedArticles()">🔍 관련글 검색</button>
+        <button class="btn" id="btnAutoFill" onclick="autoFillSections()">🤖 섹션 자동채우기</button>`;
     }
 
     async function autoFillSections() {
       const btn = document.getElementById('btnAutoFill');
       if (btn) { btn.disabled = true; btn.textContent = '⏳ 작성 중...'; }
       try {
-        const res = await api(`/issues/${issueId}/auto-sections`, { method: 'POST' });
+        const res = await api(`/issues/${issueId}/auto-sections`, {
+          method: 'POST',
+          body: JSON.stringify({ relatedItems: relatedItemsCache }),
+        });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        // 결과를 섹션 textarea + labelsData에 반영
         for (const r of (data.results || [])) {
           const ta = document.getElementById(`sec${r.no}`);
           if (ta) ta.value = r.content;
@@ -764,10 +763,10 @@
             if (inp) inp.value = r.label;
           }
         }
-        document.getElementById('autoFillBanner')?.remove();
         showToast('섹션 자동채우기 완료!', 'success');
       } catch (e) {
         showToast(e.message || '자동채우기 실패', 'error');
+      } finally {
         if (btn) { btn.disabled = false; btn.textContent = '🤖 섹션 자동채우기'; }
       }
     }
@@ -783,6 +782,7 @@
         if (!res.ok) throw new Error(data.error);
         const items = data.items || [];
         if (!items.length) { panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--text-muted);padding:.3rem 0">관련 기사를 찾지 못했습니다.</div>`; return; }
+        relatedItemsCache = items;
         panel.innerHTML = `
           <div class="related-panel-header">🔍 관련 최신글 (${items.length}건)</div>
           <ul class="ref-list">
@@ -1022,9 +1022,6 @@
       bar.style.display = 'flex';
 
       let html = '';
-      if (issueId) {
-        html += `<button class="btn" onclick="searchRelatedArticles()">🔍 관련글 검색</button>`;
-      }
       html += `<div class="btn-spacer"></div>`;
       if (canSave) {
         html += `<button class="btn primary" id="btnSave" onclick="saveIssue(true)">📌 임시저장</button>`;
