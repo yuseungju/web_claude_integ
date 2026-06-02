@@ -80,8 +80,12 @@ exports.handler = async (event) => {
   if (path === '/generate'  && method === 'POST') return generateArticle(event);
 
   // Issue reactions
-  const issueReactM = path.match(/^\/issues\/(\d+)\/react$/);
-  if (issueReactM && method === 'POST') return reactIssue(event, issueReactM[1]);
+  const issueReactM    = path.match(/^\/issues\/(\d+)\/react$/);
+  const searchRelatedM = path.match(/^\/issues\/(\d+)\/search-related$/);
+  const aiWriteSecM    = path.match(/^\/issues\/(\d+)\/sections\/(\d+)\/ai-write$/);
+  if (issueReactM    && method === 'POST') return reactIssue(event, issueReactM[1]);
+  if (searchRelatedM && method === 'POST') return searchRelated(event, searchRelatedM[1]);
+  if (aiWriteSecM    && method === 'POST') return aiWriteSection(event, aiWriteSecM[1], aiWriteSecM[2]);
 
   // Comments
   const commentM      = path.match(/^\/issues\/(\d+)\/comments$/);
@@ -187,16 +191,23 @@ async function getIssues(event) {
     const countR = await pool.query(`SELECT COUNT(*) ${base}`, params);
     const total  = parseInt(countR.rows[0].count);
 
-    const dataR = await pool.query(
-      `SELECT i.id, i.title, i.is_draft, i.category, i.view_count, i.created_at, u.name AS author, i.user_id,
-        COALESCE(SUM(CASE WHEN ir.reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
-        COALESCE(SUM(CASE WHEN ir.reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes
-       FROM issues i JOIN users u ON i.user_id = u.id
-       LEFT JOIN issue_reactions ir ON ir.issue_id = i.id
-       ${where} GROUP BY i.id, u.name
-       ORDER BY i.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
-      [...params, limit, offset]
-    );
+    let dataR;
+    try {
+      dataR = await pool.query(
+        `SELECT i.id, i.title, i.is_draft, i.category, i.view_count, i.created_at, u.name AS author, i.user_id,
+          COALESCE((SELECT SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END) FROM issue_reactions WHERE issue_id=i.id),0)::int AS likes,
+          COALESCE((SELECT SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END) FROM issue_reactions WHERE issue_id=i.id),0)::int AS dislikes
+         ${base} ORDER BY i.created_at DESC LIMIT $${idx} OFFSET $${idx+1}`,
+        [...params, limit, offset]
+      );
+    } catch {
+      dataR = await pool.query(
+        `SELECT i.id, i.title, i.is_draft, i.category, i.view_count, i.created_at, u.name AS author, i.user_id,
+          0 AS likes, 0 AS dislikes
+         ${base} ORDER BY i.created_at DESC LIMIT $${idx} OFFSET $${idx+1}`,
+        [...params, limit, offset]
+      );
+    }
 
     return resp(200, { issues: dataR.rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
@@ -248,11 +259,22 @@ async function getIssue(event, id) {
     }
 
     const sr = await pool.query(
-      'SELECT section_no, content FROM issue_sections WHERE issue_id=$1 ORDER BY section_no', [id]
+      `SELECT section_no, content,
+              COALESCE(guide,'')      AS guide,
+              COALESCE(ai_content,'') AS ai_content
+       FROM issue_sections WHERE issue_id=$1 ORDER BY section_no`, [id]
     );
     const sections = [1,2,3,4,5].map(n => {
       const f = sr.rows.find(r => r.section_no === n);
       return f ? f.content : '';
+    });
+    const sectionGuides = [1,2,3,4,5].map(n => {
+      const f = sr.rows.find(r => r.section_no === n);
+      return f ? f.guide : '';
+    });
+    const sectionAiContents = [1,2,3,4,5].map(n => {
+      const f = sr.rows.find(r => r.section_no === n);
+      return f ? f.ai_content : '';
     });
 
     const er = await pool.query(
@@ -266,16 +288,20 @@ async function getIssue(event, id) {
       return f ? { user_id: f.user_id, email: f.email, name: f.editor_name } : null;
     });
 
-    // 좋아요/싫어요 집계
-    const rr = await pool.query(`
-      SELECT
-        COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
-        COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
-        MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
-      FROM issue_reactions WHERE issue_id=$2
-    `, [user?.id || -1, id]);
+    // 좋아요/싫어요 집계 (테이블 없을 시 방어)
+    let reactions = { likes: 0, dislikes: 0, my_reaction: null };
+    try {
+      const rr = await pool.query(`
+        SELECT
+          COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+          COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+          MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
+        FROM issue_reactions WHERE issue_id=$2
+      `, [user?.id || -1, id]);
+      reactions = rr.rows[0];
+    } catch {}
 
-    return resp(200, { issue: { ...ir.rows[0], ...rr.rows[0] }, sections, editors });
+    return resp(200, { issue: { ...ir.rows[0], ...reactions }, sections, sectionGuides, sectionAiContents, editors });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
@@ -309,7 +335,7 @@ async function updateIssue(event, id) {
 async function saveSections(event, id) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { sections, is_draft, article_content } = getBody(event);
+  const { sections, guides, is_draft, article_content } = getBody(event);
   if (!Array.isArray(sections) || sections.length !== 5)
     return resp(400, { error: '섹션 데이터가 올바르지 않습니다.' });
   try {
@@ -318,10 +344,10 @@ async function saveSections(event, id) {
     if (check.rows[0].user_id !== user.id) return resp(403, { error: '수정 권한이 없습니다.' });
     for (let i = 0; i < 5; i++) {
       await pool.query(
-        `INSERT INTO issue_sections (issue_id, section_no, content, updated_at)
-         VALUES ($1,$2,$3,NOW())
-         ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, updated_at=NOW()`,
-        [id, i + 1, sections[i] || '']
+        `INSERT INTO issue_sections (issue_id, section_no, content, guide, updated_at)
+         VALUES ($1,$2,$3,$4,NOW())
+         ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, updated_at=NOW()`,
+        [id, i + 1, sections[i] || '', (guides && guides[i]) || '']
       );
     }
     const draft = is_draft !== undefined ? is_draft : true;
@@ -686,4 +712,64 @@ async function reactComment(event, commentId) {
     `, [user.id, commentId]);
     return resp(200, c.rows[0]);
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function searchRelated(event, issueId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const ir = await pool.query('SELECT title, category FROM issues WHERE id=$1', [issueId]);
+    if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+    const { title, category } = ir.rows[0];
+    const q = encodeURIComponent(`${title} ${category || ''}`);
+    const rss = await fetchUrl(`https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`);
+    const items = [];
+    const itemRe = /<item>([\s\S]*?)<\/item>/g;
+    let im;
+    while ((im = itemRe.exec(rss)) !== null && items.length < 15) {
+      const xml = im[1];
+      const tM = xml.match(/<title>([\s\S]*?)<\/title>/);
+      const lM = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+      if (!tM) continue;
+      const t = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
+      const l = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) items.push({ title: t, url: l });
+    }
+    return resp(200, { items });
+  } catch (e) { console.error(e); return resp(500, { error: '검색 실패' }); }
+}
+
+async function aiWriteSection(event, issueId, sectionNo) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { content, guide } = getBody(event);
+  try {
+    const ir = await pool.query('SELECT title FROM issues WHERE id=$1', [issueId]);
+    if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+    const issueTitle = ir.rows[0].title;
+    const LABELS = ['배경/발단', '주요 내용', '인터뷰/현장', '관련 자료', '결론/전망'];
+    const sectionLabel = LABELS[parseInt(sectionNo) - 1] || `섹션 ${sectionNo}`;
+    const guideNote   = guide?.trim()   ? `\n\n[작성 가이드]\n${guide}`   : '';
+    const contentNote = content?.trim() ? `\n\n[작성자 메모]\n${content}` : '';
+    const ur = await pool.query('SELECT writing_style FROM users WHERE id=$1', [user.id]);
+    const writingStyle = ur.rows[0]?.writing_style || '';
+    const styleNote = writingStyle ? `\n\n[작성 스타일]\n${writingStyle}` : '';
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      messages: [{
+        role: 'user',
+        content: `다음 기사의 "${sectionLabel}" 섹션을 전문 기자 스타일로 작성해주세요.\n기사 제목: ${issueTitle}${guideNote}${contentNote}${styleNote}\n\n규칙:\n- 작성자 메모를 바탕으로 완성도 높은 기사 문장으로 정리하세요.\n- 가이드가 있으면 그 방향에 맞게 작성하세요.\n- 섹션 내용만 출력하세요. 제목이나 설명 없이.`
+      }]
+    });
+    const aiContent = msg.content[0].text.trim();
+    await pool.query(
+      `INSERT INTO issue_sections (issue_id, section_no, guide, ai_content, updated_at)
+       VALUES ($1,$2,$3,$4,NOW())
+       ON CONFLICT (issue_id, section_no) DO UPDATE SET guide=$3, ai_content=$4, updated_at=NOW()`,
+      [issueId, sectionNo, guide || '', aiContent]
+    );
+    return resp(200, { ai_content: aiContent });
+  } catch (e) { console.error(e); return resp(500, { error: e.message || 'AI 작성 실패' }); }
 }
