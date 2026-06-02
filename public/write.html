@@ -739,7 +739,7 @@
       if (!editMode || !issueId) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
       bar.innerHTML = `
-        <button class="btn" onclick="searchRelatedArticles()">🔍 관련글 검색</button>
+        <button class="btn" id="btnSearchRelated" onclick="searchRelatedArticles()">🔍 관련글 검색</button>
         <button class="btn" id="btnAutoFill" onclick="autoFillSections()">🤖 섹션 자동채우기</button>`;
     }
 
@@ -773,16 +773,22 @@
 
     /* ── 관련글 검색 ── */
     async function searchRelatedArticles() {
+      const btn   = document.getElementById('btnSearchRelated');
       const panel = document.getElementById('relatedPanel');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 검색 중...'; btn.style.color = ''; }
       panel.style.display = '';
-      panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글 <span style="font-size:.67rem;color:var(--text-muted);font-weight:400">검색 중...</span></div>`;
+      panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글 <span style="font-size:.67rem;color:var(--text-muted);font-weight:400">현재 제목 기준 검색 중...</span></div>`;
       try {
         const res = await api(`/issues/${issueId}/search-related`, { method: 'POST' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         const items = data.items || [];
-        if (!items.length) { panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--text-muted);padding:.3rem 0">관련 기사를 찾지 못했습니다.</div>`; return; }
         relatedItemsCache = items;
+        if (!items.length) {
+          panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--text-muted);padding:.3rem 0">관련 기사를 찾지 못했습니다.</div>`;
+          if (btn) { btn.disabled = false; btn.textContent = '🔍 관련글 검색'; }
+          return;
+        }
         panel.innerHTML = `
           <div class="related-panel-header">🔍 관련 최신글 (${items.length}건)</div>
           <ul class="ref-list">
@@ -796,8 +802,15 @@
               </li>`;
             }).join('')}
           </ul>`;
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = `🔍 관련글 ${items.length}건 ✓`;
+          btn.style.color = 'var(--success)';
+          btn.style.borderColor = 'var(--success)';
+        }
       } catch (e) {
         panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--danger)">${escHtml(e.message || '검색 실패')}</div>`;
+        if (btn) { btn.disabled = false; btn.textContent = '🔍 관련글 검색'; btn.style.color = ''; btn.style.borderColor = ''; }
       }
     }
 
@@ -867,7 +880,9 @@
       const panel = document.getElementById('refPanel');
       if (!panel) return;
       const editMode = isEditMode || !issueId;
-      if (!editMode || !Array.isArray(links) || !links.length) { panel.style.display = 'none'; return; }
+      // 편집 모드에서는 자동 표시 안 함 (관련글 검색 버튼으로만 조회)
+      if (editMode) { panel.style.display = 'none'; return; }
+      if (!Array.isArray(links) || !links.length) { panel.style.display = 'none'; return; }
       panel.style.display = '';
       panel.innerHTML = `
         <div class="ref-panel-title">📎 참고자료 (${links.length}건)</div>

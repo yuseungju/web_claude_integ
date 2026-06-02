@@ -943,10 +943,10 @@ async function autoFillSections(event, issueId) {
     ).join('\n');
 
     const batchMsg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 2500,
+      model: 'claude-haiku-4-5-20251001', max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `기사 제목: ${title}\n분류: ${category || ''}\n\n참고 뉴스:\n${refContext || '없음'}\n\n아래 섹션들을 전문 기자 스타일로 작성하세요.\n${sectionSpecs}\n\n출력 형식:\n[1]\n내용\n\n[2]\n내용\n(이하 동일)`
+        content: `기사 제목: ${title}\n참고: ${refContext || '없음'}\n\n각 섹션을 2~3문장으로 간결하게 작성하세요.\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용`
       }]
     });
 
