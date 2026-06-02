@@ -586,6 +586,7 @@
     }
 
     function _ensureGuideModal() {
+      _ensureModalStyles(); // auth.js의 modal-overlay CSS 주입
       if (document.getElementById('guideModal')) return;
       const div = document.createElement('div');
       div.id = 'guideModal';
