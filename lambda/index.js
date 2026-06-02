@@ -87,6 +87,9 @@ exports.handler = async (event) => {
   if (searchRelatedM && method === 'POST') return searchRelated(event, searchRelatedM[1]);
   if (aiWriteSecM    && method === 'POST') return aiWriteSection(event, aiWriteSecM[1], aiWriteSecM[2]);
 
+  const autoSectionsM = path.match(/^\/issues\/(\d+)\/auto-sections$/);
+  if (autoSectionsM && method === 'POST') return autoFillSections(event, autoSectionsM[1]);
+
   // Comments
   const commentM      = path.match(/^\/issues\/(\d+)\/comments$/);
   const commentIdM    = path.match(/^\/comments\/(\d+)$/);
@@ -527,27 +530,17 @@ async function aiTopic(event) {
     const existing = await pool.query('SELECT title FROM issues ORDER BY created_at DESC LIMIT 20');
     const existingTitles = existing.rows.map(r => r.title).join('\n');
 
-    // Claude에게 기사 제목 생성 + 각 참고자료 관련 이유 요약 요청
-    const refTitles = items.filter(i => i.link && /^https?:\/\//i.test(i.link)).slice(0, 15).map(i => i.title);
-    const [topicMsg, reasonMsg] = await Promise.all([
-      anthropic.messages.create({
-        model: 'claude-sonnet-4-6', max_tokens: 150,
-        messages: [{
-          role: 'user',
-          content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.map(i => i.title).join('\n')}`
-        }]
-      }),
-      refTitles.length ? anthropic.messages.create({
-        model: 'claude-sonnet-4-6', max_tokens: 400,
-        messages: [{
-          role: 'user',
-          content: `다음 뉴스 기사 목록에 대해, 각 항목이 [${category}] 분야 기사 작성에 왜 관련이 있는지 한 문장(15자 이내)으로 설명하세요.\n출력 형식: 번호 없이 줄마다 이유 하나씩.\n\n${refTitles.map((t, i) => `${i+1}. ${t}`).join('\n')}`
-        }]
-      }) : Promise.resolve(null)
-    ]);
+    // 제목만 생성 (섹션 자동작성은 편집모드 진입 시 별도 호출)
+    const topicMsg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 150,
+      messages: [{
+        role: 'user',
+        content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.map(i => i.title).join('\n')}`
+      }]
+    });
 
     const generatedTitle = topicMsg.content[0].text.trim();
-    const reasonLines = reasonMsg ? reasonMsg.content[0].text.trim().split('\n') : [];
+    const reasonLines = [];
 
     // 링크가 있는 항목만 참고자료로 저장 (날짜순, 관련 이유 포함)
     const refLinks = items
@@ -559,65 +552,10 @@ async function aiTopic(event) {
         reason: reasonLines[idx] || '',
       }));
 
-    // 이슈 생성
     const r = await pool.query(
       'INSERT INTO issues (user_id,title,category,is_draft,reference_links) VALUES($1,$2,$3,TRUE,$4) RETURNING id,title,category,created_at',
       [user.id, generatedTitle, category, JSON.stringify(refLinks)]
     );
-    const issueId = r.rows[0].id;
-
-    // 저장된 섹션 라벨·가이드로 자동 작성
-    try {
-      const [labelR, guideR] = await Promise.all([
-        pool.query('SELECT section_no, label FROM user_section_labels WHERE user_id=$1 ORDER BY section_no', [user.id]),
-        pool.query('SELECT section_no, guide FROM user_section_guides WHERE user_id=$1 ORDER BY section_no', [user.id]),
-      ]);
-      const DEFAULT_LABELS = ['배경 / 발단', '주요 내용', '인터뷰 / 현장', '관련 자료', '결론 / 전망'];
-      const userLabels = [1,2,3,4,5].map(n => {
-        const f = labelR.rows.find(row => row.section_no === n);
-        return f?.label?.trim() || '';
-      });
-      const userGuides = [1,2,3,4,5].map(n => {
-        const f = guideR.rows.find(row => row.section_no === n);
-        return f?.guide?.trim() || '';
-      });
-
-      // 라벨 없으면 디폴트 적용 (최초 이용자만)
-      const hasAnyLabel = userLabels.some(l => l);
-      const effectiveLabels = userLabels.map((l, i) => l || (hasAnyLabel ? '' : DEFAULT_LABELS[i]));
-      const toGenerate = effectiveLabels.map((l, i) => ({ no: i + 1, label: l, guide: userGuides[i] }))
-                                        .filter(s => s.label);
-
-      if (toGenerate.length) {
-        const refContext = refLinks.slice(0, 5).map(r => r.title).join('\n');
-        const sectionSpecs = toGenerate.map(s =>
-          `[${s.no}] ${s.label}${s.guide ? ` (가이드: ${s.guide})` : ''}`
-        ).join('\n');
-
-        const batchMsg = await anthropic.messages.create({
-          model: 'claude-sonnet-4-6', max_tokens: 2500,
-          messages: [{
-            role: 'user',
-            content: `기사 제목: ${generatedTitle}\n분류: ${category}\n\n참고 뉴스:\n${refContext}\n\n아래 섹션들을 전문 기자 스타일로 작성하세요. 빈 섹션 번호는 건너뛰세요.\n${sectionSpecs}\n\n출력 형식:\n[1]\n내용\n\n[2]\n내용\n(이하 동일)`
-          }]
-        });
-
-        const batchText = batchMsg.content[0].text;
-        for (const s of toGenerate) {
-          const m = batchText.match(new RegExp(`\\[${s.no}\\]([\\s\\S]*?)(?=\\[\\d+\\]|$)`));
-          const content = m ? m[1].trim() : '';
-          try {
-            await pool.query(
-              `INSERT INTO issue_sections (issue_id, section_no, content, label, updated_at)
-               VALUES ($1,$2,$3,$4,NOW())
-               ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, label=$4, updated_at=NOW()`,
-              [issueId, s.no, content, s.label]
-            );
-          } catch {}
-        }
-      }
-    } catch (e) { console.error('섹션 자동작성 오류:', e.message); }
-
     return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
   } catch (e) { console.error(e); return resp(500, { error: e.message || 'AI 주제 생성 실패' }); }
 }
@@ -964,6 +902,68 @@ async function saveArticleStyle(event) {
     await pool.query('UPDATE users SET article_style=$1 WHERE id=$2', [article_style || '', user.id]);
     return resp(200, { ok: true });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function autoFillSections(event, issueId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const [ir, labelR, guideR] = await Promise.all([
+      pool.query('SELECT title, category, reference_links FROM issues WHERE id=$1', [issueId]),
+      pool.query('SELECT section_no, label FROM user_section_labels WHERE user_id=$1 ORDER BY section_no', [user.id]),
+      pool.query('SELECT section_no, guide FROM user_section_guides WHERE user_id=$1 ORDER BY section_no', [user.id]),
+    ]);
+    if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+    const { title, category, reference_links } = ir.rows[0];
+
+    const DEFAULT_LABELS = ['배경 / 발단', '주요 내용', '인터뷰 / 현장', '관련 자료', '결론 / 전망'];
+    const userLabels = [1,2,3,4,5].map(n => {
+      const f = labelR.rows.find(r => r.section_no === n);
+      return f?.label?.trim() || '';
+    });
+    const userGuides = [1,2,3,4,5].map(n => {
+      const f = guideR.rows.find(r => r.section_no === n);
+      return f?.guide?.trim() || '';
+    });
+
+    const hasAnyLabel = userLabels.some(l => l);
+    const effectiveLabels = userLabels.map((l, i) => l || (hasAnyLabel ? '' : DEFAULT_LABELS[i]));
+    const toGenerate = effectiveLabels.map((l, i) => ({ no: i + 1, label: l, guide: userGuides[i] }))
+                                      .filter(s => s.label);
+
+    if (!toGenerate.length) return resp(200, { sections: [], labels: [] });
+
+    const refs = Array.isArray(reference_links) ? reference_links : [];
+    const refContext = refs.slice(0, 5).map(r => r.title).join('\n');
+    const sectionSpecs = toGenerate.map(s =>
+      `[${s.no}] ${s.label}${s.guide ? ` (가이드: ${s.guide})` : ''}`
+    ).join('\n');
+
+    const batchMsg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 2500,
+      messages: [{
+        role: 'user',
+        content: `기사 제목: ${title}\n분류: ${category || ''}\n\n참고 뉴스:\n${refContext || '없음'}\n\n아래 섹션들을 전문 기자 스타일로 작성하세요.\n${sectionSpecs}\n\n출력 형식:\n[1]\n내용\n\n[2]\n내용\n(이하 동일)`
+      }]
+    });
+
+    const batchText = batchMsg.content[0].text;
+    const results = [];
+    for (const s of toGenerate) {
+      const m = batchText.match(new RegExp(`\\[${s.no}\\]([\\s\\S]*?)(?=\\[\\d+\\]|$)`));
+      const content = m ? m[1].trim() : '';
+      try {
+        await pool.query(
+          `INSERT INTO issue_sections (issue_id, section_no, content, label, updated_at)
+           VALUES ($1,$2,$3,$4,NOW())
+           ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, label=$4, updated_at=NOW()`,
+          [issueId, s.no, content, s.label]
+        );
+      } catch {}
+      results.push({ no: s.no, content, label: s.label });
+    }
+    return resp(200, { results });
+  } catch (e) { console.error(e); return resp(500, { error: e.message || '섹션 자동작성 실패' }); }
 }
 
 async function getSectionLabels(event) {
