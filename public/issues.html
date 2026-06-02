@@ -173,7 +173,7 @@
 
     async function loadIssues() {
       try {
-        const res = await fetch(API + '/issues');
+        const res = isLoggedIn ? await api('/issues') : await fetch(API + '/issues');
         if (!res.ok) throw new Error();
         const { issues } = await res.json();
         issuesData = issues;
