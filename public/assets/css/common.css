@@ -63,6 +63,8 @@ body {
 /* ── Header User ───────────────────────────────────────── */
 .header-user { display: flex; align-items: center; gap: 0.6rem; }
 .header-username { font-size: 0.82rem; font-weight: 600; opacity: 0.95; }
+.header-mypage-link { color: #fff; text-decoration: none; }
+.header-mypage-link:hover { text-decoration: underline; opacity: 0.85; }
 .btn-logout {
   padding: 0.26rem 0.75rem;
   background: rgba(255,255,255,0.15);

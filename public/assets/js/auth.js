@@ -33,7 +33,7 @@ function renderHeader(containerSelector) {
   if (!el || !user) return;
   el.innerHTML = `
     <div class="header-user">
-      <span class="header-username">${user.name}</span>
+      <a href="mypage.html" class="header-username header-mypage-link">${user.name}</a>
       <button class="btn-logout" onclick="logout()">로그아웃</button>
     </div>`;
 }

@@ -3,6 +3,10 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const https = require('https');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'ap-southeast-2' });
+const S3_BUCKET = process.env.S3_BUCKET;
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -74,6 +78,13 @@ exports.handler = async (event) => {
 
   if (path === '/topics/ai' && method === 'POST') return aiTopic(event);
   if (path === '/generate'  && method === 'POST') return generateArticle(event);
+
+  // Mypage
+  const sampleM = path.match(/^\/mypage\/samples\/(\d+)$/);
+  if (path === '/mypage'         && method === 'GET')    return getMypage(event);
+  if (path === '/mypage/style'   && method === 'POST')   return saveStyle(event);
+  if (path === '/mypage/upload'  && method === 'POST')   return uploadSample(event);
+  if (sampleM                    && method === 'DELETE') return deleteSample(event, sampleM[1]);
 
   return resp(404, { error: 'Not found' });
 };
@@ -352,16 +363,109 @@ async function generateArticle(event) {
   const { title, sections } = getBody(event);
   if (!title || !Array.isArray(sections)) return resp(400, { error: '제목과 섹션 내용을 입력하세요.' });
   try {
+    const ur = await pool.query('SELECT writing_style FROM users WHERE id=$1', [user.id]);
+    const writingStyle = ur.rows[0]?.writing_style || '';
+
+    const sr = await pool.query('SELECT file_name, s3_key FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC', [user.id]);
+    const sampleTexts = [];
+    for (const sample of sr.rows) {
+      const ext = sample.file_name.split('.').pop().toLowerCase();
+      if (['txt', 'md', 'text'].includes(ext)) {
+        try {
+          const obj = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: sample.s3_key }));
+          const chunks = [];
+          for await (const chunk of obj.Body) chunks.push(chunk);
+          const text = Buffer.concat(chunks).toString('utf-8').slice(0, 1500);
+          sampleTexts.push(`[${sample.file_name}]\n${text}`);
+        } catch {}
+      }
+    }
+
     const labels = ['배경/발단', '주요 내용', '인터뷰/현장', '관련 자료', '결론/전망'];
     const body = sections.map((s, i) => `[${labels[i]}]\n${s || '(내용 없음)'}`).join('\n\n');
+
+    let personalSection = '';
+    if (writingStyle) personalSection += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
+    if (sampleTexts.length) personalSection += `\n\n[샘플 기사 참고]\n${sampleTexts.join('\n\n')}`;
+
+    const styleNote = personalSection
+      ? '\n위 스타일 가이드와 샘플 기사를 참고하여 작성자의 문체와 형식을 최대한 반영하세요.'
+      : '';
+
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       messages: [{
         role: 'user',
-        content: `아래 제목과 5개 섹션 내용을 바탕으로 완성도 높은 뉴스 기사를 작성해 주세요.\n육하원칙에 따라 자연스럽게 이어지는 기사 형식으로 작성하세요.\n\n제목: ${title}\n\n${body}`
+        content: `아래 제목과 5개 섹션 내용을 바탕으로 완성도 높은 뉴스 기사를 작성해 주세요.\n육하원칙에 따라 자연스럽게 이어지는 기사 형식으로 작성하세요.${styleNote}\n\n제목: ${title}\n\n${body}${personalSection}`
       }]
     });
     return resp(200, { article: msg.content[0].text.trim() });
   } catch (e) { console.error(e); return resp(500, { error: e.message || '기사 생성 실패' }); }
+}
+
+async function getMypage(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const ur = await pool.query('SELECT name, email, writing_style FROM users WHERE id=$1', [user.id]);
+    const sr = await pool.query(
+      'SELECT id, file_name, s3_key, file_size, created_at FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC',
+      [user.id]
+    );
+    return resp(200, {
+      profile: { name: ur.rows[0].name, email: ur.rows[0].email },
+      writing_style: ur.rows[0]?.writing_style || '',
+      samples: sr.rows,
+    });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function saveStyle(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { writing_style } = getBody(event);
+  try {
+    await pool.query('UPDATE users SET writing_style=$1 WHERE id=$2', [writing_style || '', user.id]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function uploadSample(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { fileName, fileType, fileData, fileSize } = getBody(event);
+  if (!fileName || !fileData) return resp(400, { error: '파일 데이터가 없습니다.' });
+  try {
+    const count = await pool.query('SELECT COUNT(*) FROM user_samples WHERE user_id=$1', [user.id]);
+    if (parseInt(count.rows[0].count) >= 3) return resp(400, { error: '샘플은 최대 3개까지 업로드할 수 있습니다.' });
+
+    const buf = Buffer.from(fileData, 'base64');
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9._\-가-힣]/g, '_');
+    const key = `samples/${user.id}/${Date.now()}_${safeFileName}`;
+    await s3.send(new PutObjectCommand({
+      Bucket: S3_BUCKET,
+      Key: key,
+      Body: buf,
+      ContentType: fileType || 'application/octet-stream',
+    }));
+    const r = await pool.query(
+      'INSERT INTO user_samples (user_id, file_name, s3_key, file_size) VALUES($1,$2,$3,$4) RETURNING id, file_name, s3_key, file_size, created_at',
+      [user.id, fileName, key, fileSize || buf.length]
+    );
+    return resp(201, { sample: r.rows[0] });
+  } catch (e) { console.error(e); return resp(500, { error: e.message || '업로드 실패' }); }
+}
+
+async function deleteSample(event, id) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const r = await pool.query('SELECT s3_key, user_id FROM user_samples WHERE id=$1', [id]);
+    if (!r.rows.length) return resp(404, { error: '파일을 찾을 수 없습니다.' });
+    if (r.rows[0].user_id !== user.id) return resp(403, { error: '삭제 권한이 없습니다.' });
+    await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: r.rows[0].s3_key }));
+    await pool.query('DELETE FROM user_samples WHERE id=$1', [id]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: e.message || '삭제 실패' }); }
 }
