@@ -107,6 +107,7 @@ exports.handler = async (event) => {
   if (path === '/mypage/section-guides'  && method === 'GET')    return getSectionGuides(event);
   if (path === '/mypage/section-guides'  && method === 'POST')   return saveSectionGuide(event);
   if (path === '/mypage/section-labels'  && method === 'GET')    return getSectionLabels(event);
+  if (path === '/mypage/section-labels'  && method === 'POST')   return saveSectionLabelOne(event);
   if (path === '/mypage/article-style'   && method === 'POST')   return saveArticleStyle(event);
   if (sampleM                           && method === 'DELETE') return deleteSample(event, sampleM[1]);
 
@@ -952,7 +953,9 @@ async function autoFillSections(event, issueId) {
     const refs = Array.isArray(reference_links) ? reference_links : [];
 
     // 참고링크 URL 실제 내용 조회 (병렬, URL당 3초 타임아웃)
-    const linkUrls = Array.isArray(body.linkUrls) ? body.linkUrls : [];
+    const links     = Array.isArray(body.links) ? body.links : [];
+    const linkUrls  = links.map(l => l.url).filter(Boolean);
+    const usedLinks = []; // 실제 내용을 가져온 링크만 출처로 기록
     let fetchedContent = '';
     if (linkUrls.length) {
       const withTimeout = url => Promise.race([
@@ -961,17 +964,25 @@ async function autoFillSections(event, issueId) {
       ]).catch(() => '');
       const fetched = await Promise.allSettled(linkUrls.slice(0, 4).map(withTimeout));
       const parts = [];
-      for (const f of fetched) {
+      for (let i = 0; i < fetched.length; i++) {
+        const f = fetched[i];
         if (f.status === 'fulfilled' && f.value?.length > 200) {
           const text = f.value
             .replace(/<script[\s\S]*?<\/script>/gi, '')
             .replace(/<style[\s\S]*?<\/style>/gi, '')
             .replace(/<[^>]+>/g, ' ')
             .replace(/\s+/g, ' ').trim().slice(0, 1200);
-          if (text.length > 100) parts.push(text);
+          if (text.length > 100) {
+            parts.push(text);
+            usedLinks.push({ url: linkUrls[i], title: links[i]?.title || linkUrls[i] });
+          }
         }
       }
       fetchedContent = parts.join('\n\n---\n\n');
+    }
+    // URL 조회 실패했거나 없으면 링크 제목만이라도 출처로 기록
+    if (!usedLinks.length && links.length) {
+      links.slice(0, 4).forEach(l => usedLinks.push({ url: l.url, title: l.title || l.url }));
     }
 
     const contextSource = (Array.isArray(relatedItems) && relatedItems.length) ? relatedItems : refs;
@@ -1003,10 +1014,26 @@ async function autoFillSections(event, issueId) {
           [issueId, s.no, content, s.label]
         );
       } catch {}
-      results.push({ no: s.no, content, label: s.label });
+      results.push({ no: s.no, content, label: s.label, sources: usedLinks });
     }
     return resp(200, { results });
   } catch (e) { console.error(e); return resp(500, { error: e.message || '섹션 자동작성 실패' }); }
+}
+
+async function saveSectionLabelOne(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { section_no, label } = getBody(event);
+  if (!section_no || section_no < 1 || section_no > 5) return resp(400, { error: '잘못된 섹션 번호' });
+  try {
+    await pool.query(
+      `INSERT INTO user_section_labels (user_id, section_no, label, updated_at)
+       VALUES ($1,$2,$3,NOW())
+       ON CONFLICT (user_id, section_no) DO UPDATE SET label=$3, updated_at=NOW()`,
+      [user.id, section_no, label || '']
+    );
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
 async function getSectionLabels(event) {

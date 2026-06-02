@@ -288,10 +288,16 @@
     .sec-name-input {
       border: none; border-bottom: 1.5px dashed var(--border); background: transparent;
       font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);
-      font-family: var(--font-sans); outline: none; width: 120px; padding: 0 0.15rem;
+      font-family: var(--font-sans); outline: none; width: 110px; padding: 0 0.15rem;
       transition: border-color 0.15s;
     }
     .sec-name-input:focus { border-bottom-color: var(--primary); color: var(--text-primary); }
+    .btn-label-save {
+      padding: .1rem .3rem; border: 1px solid var(--border); border-radius: 3px;
+      font-size: .68rem; cursor: pointer; background: var(--bg-card); color: var(--text-secondary);
+      font-family: var(--font-sans); transition: all .12s; line-height: 1;
+    }
+    .btn-label-save:hover { border-color: var(--success); color: #065f46; background: var(--success-light); }
     /* 참고링크 편집 패널 */
     .ref-edit-add {
       display: flex; gap: .3rem; align-items: center; margin-top: .5rem; flex-wrap: wrap;
@@ -314,6 +320,21 @@
       font-family: var(--font-sans); transition: all .12s; line-height: 1;
     }
     .ref-del-btn:hover { background: #dc2626; color: #fff; }
+    /* 섹션 출처 영역 */
+    .sec-sources {
+      padding: .28rem .75rem .35rem;
+      border-top: 1px dashed var(--border);
+      display: flex; flex-wrap: wrap; gap: .22rem; align-items: center;
+      background: #fafbff;
+    }
+    .sec-src-label { font-size: .62rem; color: var(--text-muted); flex-shrink: 0; }
+    .sec-src-link {
+      font-size: .62rem; color: var(--primary); text-decoration: none;
+      padding: .03rem .3rem; background: var(--primary-light);
+      border-radius: 3px; max-width: 180px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; display: inline-block;
+    }
+    .sec-src-link:hover { text-decoration: underline; opacity: .8; }
 
     .ai-side-hint {
       font-size: 0.64rem; color: var(--text-muted); padding: 0.22rem 0.9rem 0.35rem;
@@ -766,25 +787,22 @@
     function renderEditRefPanel() {
       const panel = document.getElementById('relatedPanel');
       if (!panel) return;
-      if (!editableRefLinks.length) {
-        panel.innerHTML = '<div class="related-panel-header">🔍 관련 최신글 — 결과 없음</div>';
-        panel.style.display = editableRefLinks.length > 0 ? '' : 'none';
-        updateAutoFillBtnState();
-        return;
-      }
       panel.style.display = '';
+      const listHtml = editableRefLinks.length
+        ? `<ul class="ref-list" style="max-height:200px;overflow-y:auto;margin-bottom:.4rem">
+            ${editableRefLinks.map((l, i) => `
+              <li>
+                <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title || l.url)}</a>
+                ${l.pubDate ? `<span style="font-size:.62rem;color:var(--text-muted);flex-shrink:0">${fmtPubDate(l.pubDate)}</span>` : ''}
+                <button class="ref-del-btn" onclick="removeRefLink(${i})">✕</button>
+              </li>`).join('')}
+           </ul>`
+        : `<div style="font-size:.74rem;color:var(--text-muted);padding:.3rem 0 .5rem">링크가 없습니다. 아래에서 직접 추가하세요.</div>`;
       panel.innerHTML = `
         <div class="related-panel-header">
-          📎 참고링크 <span style="font-size:.68rem;background:var(--primary-light);color:var(--primary);padding:.05rem .35rem;border-radius:100px;font-weight:700">${editableRefLinks.length}건</span>
+          📎 참고링크 ${editableRefLinks.length ? `<span style="font-size:.68rem;background:var(--primary-light);color:var(--primary);padding:.05rem .35rem;border-radius:100px;font-weight:700">${editableRefLinks.length}건</span>` : ''}
         </div>
-        <ul class="ref-list" style="max-height:200px;overflow-y:auto">
-          ${editableRefLinks.map((l, i) => `
-            <li>
-              <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title || l.url)}</a>
-              ${l.pubDate ? `<span style="font-size:.62rem;color:var(--text-muted);flex-shrink:0">${fmtPubDate(l.pubDate)}</span>` : ''}
-              <button class="ref-del-btn" onclick="removeRefLink(${i})">✕</button>
-            </li>`).join('')}
-        </ul>
+        ${listHtml}
         <div class="ref-edit-add">
           <input type="url" id="refUrlIn" class="ref-url-input" placeholder="https://... URL 직접 추가" />
           <input type="text" id="refTitleIn" class="ref-url-input" style="max-width:140px" placeholder="제목(선택)" />
@@ -819,6 +837,26 @@
       if (btn) btn.disabled = !document.getElementById(`sec${n}`)?.value.trim();
     }
 
+    async function saveSectionLabel(n) {
+      const label = document.getElementById(`secLabel${n}`)?.value.trim();
+      if (!label) { showToast('제목을 입력하세요.', 'error'); return; }
+      const btn = document.querySelector(`.btn-label-save[onclick="saveSectionLabel(${n})"]`);
+      if (btn) { btn.textContent = '...'; btn.disabled = true; }
+      try {
+        const res = await api('/mypage/section-labels', {
+          method: 'POST', body: JSON.stringify({ section_no: n, label }),
+        });
+        if (!res.ok) throw new Error();
+        userLabelDefaults[n - 1] = label;
+        labelsData[n - 1] = label;
+        if (btn) { btn.textContent = '✓'; btn.disabled = false; btn.style.color = '#065f46'; btn.style.borderColor = 'var(--success)'; btn.style.background = 'var(--success-light)'; }
+        showToast(`섹션 ${n} 기본 제목이 저장됐습니다.`, 'success');
+      } catch {
+        showToast('저장 실패', 'error');
+        if (btn) { btn.textContent = '✓'; btn.disabled = false; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
+      }
+    }
+
     /* ── 섹션 툴바 (관련글 검색 + 자동채우기) ── */
     function renderSectionToolbar() {
       const bar = document.getElementById('sectionToolbar');
@@ -840,7 +878,7 @@
           method: 'POST',
           body: JSON.stringify({
             relatedItems: relatedItemsCache,
-            linkUrls: editableRefLinks.map(l => l.url),
+            links: editableRefLinks,
           }),
         });
         const data = await res.json();
@@ -853,6 +891,19 @@
             labelsData[r.no - 1] = r.label;
             const inp = document.getElementById(`secLabel${r.no}`);
             if (inp) inp.value = r.label;
+          }
+          // 출처 링크 표시
+          const srcDiv = document.getElementById(`secSrc${r.no}`);
+          if (srcDiv) {
+            const srcs = r.sources || [];
+            if (srcs.length) {
+              srcDiv.style.display = '';
+              srcDiv.innerHTML = `<span class="sec-src-label">출처: </span>` +
+                srcs.map(s => `<a href="${s.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" class="sec-src-link" title="${escHtml(s.title)}">${escHtml(s.title || s.url)}</a>`).join('');
+            } else {
+              srcDiv.style.display = 'none';
+              srcDiv.innerHTML = '';
+            }
           }
           onSecInput(r.no); // 내용 채워졌으니 AI 버튼 활성화
         }
@@ -1075,7 +1126,13 @@
           </div>`;
 
         const bodyHtml = editable
-          ? `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="4" oninput="onSecInput(${n})">${escHtml(content)}</textarea>${aiSide}</div>`
+          ? `<div class="section-body-2col">
+               <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
+                 <textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="4" oninput="onSecInput(${n})">${escHtml(content)}</textarea>
+                 <div class="sec-sources" id="secSrc${n}" style="display:none"></div>
+               </div>
+               ${aiSide}
+             </div>`
           : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="${HINTS[i]}" rows="4">${escHtml(content)}</textarea>${aiSide}</div>`;
 
         const edFormHtml = (isAuthor && issueId)
@@ -1090,7 +1147,8 @@
             <div class="section-label">
               <span class="sec-num">${n}</span>
               ${editable
-                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(customLabel)}" placeholder="${escHtml(label)}" />`
+                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(customLabel)}" placeholder="${escHtml(label)}" />
+                   <button class="btn-label-save" onclick="saveSectionLabel(${n})" title="이 제목을 기본값으로 저장">✓</button>`
                 : `<span class="sec-name">${escHtml(customLabel)}</span>`}
               ${myBadge}
               ${editorZone}
