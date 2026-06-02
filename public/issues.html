@@ -420,7 +420,7 @@
         <td class="col-no">${num}</td>
         <td class="col-title">
           <div class="title-cell">
-            <a href="write.html?id=${issue.id}" class="title-link">${escHtml(issue.title)}</a>
+            <a href="write.html?id=${issue.id}${issue.is_draft ? '&mode=edit' : ''}" class="title-link">${escHtml(issue.title)}</a>
           </div>
         </td>
         <td class="col-category">${escHtml(issue.category || '문화')}</td>
