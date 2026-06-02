@@ -155,9 +155,7 @@
     const isLoggedIn = !!getToken();
     const me = getUser();
 
-    if (isLoggedIn) renderHeader('#headerUser');
-    else document.getElementById('headerUser').innerHTML =
-      '<a href="index.html" class="btn-header-login">로그인 / 회원가입</a>';
+    renderHeader('#headerUser');
 
     if (isLoggedIn) {
       document.getElementById('toolbarBtns').innerHTML = `

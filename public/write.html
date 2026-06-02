@@ -257,9 +257,7 @@
     let editors          = [null, null, null, null, null];
     let sectionsData     = ['', '', '', '', ''];
 
-    if (isLoggedIn) renderHeader('#headerUser');
-    else document.getElementById('headerUser').innerHTML =
-      '<a href="index.html" class="btn-header-login">로그인</a>';
+    renderHeader('#headerUser');
 
     if (!issueId) {
       if (!isLoggedIn) { location.href = 'index.html'; }
