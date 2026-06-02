@@ -109,6 +109,7 @@
     .col-no       { width: 42px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
     .col-title    { width: auto; }
     .col-category { width: 62px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); }
+    .col-views    { width: 52px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
     .col-author   { width: 80px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; }
     .col-date     { width: 82px; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
     .col-status   { width: 58px; text-align: center; white-space: nowrap; }
@@ -184,7 +185,7 @@
       .filter-bar { padding: 0.5rem 0.75rem; }
     }
     @media (max-width: 600px) {
-      .col-author, .col-date, .col-no, .col-category { display: none; }
+      .col-author, .col-date, .col-no, .col-category, .col-views { display: none; }
       .toolbar { gap: 0.4rem; }
       .toolbar-title { font-size: 0.92rem; }
       .act-btn { padding: 0.22rem 0.45rem; font-size: 0.66rem; }
@@ -373,6 +374,7 @@
               <th class="col-no">번호</th>
               <th class="col-title">제목</th>
               <th class="col-category">분류</th>
+              <th class="col-views">조회</th>
               <th class="col-author">작성자</th>
               <th class="col-date">작성일</th>
               <th class="col-status">상태</th>
@@ -424,6 +426,7 @@
           </div>
         </td>
         <td class="col-category">${escHtml(issue.category || '문화')}</td>
+        <td class="col-views">${issue.view_count || 0}</td>
         <td class="col-author">${escHtml(issue.author)}</td>
         <td class="col-date">${date}</td>
         <td class="col-status">${badge}</td>

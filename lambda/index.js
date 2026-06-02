@@ -175,7 +175,7 @@ async function getIssues(event) {
     const total  = parseInt(countR.rows[0].count);
 
     const dataR = await pool.query(
-      `SELECT i.id, i.title, i.is_draft, i.category, i.created_at, u.name AS author, i.user_id
+      `SELECT i.id, i.title, i.is_draft, i.category, i.view_count, i.created_at, u.name AS author, i.user_id
        ${base} ORDER BY i.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, limit, offset]
     );
@@ -215,6 +215,17 @@ async function getIssue(event, id) {
           'SELECT id FROM issue_section_editors WHERE issue_id=$1 AND user_id=$2', [id, user.id]
         );
         if (!ed.rows.length) return resp(403, { error: '조회 권한이 없습니다.' });
+      }
+    }
+
+    // 조회수: 로그인 사용자만, 계정당 1회 카운트
+    if (user) {
+      const dup = await pool.query(
+        'INSERT INTO issue_views (issue_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+        [id, user.id]
+      );
+      if (dup.rowCount > 0) {
+        await pool.query('UPDATE issues SET view_count = view_count + 1 WHERE id=$1', [id]);
       }
     }
 

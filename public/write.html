@@ -361,7 +361,7 @@
         }
 
         document.getElementById('issueSub').textContent =
-          `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')}`;
+          `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')} · 조회 ${issue.view_count ?? 0}`;
 
         renderTopActions(issue);
         renderRefLinks(issue.reference_links);
