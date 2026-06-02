@@ -475,8 +475,9 @@
     let guideData        = ['', '', '', '', ''];
     let aiData           = ['', '', '', '', ''];
     let labelsData       = ['', '', '', '', ''];
-    let hasImported      = false;
-    let articleStyleData = '';
+    let hasImported        = false;
+    let articleStyleData   = '';
+    let userLabelDefaults  = ['', '', '', '', ''];
 
     renderHeader('#headerUser');
 
@@ -598,14 +599,17 @@
     async function loadSectionGuides() {
       if (!isLoggedIn) return;
       try {
-        const [gRes, mRes] = await Promise.all([
+        const [gRes, mRes, lRes] = await Promise.all([
           api('/mypage/section-guides'),
           api('/mypage'),
+          api('/mypage/section-labels'),
         ]);
         const gData = await gRes.json();
         const mData = await mRes.json();
-        if (gRes.ok && Array.isArray(gData.guides)) guideData = gData.guides;
-        if (mRes.ok) articleStyleData = mData.article_style || '';
+        const lData = await lRes.json();
+        if (gRes.ok && Array.isArray(gData.guides))  guideData        = gData.guides;
+        if (mRes.ok)                                  articleStyleData = mData.article_style || '';
+        if (lRes.ok && Array.isArray(lData.labels))   userLabelDefaults = lData.labels;
       } catch {}
     }
 
@@ -904,7 +908,8 @@
         const content      = sectionsData[i] || '';
         const guide        = guideData[i]    || '';
         const aiContent    = aiData[i]       || '';
-        const customLabel  = labelsData[i]   || label;
+        // 우선순위: 이슈별 라벨 > 사용자 저장 라벨 > 하드코딩 기본값
+        const customLabel = labelsData[i] || userLabelDefaults[i] || label;
 
         let editorZone = '';
         if (isAuthor && issueId) {
