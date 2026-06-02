@@ -531,6 +531,7 @@
         document.getElementById('issueSub').textContent =
           `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')} · 조회 ${issue.view_count ?? 0}`;
 
+        if (isEditMode) await loadSectionGuides(); // renderSections 전에 로드해야 버튼 상태 반영됨
         renderTopActions(issue);
         if (!isEditMode) renderIssueReactBar(issue);
         renderRefLinks(issue.reference_links);
@@ -542,7 +543,6 @@
         document.getElementById('aiBody').value = articleContent;
         renderAiPanelActs();
 
-        if (isEditMode) await loadSectionGuides();
         if (isEditMode && isAuthor) loadCookie();
         if (!isEditMode) loadComments();
       } catch {
@@ -648,10 +648,11 @@
         });
         if (!res.ok) throw new Error();
         guideData[n - 1] = guide;
+        const active = guide.length >= 4;
         const btn = document.getElementById(`btnGuide${n}`);
         if (btn) {
-          btn.className = `btn-guide-open${guide ? ' has-guide' : ''}`;
-          btn.textContent = guide ? '📝 가이드 설정됨' : '📝 작성 가이드 설정';
+          btn.className = `btn-guide-open${active ? ' has-guide' : ''}`;
+          btn.textContent = active ? '📝 가이드 설정됨' : '📝 작성 가이드 설정';
         }
         closeGuideModal();
         showToast('가이드가 저장됐습니다.', 'success');
@@ -834,10 +835,11 @@
         }
 
         const myBadge   = isMyEdit ? `<span class="my-sec-badge">내 편집 구역</span>` : '';
+        const hasGuide = guide.trim().length >= 4;
         const controlBar = editable
           ? `<div class="section-controls">
-               <button class="btn-guide-open${guide ? ' has-guide' : ''}" id="btnGuide${n}" onclick="openGuideModal(${n})">
-                 📝 ${guide ? '가이드 설정됨' : '작성 가이드 설정'}
+               <button class="btn-guide-open${hasGuide ? ' has-guide' : ''}" id="btnGuide${n}" onclick="openGuideModal(${n})">
+                 📝 ${hasGuide ? '가이드 설정됨' : '작성 가이드 설정'}
                </button>
                <button class="btn-ai-sec" id="btnAiSec${n}" onclick="aiWriteSection(${n})">✨ AI작성</button>
              </div>` : '';
