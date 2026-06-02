@@ -805,12 +805,24 @@ async function searchRelated(event, issueId) {
     const ir = await pool.query('SELECT title, category FROM issues WHERE id=$1', [issueId]);
     if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
     const { title, category } = ir.rows[0];
-    const q = encodeURIComponent(`${title} ${category || ''}`);
+
+    // 제목 앞 4단어 + 분류로 검색 (전체 제목은 너무 구체적이어서 결과 0건)
+    const keywords = title.split(/\s+/).slice(0, 4).join(' ');
+    const catExtra = {
+      '문화': '예술 공연 전시',   '정치': '국회 정책 정부',
+      '경제': '산업 금융 주식',   '사회': '사건 복지 환경',
+      '스포츠': '축구 야구 올림픽','연예': '드라마 K팝 영화',
+      'IT/과학': '인공지능 기술', '국제': '외교 세계 해외',
+      '교육': '학교 입시 대학',   '건강': '의료 병원 질병',
+    };
+    const extra = catExtra[category] || '';
+    const q = encodeURIComponent(`${keywords} ${extra}`.trim());
+
     const rss = await fetchUrl(`https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`);
     const items = [];
     const itemRe = /<item>([\s\S]*?)<\/item>/g;
     let im;
-    while ((im = itemRe.exec(rss)) !== null && items.length < 15) {
+    while ((im = itemRe.exec(rss)) !== null && items.length < 25) {
       const xml = im[1];
       const tM  = xml.match(/<title>([\s\S]*?)<\/title>/);
       const lM  = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
@@ -819,7 +831,9 @@ async function searchRelated(event, issueId) {
       const t = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
       const l = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
       const d = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-      if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) items.push({ title: t, url: l, pubDate: d });
+      if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) {
+        items.push({ title: t, url: l, pubDate: d });
+      }
     }
 
     // 날짜순 정렬 (최신 상단)
@@ -828,21 +842,6 @@ async function searchRelated(event, issueId) {
       const db = b.pubDate ? new Date(b.pubDate) : 0;
       return db - da;
     });
-
-    // 관련 이유 생성
-    if (items.length) {
-      try {
-        const reasonMsg = await anthropic.messages.create({
-          model: 'claude-sonnet-4-6', max_tokens: 300,
-          messages: [{
-            role: 'user',
-            content: `다음 뉴스 기사 목록이 "${title}" 기사 작성에 왜 관련이 있는지 각 항목마다 한 문장(15자 이내)으로 설명하세요.\n줄마다 이유 하나씩 출력.\n\n${items.map((i, n) => `${n+1}. ${i.title}`).join('\n')}`
-          }]
-        });
-        const lines = reasonMsg.content[0].text.trim().split('\n');
-        items.forEach((item, i) => { item.reason = lines[i] || ''; });
-      } catch {}
-    }
 
     return resp(200, { items });
   } catch (e) { console.error(e); return resp(500, { error: '검색 실패' }); }
