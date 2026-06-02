@@ -9,6 +9,16 @@
     /* ── 페이지 너비 ── */
     main.container { max-width: 92%; width: 92%; padding: 1.25rem 1rem; }
 
+    /* ── 분류 셀렉트 (툴바) ── */
+    .cat-select {
+      padding: 0.38rem 0.65rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.78rem;
+      font-family: var(--font-sans); background: var(--bg-card);
+      color: var(--text-primary); cursor: pointer; outline: none;
+      transition: border-color 0.15s; height: 32px;
+    }
+    .cat-select:focus { border-color: var(--primary); }
+
     /* ── Toolbar ── */
     .toolbar {
       display: flex; align-items: center; justify-content: space-between;
@@ -49,6 +59,7 @@
     .f-q      { min-width: 130px; flex: 1; max-width: 220px; }
     .f-date   { width: 128px; }
     .f-author { width: 82px; }
+    .f-cat    { width: 90px; }
     .f-search {
       padding: 0.3rem 0.72rem; background: var(--primary); color: #fff;
       border: none; border-radius: var(--radius-sm); font-size: 0.76rem;
@@ -95,12 +106,13 @@
     .issue-table tr:last-child td { border-bottom: none; }
     .issue-table tbody tr:not(.inline-row):hover { background: #f8f9fe; }
 
-    .col-no     { width: 42px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
-    .col-title  { width: auto; }
-    .col-author { width: 80px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; }
-    .col-date   { width: 82px; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
-    .col-status { width: 58px; text-align: center; white-space: nowrap; }
-    .col-action { width: 86px; text-align: right; white-space: nowrap; }
+    .col-no       { width: 42px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
+    .col-title    { width: auto; }
+    .col-category { width: 62px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); }
+    .col-author   { width: 80px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; }
+    .col-date     { width: 82px; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
+    .col-status   { width: 58px; text-align: center; white-space: nowrap; }
+    .col-action   { width: 86px; text-align: right; white-space: nowrap; }
 
     .title-cell { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
     .title-link {
@@ -172,7 +184,7 @@
       .filter-bar { padding: 0.5rem 0.75rem; }
     }
     @media (max-width: 600px) {
-      .col-author, .col-date, .col-no { display: none; }
+      .col-author, .col-date, .col-no, .col-category { display: none; }
       .toolbar { gap: 0.4rem; }
       .toolbar-title { font-size: 0.92rem; }
       .act-btn { padding: 0.22rem 0.45rem; font-size: 0.66rem; }
@@ -180,6 +192,7 @@
       .f-input { font-size: 16px; }
       .f-date { width: 110px; }
       .f-author { display: none; }
+      .f-cat { width: 80px; }
     }
     @media (max-width: 380px) {
       .col-status { display: none; }
@@ -213,6 +226,9 @@
         <input type="text"  id="fQ"      class="f-input f-q"      placeholder="제목 검색..." />
         <input type="date"  id="fDate"   class="f-input f-date"   />
         <input type="text"  id="fAuthor" class="f-input f-author" placeholder="작성자" />
+        <select id="fCat" class="f-input f-cat">
+          <option value="">전체 분류</option>
+        </select>
         <div id="filterToggles" style="display:flex;gap:0.3rem;flex-wrap:wrap"></div>
         <button class="f-reset" onclick="resetFilters()">초기화</button>
         <button class="f-search" onclick="doSearch()">검색</button>
@@ -230,14 +246,35 @@
 
   <script src="assets/js/auth.js"></script>
   <script>
+    const CATEGORIES = ['문화', '정치', '경제', '사회', '스포츠', '연예', 'IT/과학', '국제', '교육', '건강'];
+
+    function getCatCookie() {
+      const m = document.cookie.match(/selCat=([^;]+)/);
+      return m ? decodeURIComponent(m[1]) : '문화';
+    }
+    function setCatCookie(v) {
+      document.cookie = `selCat=${encodeURIComponent(v)};max-age=${60*60*24*365};path=/`;
+    }
+
     const isLoggedIn = !!getToken();
     const me = getUser();
 
     renderHeader('#headerUser');
 
+    // 필터 분류 select 옵션 채우기
+    const fCatEl = document.getElementById('fCat');
+    CATEGORIES.forEach(c => {
+      const o = document.createElement('option'); o.value = c; o.textContent = c; fCatEl.appendChild(o);
+    });
+
     // 로그인 상태 툴바
     if (isLoggedIn) {
+      const selCat = getCatCookie();
+      const catOptions = CATEGORIES.map(c =>
+        `<option value="${c}"${c === selCat ? ' selected' : ''}>${c}</option>`
+      ).join('');
       document.getElementById('toolbarBtns').innerHTML = `
+        <select class="cat-select" id="catSelect" onchange="setCatCookie(this.value)">${catOptions}</select>
         <button class="btn ai" id="btnAI" onclick="addAIIssue()">🤖 AI 이슈 만들기</button>
         <button class="btn primary" onclick="addInlineRow()">✏️ 이슈 만들기</button>`;
     } else {
@@ -249,11 +286,12 @@
     if (isLoggedIn) {
       document.getElementById('filterToggles').innerHTML = `
         <button class="f-toggle" id="tMine"  onclick="toggleFilter('mine')">내 글</button>
-        <button class="f-toggle" id="tDraft" onclick="toggleFilter('draft')">작성중</button>`;
+        <button class="f-toggle" id="tDraft" onclick="toggleFilter('draft')">작성중</button>
+        <button class="f-toggle" id="tEdit"  onclick="toggleFilter('edit')">내 편집</button>`;
     }
 
     // 필터 상태
-    let fState = { mine: false, draft: false };
+    let fState = { mine: false, draft: false, edit: false };
     let curPage = 1;
     let totalCount = 0;
     let totalPages = 1;
@@ -268,8 +306,8 @@
 
     function toggleFilter(key) {
       fState[key] = !fState[key];
-      document.getElementById(key === 'mine' ? 'tMine' : 'tDraft')
-        ?.classList.toggle('on', fState[key]);
+      const idMap = { mine: 'tMine', draft: 'tDraft', edit: 'tEdit' };
+      document.getElementById(idMap[key])?.classList.toggle('on', fState[key]);
       doSearch();
     }
 
@@ -281,9 +319,11 @@
       document.getElementById('fQ').value = '';
       document.getElementById('fDate').value = '';
       document.getElementById('fAuthor').value = '';
-      fState = { mine: false, draft: false };
+      document.getElementById('fCat').value = '';
+      fState = { mine: false, draft: false, edit: false };
       document.getElementById('tMine')?.classList.remove('on');
       document.getElementById('tDraft')?.classList.remove('on');
+      document.getElementById('tEdit')?.classList.remove('on');
       loadIssues(1);
     }
 
@@ -293,12 +333,16 @@
       const date   = document.getElementById('fDate')?.value || '';
       const author = document.getElementById('fAuthor')?.value.trim() || '';
 
+      const fCat = document.getElementById('fCat')?.value || '';
+
       const params = new URLSearchParams({ page });
       if (q)               params.set('q', q);
       if (date)            params.set('date', date);
       if (author)          params.set('author', author);
+      if (fCat)            params.set('category', fCat);
       if (fState.mine)     params.set('mine', '1');
       if (fState.draft)    params.set('draft', '1');
+      if (fState.edit)     params.set('edit', '1');
 
       document.getElementById('tableWrap').innerHTML =
         '<div class="loading">불러오는 중...</div>';
@@ -328,6 +372,7 @@
             <thead><tr>
               <th class="col-no">번호</th>
               <th class="col-title">제목</th>
+              <th class="col-category">분류</th>
               <th class="col-author">작성자</th>
               <th class="col-date">작성일</th>
               <th class="col-status">상태</th>
@@ -378,6 +423,7 @@
             <a href="write.html?id=${issue.id}" class="title-link">${escHtml(issue.title)}</a>
           </div>
         </td>
+        <td class="col-category">${escHtml(issue.category || '문화')}</td>
         <td class="col-author">${escHtml(issue.author)}</td>
         <td class="col-date">${date}</td>
         <td class="col-status">${badge}</td>
@@ -433,7 +479,8 @@
       const title = document.getElementById('inlineTitle')?.value.trim();
       if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
       try {
-        const res = await api('/issues', { method: 'POST', body: JSON.stringify({ title }) });
+        const category = document.getElementById('catSelect')?.value || getCatCookie();
+        const res = await api('/issues', { method: 'POST', body: JSON.stringify({ title, category }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         cancelInlineRow();
@@ -446,7 +493,8 @@
       const btn = document.getElementById('btnAI');
       btn.disabled = true; btn.textContent = '⏳ AI 생성 중...';
       try {
-        const res = await api('/topics/ai', { method: 'POST' });
+        const category = document.getElementById('catSelect')?.value || getCatCookie();
+        const res = await api('/topics/ai', { method: 'POST', body: JSON.stringify({ category }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
         showToast(`AI 이슈 추가: ${data.issue.title}`, 'success');

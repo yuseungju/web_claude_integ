@@ -137,6 +137,7 @@ async function getIssues(event) {
   const date   = (qs.date  || '').trim();
   const mine   = qs.mine  === '1' && !!user;
   const draft  = qs.draft === '1' && !!user;
+  const edit   = qs.edit  === '1' && !!user;
   const page   = Math.max(1, parseInt(qs.page) || 1);
   const limit  = 30;
   const offset = (page - 1) * limit;
@@ -147,7 +148,11 @@ async function getIssues(event) {
     let idx = 1;
 
     // 가시성 조건
-    if (mine) {
+    if (edit) {
+      // 내 편집: 편집자로 지정된 이슈만
+      conds.push(`i.id IN (SELECT issue_id FROM issue_section_editors WHERE user_id = $${idx})`);
+      params.push(user.id); idx++;
+    } else if (mine) {
       conds.push(`i.user_id = $${idx}`); params.push(user.id); idx++;
     } else if (user) {
       conds.push(`(i.is_draft = false OR i.user_id = $${idx} OR i.id IN (SELECT issue_id FROM issue_section_editors WHERE user_id = $${idx}))`);
@@ -158,9 +163,10 @@ async function getIssues(event) {
 
     if (draft && user) conds.push('i.is_draft = true');
 
-    if (q)      { conds.push(`i.title ILIKE $${idx++}`);           params.push(`%${q}%`); }
-    if (author) { conds.push(`u.name  ILIKE $${idx++}`);           params.push(`%${author}%`); }
-    if (date)   { conds.push(`DATE(i.created_at) = $${idx++}`);    params.push(date); }
+    if (q)            { conds.push(`i.title ILIKE $${idx++}`);        params.push(`%${q}%`); }
+    if (author)       { conds.push(`u.name  ILIKE $${idx++}`);        params.push(`%${author}%`); }
+    if (date)         { conds.push(`DATE(i.created_at) = $${idx++}`); params.push(date); }
+    if (qs.category)  { conds.push(`i.category = $${idx++}`);         params.push(qs.category); }
 
     const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
     const base  = `FROM issues i JOIN users u ON i.user_id = u.id ${where}`;
@@ -169,7 +175,7 @@ async function getIssues(event) {
     const total  = parseInt(countR.rows[0].count);
 
     const dataR = await pool.query(
-      `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
+      `SELECT i.id, i.title, i.is_draft, i.category, i.created_at, u.name AS author, i.user_id
        ${base} ORDER BY i.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, limit, offset]
     );
@@ -181,12 +187,13 @@ async function getIssues(event) {
 async function createIssue(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { title } = getBody(event);
+  const { title, category } = getBody(event);
   if (!title?.trim()) return resp(400, { error: '제목을 입력하세요.' });
+  const cat = category || '문화';
   try {
     const r = await pool.query(
-      'INSERT INTO issues (user_id,title,is_draft) VALUES($1,$2,TRUE) RETURNING id,title,created_at',
-      [user.id, title.trim()]
+      'INSERT INTO issues (user_id,title,category,is_draft) VALUES($1,$2,$3,TRUE) RETURNING id,title,category,created_at',
+      [user.id, title.trim(), cat]
     );
     return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
@@ -370,12 +377,19 @@ async function aiTopic(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
-    const queries = [
-      '%EB%AC%B8%ED%99%94+%EC%98%88%EC%88%A0',
-      '%EA%B3%B5%EC%97%B0+%EC%A0%84%EC%8B%9C',
-      '%EC%98%81%ED%99%94+%EC%9D%8C%EC%95%85',
-    ];
-    const q = queries[Math.floor(Math.random() * queries.length)];
+    const body = getBody(event);
+    const category = body.category || '문화';
+
+    // 분류별 보조 검색어 (RSS 최신성 확보)
+    const catExtra = {
+      '문화': '예술 공연 전시',   '정치': '국회 정책 정부',
+      '경제': '산업 금융 주식',   '사회': '사건 복지 환경',
+      '스포츠': '축구 야구 올림픽','연예': '드라마 K팝 영화',
+      'IT/과학': '인공지능 기술 연구','국제': '외교 세계 해외',
+      '교육': '학교 입시 대학',   '건강': '의료 병원 질병',
+    };
+    const extra = catExtra[category] || category;
+    const q = encodeURIComponent(`${category} ${extra}`);
     const rss = await fetchUrl(`https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`);
 
     const titles = [];
@@ -396,14 +410,14 @@ async function aiTopic(event) {
       max_tokens: 150,
       messages: [{
         role: 'user',
-        content: `아래 최신 뉴스 트렌드를 참고해서 문화·예술·공연·전시·영화·음악 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.join('\n')}`
+        content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.join('\n')}`
       }]
     });
 
     const title = msg.content[0].text.trim();
     const r = await pool.query(
-      'INSERT INTO issues (user_id,title,is_draft) VALUES($1,$2,TRUE) RETURNING id,title,created_at',
-      [user.id, title]
+      'INSERT INTO issues (user_id,title,category,is_draft) VALUES($1,$2,$3,TRUE) RETURNING id,title,category,created_at',
+      [user.id, title, category]
     );
     return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
   } catch (e) { console.error(e); return resp(500, { error: e.message || 'AI 주제 생성 실패' }); }

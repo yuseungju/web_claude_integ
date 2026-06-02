@@ -155,12 +155,6 @@
     .btn-panel-sm.import:hover { background: #10b981; color: #fff; border-color: #10b981; }
 
     /* ── 기사 조회 뷰 ── */
-    .view-headline {
-      font-size: 1.55rem !important;
-      font-weight: 900 !important;
-      letter-spacing: -0.025em;
-      line-height: 1.3 !important;
-    }
     .ai-panel.view-mode {
       border-color: var(--border);
       border-width: 1px;
@@ -335,7 +329,7 @@
         } else {
           document.getElementById('pageTitle').textContent = '이슈 조회';
           document.getElementById('titleArea').innerHTML =
-            `<div class="issue-title-view view-headline">${escHtml(issue.title)}</div>`;
+            `<div class="issue-title-view">${escHtml(issue.title)}</div>`;
         }
 
         document.getElementById('issueSub').textContent =
@@ -364,8 +358,21 @@
         if (isAuthor || editableSections.length > 0) {
           btns.push(`<a href="write.html?id=${issueId}&mode=edit" class="btn primary" style="text-decoration:none">✏️ 편집</a>`);
         }
+        if (isAuthor) {
+          btns.push(`<button class="btn" style="border-color:#fca5a5;color:#dc2626" onclick="confirmDelete()">🗑 삭제</button>`);
+        }
       }
       div.innerHTML = btns.join('');
+    }
+
+    async function confirmDelete() {
+      if (!confirm('이 이슈를 삭제하시겠습니까?')) return;
+      try {
+        const res = await api(`/issues/${issueId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        location.href = 'issues.html';
+      } catch (e) { showToast(e.message || '삭제 실패', 'error'); }
     }
 
     /* ── 기사 본문 패널 버튼 ── */
