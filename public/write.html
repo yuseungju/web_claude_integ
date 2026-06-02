@@ -140,7 +140,10 @@
       display: block;
     }
     .ai-panel-body::placeholder { color: var(--text-muted); font-style: italic; }
-    .ai-panel-body[readonly] { background: #fafafa; cursor: default; }
+    .ai-panel-body[readonly] {
+      background: #fafafa; cursor: default;
+      color: var(--text-primary); font-size: 0.92rem; line-height: 2;
+    }
     .btn-panel-sm {
       padding: 0.2rem 0.6rem; border: 1px solid #c4b5fd; background: #fff;
       border-radius: var(--radius-sm); font-size: 0.7rem; font-weight: 600;
@@ -371,6 +374,10 @@
     /* ── 섹션 렌더링 ── */
     function renderSections() {
       const editMode = isEditMode || !issueId;
+      if (!editMode) {
+        document.getElementById('sectionsWrap').style.display = 'none';
+        return;
+      }
       document.getElementById('sectionsWrap').innerHTML = LABELS.map((label, i) => {
         const n        = i + 1;
         const editable = editMode && editableSections.includes(n);
@@ -515,6 +522,10 @@
 
     /* ── 저장 ── */
     async function saveIssue(isDraft = true) {
+      if (!isDraft && getArticleContent().trim().length < 10) {
+        showToast('기사 본문을 10자 이상 입력해야 완료할 수 있습니다.', 'error');
+        return;
+      }
       const saveBtn    = document.getElementById('btnSave');
       const completeBtn = document.getElementById('btnComplete');
       const activeBtn  = isDraft ? saveBtn : completeBtn;
