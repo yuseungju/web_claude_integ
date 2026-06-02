@@ -827,9 +827,8 @@
       if (!editMode || !issueId) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
       bar.innerHTML = `
-        <button class="btn" id="btnSearchRelated" onclick="searchRelatedArticles()">🔍 관련글 검색</button>
+        <button class="btn" id="btnSearchRelated" onclick="searchRelatedArticles()">🔗 관련글 가져오기</button>
         <button class="btn" id="btnAutoFill" onclick="autoFillSections()" disabled title="참고링크를 먼저 가져오세요">🤖 섹션 자동채우기</button>`;
-      // 이미 링크가 있으면 활성화
       if (editableRefLinks.length) updateAutoFillBtnState();
     }
 
@@ -855,6 +854,7 @@
             const inp = document.getElementById(`secLabel${r.no}`);
             if (inp) inp.value = r.label;
           }
+          onSecInput(r.no); // 내용 채워졌으니 AI 버튼 활성화
         }
         showToast('섹션 자동채우기 완료!', 'success');
       } catch (e) {
@@ -864,44 +864,28 @@
       }
     }
 
-    /* ── 관련글 검색 ── */
-    async function searchRelatedArticles() {
-      const btn   = document.getElementById('btnSearchRelated');
-      const panel = document.getElementById('relatedPanel');
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ 검색 중...'; btn.style.color = ''; }
-      panel.style.display = '';
-      panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글 <span style="font-size:.67rem;color:var(--text-muted);font-weight:400">현재 제목 기준 검색 중...</span></div>`;
-      try {
-        const res = await api(`/issues/${issueId}/search-related`, { method: 'POST' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        const items = data.items || [];
-        relatedItemsCache = items;
-        // 검색 결과 + AI 생성 참고링크 합치기 (URL 중복 제거)
-        const combined = [...items.map(i => ({ title: i.title, url: i.url, pubDate: i.pubDate || '' })), ...savedRefLinks];
-        const seen = new Set();
-        editableRefLinks = combined.filter(l => { if (seen.has(l.url)) return false; seen.add(l.url); return true; });
-        renderEditRefPanel();
-        if (!items.length) {
-          if (btn) { btn.disabled = false; btn.textContent = '🔍 관련글 검색'; }
-          return;
-        }
-        if (btn) {
-          btn.disabled = false;
-          btn.textContent = `🔍 관련글 ${items.length}건 ✓`;
+    /* ── 관련글 가져오기 (저장된 참고링크 복원) ── */
+    function searchRelatedArticles() {
+      if (editableRefLinks.length > 0) {
+        if (!confirm('현재 참고링크 목록을 초기화하고 원래 목록으로 복원하시겠습니까?')) return;
+      }
+      // API 호출 없이 저장된 참고링크 복원
+      editableRefLinks = savedRefLinks.map(l => ({ ...l }));
+      renderEditRefPanel();
+      const btn = document.getElementById('btnSearchRelated');
+      if (btn) {
+        const n = editableRefLinks.length;
+        if (n) {
+          btn.textContent = `🔗 가져오기 완료 (${n}건)`;
           btn.style.color = '#065f46';
           btn.style.borderColor = 'var(--success)';
           btn.style.background = 'var(--success-light)';
+        } else {
+          btn.textContent = '🔗 관련글 가져오기';
+          btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = '';
         }
-        // 제목 변경 시 버튼 초기화 (다시 검색 유도)
-        document.getElementById('titleInput')?.addEventListener('input', () => {
-          const b = document.getElementById('btnSearchRelated');
-          if (b) { b.textContent = '🔍 관련글 검색'; b.style.color = ''; b.style.borderColor = ''; b.style.background = ''; }
-        }, { once: false });
-      } catch (e) {
-        panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--danger)">${escHtml(e.message || '검색 실패')}</div>`;
-        if (btn) { btn.disabled = false; btn.textContent = '🔍 관련글 검색'; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
       }
+      if (!savedRefLinks.length) showToast('저장된 참고링크가 없습니다. AI 이슈 만들기로 생성된 이슈에만 있습니다.', 'info');
     }
 
     /* ── 섹션 AI 작성 ── */
