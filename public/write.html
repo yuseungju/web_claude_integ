@@ -915,28 +915,52 @@
       }
     }
 
-    /* ── 관련글 가져오기 (저장된 참고링크 복원) ── */
-    function searchRelatedArticles() {
-      if (editableRefLinks.length > 0) {
-        if (!confirm('현재 참고링크 목록을 초기화하고 원래 목록으로 복원하시겠습니까?')) return;
-      }
-      // API 호출 없이 저장된 참고링크 복원
-      editableRefLinks = savedRefLinks.map(l => ({ ...l }));
-      renderEditRefPanel();
+    /* ── 관련글 가져오기 ── */
+    async function searchRelatedArticles() {
       const btn = document.getElementById('btnSearchRelated');
-      if (btn) {
-        const n = editableRefLinks.length;
-        if (n) {
-          btn.textContent = `🔗 가져오기 완료 (${n}건)`;
-          btn.style.color = '#065f46';
-          btn.style.borderColor = 'var(--success)';
-          btn.style.background = 'var(--success-light)';
-        } else {
-          btn.textContent = '🔗 관련글 가져오기';
-          btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = '';
+
+      if (savedRefLinks.length > 0) {
+        // AI 이슈 생성 시 저장된 링크가 있으면 복원
+        if (editableRefLinks.length > 0) {
+          if (!confirm('현재 참고링크 목록을 초기화하고 원래 목록으로 복원하시겠습니까?')) return;
         }
+        editableRefLinks = savedRefLinks.map(l => ({ ...l }));
+        renderEditRefPanel();
+        if (btn) {
+          btn.textContent = `🔗 가져오기 완료 (${editableRefLinks.length}건)`;
+          btn.style.color = '#065f46'; btn.style.borderColor = 'var(--success)'; btn.style.background = 'var(--success-light)';
+        }
+        return;
       }
-      if (!savedRefLinks.length) showToast('저장된 참고링크가 없습니다. AI 이슈 만들기로 생성된 이슈에만 있습니다.', 'info');
+
+      // 저장된 링크 없음 → 제목 핵심 키워드로 검색
+      if (editableRefLinks.length > 0) {
+        if (!confirm('현재 참고링크 목록을 초기화하고 새로 검색하시겠습니까?')) return;
+      }
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ 검색 중...'; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
+      renderEditRefPanel(); // 로딩 상태
+
+      try {
+        const res = await api(`/issues/${issueId}/search-related`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        const items = data.items || [];
+        editableRefLinks = items.map(i => ({ title: i.title, url: i.url, pubDate: i.pubDate || '' }));
+        renderEditRefPanel();
+        if (btn) {
+          btn.disabled = false;
+          if (items.length) {
+            btn.textContent = `🔗 가져오기 완료 (${items.length}건)`;
+            btn.style.color = '#065f46'; btn.style.borderColor = 'var(--success)'; btn.style.background = 'var(--success-light)';
+          } else {
+            btn.textContent = '🔗 관련글 가져오기';
+            showToast('관련 기사를 찾지 못했습니다.', 'info');
+          }
+        }
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.textContent = '🔗 관련글 가져오기'; }
+        showToast(e.message || '검색 실패', 'error');
+      }
     }
 
     /* ── 섹션 AI 작성 ── */
