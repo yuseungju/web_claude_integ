@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
     /* ── 페이지 너비 ── */
-    .container { max-width: min(90vw, 1600px); }
+    .container { max-width: 96%; padding-left: 1rem; padding-right: 1rem; }
 
     /* ── 공통 버튼 ── */
     .btn {
@@ -284,6 +284,7 @@
       try {
         const headers = isLoggedIn ? { Authorization: `Bearer ${getToken()}` } : {};
         const res = await fetch(API + '/issues/' + issueId, { headers });
+        if (res.status === 403) { location.href = 'index.html'; return; }
         if (!res.ok) throw new Error();
         const { issue, sections, editors: eds } = await res.json();
 

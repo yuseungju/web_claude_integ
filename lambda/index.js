@@ -169,13 +169,24 @@ async function createIssue(event) {
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
-// 비로그인 공개, editors 정보 포함
+// 완료 이슈: 비로그인 조회 가능 / 초안: 작성자·편집자만
 async function getIssue(event, id) {
+  const user = verifyToken(event);
   try {
     const ir = await pool.query(
       'SELECT i.*, u.name AS author FROM issues i JOIN users u ON i.user_id=u.id WHERE i.id=$1', [id]
     );
     if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
+
+    if (ir.rows[0].is_draft) {
+      if (!user) return resp(403, { error: '로그인이 필요합니다.' });
+      if (ir.rows[0].user_id !== user.id) {
+        const ed = await pool.query(
+          'SELECT id FROM issue_section_editors WHERE issue_id=$1 AND user_id=$2', [id, user.id]
+        );
+        if (!ed.rows.length) return resp(403, { error: '조회 권한이 없습니다.' });
+      }
+    }
 
     const sr = await pool.query(
       'SELECT section_no, content FROM issue_sections WHERE issue_id=$1 ORDER BY section_no', [id]
