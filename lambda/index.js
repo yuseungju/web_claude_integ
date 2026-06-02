@@ -541,17 +541,35 @@ async function aiTopic(event) {
     });
 
     const generatedTitle = topicMsg.content[0].text.trim();
-    const reasonLines = [];
 
-    // 링크가 있는 항목만 참고자료로 저장 (날짜순, 관련 이유 포함)
-    const refLinks = items
+    // 생성된 제목 키워드로 2차 RSS 검색 → 제목별 고유 참고링크 확보
+    let refSourceItems = items; // 기본: 분류 기반 결과
+    try {
+      const titleWords = generatedTitle.split(/\s+/).slice(0, 4).join(' ');
+      const tq = encodeURIComponent(titleWords);
+      const titleRss = await fetchUrl(`https://news.google.com/rss/search?q=${tq}&hl=ko&gl=KR&ceid=KR:ko`);
+      const titleItems = [];
+      const tRe = /<item>([\s\S]*?)<\/item>/g;
+      let tm;
+      while ((tm = tRe.exec(titleRss)) !== null && titleItems.length < 20) {
+        const xml = tm[1];
+        const tM  = xml.match(/<title>([\s\S]*?)<\/title>/);
+        const lM  = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+        const dM  = xml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
+        if (!tM) continue;
+        const t = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
+        const l = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+        const d = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+        if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) {
+          titleItems.push({ title: t, link: l, pubDate: d });
+        }
+      }
+      if (titleItems.length >= 3) refSourceItems = titleItems; // 충분히 있으면 제목 기반으로 교체
+    } catch {}
+
+    const refLinks = refSourceItems
       .filter(i => i.link && /^https?:\/\//i.test(i.link))
-      .map((i, idx) => ({
-        title: i.title,
-        url: i.link,
-        pubDate: i.pubDate || '',
-        reason: reasonLines[idx] || '',
-      }));
+      .map(i => ({ title: i.title, url: i.link, pubDate: i.pubDate || '' }));
 
     let r;
     try {
