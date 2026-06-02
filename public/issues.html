@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이슈보드</title>
+  <link rel="stylesheet" href="assets/css/common.css" />
+  <style>
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.6rem;
+    }
+    .toolbar-title { font-size: 1.15rem; font-weight: 800; }
+    .toolbar-btns  { display: flex; gap: 0.5rem; }
+
+    .btn {
+      padding: 0.48rem 1rem; border-radius: var(--radius-sm);
+      font-size: 0.84rem; font-weight: 700; cursor: pointer;
+      border: 1.5px solid var(--border); background: var(--bg-card);
+      color: var(--text-secondary); transition: all 0.15s;
+      font-family: var(--font-sans);
+    }
+    .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
+    .btn.ai { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+    .btn.ai:hover:not(:disabled) { background: #6d28d9; border-color: #6d28d9; }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* 테이블 */
+    .issue-table { width: 100%; border-collapse: collapse; background: var(--bg-card); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+    .issue-table th {
+      padding: 0.7rem 1rem; text-align: left; font-size: 0.78rem; font-weight: 700;
+      color: var(--text-secondary); background: var(--bg); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .issue-table td {
+      padding: 0.8rem 1rem; font-size: 0.88rem; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .issue-table tr:last-child td { border-bottom: none; }
+    .issue-table tbody tr:hover { background: var(--primary-light); }
+
+    .col-title  { width: auto; }
+    .col-author { width: 120px; white-space: nowrap; }
+    .col-date   { width: 110px; white-space: nowrap; color: var(--text-muted); font-size: 0.8rem; }
+    .col-status { width: 70px; text-align: center; }
+
+    .title-link {
+      color: var(--text-primary); text-decoration: none; font-weight: 600;
+      display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .title-link:hover { color: var(--primary); }
+
+    .badge {
+      display: inline-block; font-size: 0.68rem; padding: 0.15rem 0.5rem;
+      border-radius: 100px; font-weight: 700;
+    }
+    .badge-draft { background: var(--warning-light); color: #92400e; }
+    .badge-done  { background: var(--success-light);  color: #065f46; }
+
+    /* 인라인 입력 행 */
+    .inline-row td { background: var(--primary-light); padding: 0.5rem 1rem; }
+    .inline-input {
+      width: 100%; padding: 0.5rem 0.7rem; border: 1.5px solid var(--primary);
+      border-radius: var(--radius-sm); font-size: 0.88rem; font-family: var(--font-sans);
+      background: #fff; outline: none; color: var(--text-primary);
+    }
+    .inline-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+    .btn-sm {
+      padding: 0.35rem 0.8rem; border-radius: var(--radius-sm); font-size: 0.78rem;
+      font-weight: 700; cursor: pointer; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--text-secondary); font-family: var(--font-sans);
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .btn-sm.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-sm.primary:hover { background: var(--primary-dark); }
+    .btn-sm:hover { border-color: var(--text-secondary); }
+
+    .empty-state { text-align: center; padding: 3.5rem 1rem; color: var(--text-muted); }
+    .empty-state .empty-icon { font-size: 2.5rem; display: block; margin-bottom: 0.8rem; }
+    .empty-state p { font-size: 0.88rem; }
+    .loading { text-align: center; padding: 3rem; color: var(--text-muted); font-size: 0.88rem; }
+  </style>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <div class="header-logo">
+            <span class="logo-icon">📋</span>
+            <span class="logo-text">이슈보드</span>
+          </div>
+        </div>
+        <div id="headerUser"></div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="toolbar">
+        <span class="toolbar-title">이슈 목록</span>
+        <div class="toolbar-btns">
+          <button class="btn ai" id="btnAI" onclick="addAIIssue()">🤖 AI 이슈 만들기</button>
+          <button class="btn primary" onclick="addInlineRow()">✏️ 이슈 만들기</button>
+        </div>
+      </div>
+
+      <div id="tableWrap" class="loading">불러오는 중...</div>
+    </main>
+
+    <footer class="app-footer">
+      <p>© 2025 이슈보드 · Powered by Claude AI</p>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="assets/js/auth.js"></script>
+  <script>
+    if (!requireAuth()) { /* redirected */ }
+    else {
+      renderHeader('#headerUser');
+      loadIssues();
+    }
+
+    let issuesData = [];
+
+    async function loadIssues() {
+      const wrap = document.getElementById('tableWrap');
+      try {
+        const res = await api('/issues');
+        if (!res.ok) throw new Error();
+        const { issues } = await res.json();
+        issuesData = issues;
+        renderTable(issues);
+      } catch {
+        wrap.innerHTML = '<div class="empty-state"><span class="empty-icon">⚠️</span><p>목록을 불러오지 못했습니다.</p></div>';
+      }
+    }
+
+    function renderTable(issues) {
+      const wrap = document.getElementById('tableWrap');
+      wrap.innerHTML = `
+        <table class="issue-table">
+          <thead>
+            <tr>
+              <th class="col-title">제목</th>
+              <th class="col-author">작성자</th>
+              <th class="col-date">작성일</th>
+              <th class="col-status">상태</th>
+            </tr>
+          </thead>
+          <tbody id="issueBody">
+            ${issues.length === 0 ? `<tr><td colspan="4"><div class="empty-state"><span class="empty-icon">📄</span><p>이슈가 없습니다.<br>새 이슈를 만들어보세요.</p></div></td></tr>` : issues.map(renderRow).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function renderRow(issue) {
+      const date = new Date(issue.created_at).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit' });
+      const badge = issue.is_draft
+        ? '<span class="badge badge-draft">작성중</span>'
+        : '<span class="badge badge-done">완료</span>';
+      return `
+        <tr>
+          <td class="col-title"><a href="write.html?id=${issue.id}" class="title-link">${escHtml(issue.title)}</a></td>
+          <td class="col-author">${escHtml(issue.author)}</td>
+          <td class="col-date">${date}</td>
+          <td class="col-status">${badge}</td>
+        </tr>`;
+    }
+
+    function addInlineRow() {
+      if (document.getElementById('inlineRow')) {
+        document.getElementById('inlineTitle').focus();
+        return;
+      }
+      ensureTable();
+      const tbody = document.getElementById('issueBody');
+      const tr = document.createElement('tr');
+      tr.id = 'inlineRow';
+      tr.className = 'inline-row';
+      tr.innerHTML = `
+        <td class="col-title">
+          <input type="text" id="inlineTitle" class="inline-input" placeholder="이슈 제목을 입력하세요" maxlength="200" />
+        </td>
+        <td colspan="2"></td>
+        <td class="col-status">
+          <div class="inline-actions">
+            <button class="btn-sm primary" onclick="saveInlineIssue()">저장</button>
+            <button class="btn-sm" onclick="cancelInlineRow()">취소</button>
+          </div>
+        </td>`;
+      tbody.insertBefore(tr, tbody.firstChild);
+      document.getElementById('inlineTitle').focus();
+      document.getElementById('inlineTitle').addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveInlineIssue();
+        if (e.key === 'Escape') cancelInlineRow();
+      });
+    }
+
+    function ensureTable() {
+      const wrap = document.getElementById('tableWrap');
+      if (!wrap.querySelector('.issue-table')) renderTable([]);
+    }
+
+    function cancelInlineRow() {
+      const row = document.getElementById('inlineRow');
+      if (row) row.remove();
+    }
+
+    async function saveInlineIssue() {
+      const title = document.getElementById('inlineTitle')?.value.trim();
+      if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
+      try {
+        const res = await api('/issues', { method: 'POST', body: JSON.stringify({ title }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        cancelInlineRow();
+        issuesData.unshift(data.issue);
+        renderTable(issuesData);
+        showToast('이슈가 추가됐습니다.', 'success');
+      } catch (e) { showToast(e.message || '저장 실패', 'error'); }
+    }
+
+    async function addAIIssue() {
+      const btn = document.getElementById('btnAI');
+      btn.disabled = true; btn.textContent = '⏳ AI 검색 중...';
+      try {
+        const res = await api('/topics/ai', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        issuesData.unshift(data.issue);
+        renderTable(issuesData);
+        showToast(`AI 이슈 추가: ${data.issue.title}`, 'success');
+      } catch (e) { showToast(e.message || 'AI 이슈 추가 실패', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '🤖 AI 이슈 만들기'; }
+    }
+
+    function escHtml(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    let toastTimer;
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.className = `toast ${type}`, 2800);
+    }
+  </script>
+</body>
+</html>

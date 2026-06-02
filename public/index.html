@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>기사 작성기</title>
+  <title>이슈보드 – 로그인</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
     body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
@@ -28,8 +28,7 @@
       padding: 0.65rem 0.9rem; border: 1.5px solid var(--border);
       border-radius: var(--radius-sm); font-size: 0.88rem;
       font-family: var(--font-sans); outline: none;
-      background: var(--bg); color: var(--text-primary);
-      transition: border-color 0.15s;
+      background: var(--bg); color: var(--text-primary); transition: border-color 0.15s;
     }
     .field input:focus { border-color: var(--primary); background: #fff; }
     .field input.ok  { border-color: var(--success); }
@@ -43,15 +42,14 @@
       padding: 0 0.9rem; white-space: nowrap;
       border: 1.5px solid var(--primary); background: #fff;
       border-radius: var(--radius-sm); font-size: 0.78rem;
-      font-weight: 700; cursor: pointer; color: var(--primary);
-      transition: all 0.15s; flex-shrink: 0;
+      font-weight: 700; cursor: pointer; color: var(--primary); transition: all 0.15s; flex-shrink: 0;
     }
     .btn-check:hover { background: var(--primary); color: #fff; }
     .btn-submit {
       width: 100%; padding: 0.75rem; background: var(--primary);
       color: #fff; border: none; border-radius: var(--radius-sm);
       font-size: 0.92rem; font-weight: 700; cursor: pointer;
-      transition: background 0.15s; margin-top: 0.5rem;
+      transition: background 0.15s; margin-top: 0.5rem; font-family: var(--font-sans);
     }
     .btn-submit:hover:not(:disabled) { background: var(--primary-dark); }
     .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -67,20 +65,17 @@
 <body>
   <div class="auth-wrap">
     <div class="auth-logo">
-      <span class="logo-icon">📰</span>
-      <h1>기사 작성기</h1>
-      <p>AI 기반 기사 작성 플랫폼</p>
+      <span class="logo-icon">📋</span>
+      <h1>이슈보드</h1>
+      <p>AI 기반 이슈 관리 플랫폼</p>
     </div>
-
     <div class="auth-card">
       <div class="auth-tabs">
         <div class="auth-tab active" id="tabLogin" onclick="switchTab('login')">로그인</div>
         <div class="auth-tab" id="tabRegister" onclick="switchTab('register')">회원가입</div>
       </div>
-
       <div id="msgBox" class="msg-box"></div>
 
-      <!-- 로그인 폼 -->
       <form id="loginForm" class="form-group" onsubmit="doLogin(event)">
         <div class="field">
           <label>이메일</label>
@@ -93,7 +88,6 @@
         <button type="submit" class="btn-submit" id="btnLogin">로그인</button>
       </form>
 
-      <!-- 회원가입 폼 -->
       <form id="registerForm" class="form-group" style="display:none" onsubmit="doRegister(event)">
         <div class="field">
           <label>이름</label>
@@ -131,8 +125,7 @@
     const API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
     let emailChecked = false;
 
-    // 이미 로그인 상태면 대시보드로
-    if (localStorage.getItem('token')) window.location.href = 'dashboard.html';
+    if (localStorage.getItem('token')) window.location.href = 'issues.html';
 
     function switchTab(tab) {
       const isLogin = tab === 'login';
@@ -152,7 +145,6 @@
       el.textContent = ''; el.className = 'msg-box';
     }
 
-    // 비밀번호 규칙
     function updatePwRules() {
       const pw = document.getElementById('regPw').value;
       document.getElementById('pwRules').classList.toggle('show', pw.length > 0);
@@ -168,14 +160,10 @@
       const c  = document.getElementById('regPwConfirm').value;
       const hint = document.getElementById('pwHint');
       if (!c) { hint.className = 'field-hint'; hint.textContent = ''; return; }
-      if (pw === c) {
-        hint.className = 'field-hint ok'; hint.textContent = '비밀번호가 일치합니다.';
-      } else {
-        hint.className = 'field-hint err'; hint.textContent = '비밀번호가 일치하지 않습니다.';
-      }
+      if (pw === c) { hint.className = 'field-hint ok'; hint.textContent = '비밀번호가 일치합니다.'; }
+      else          { hint.className = 'field-hint err'; hint.textContent = '비밀번호가 일치하지 않습니다.'; }
     }
 
-    // 이메일 중복확인
     function resetEmailCheck() {
       emailChecked = false;
       const hint = document.getElementById('emailHint');
@@ -207,7 +195,6 @@
       } catch { hint.className = 'field-hint err'; hint.textContent = '확인 중 오류가 발생했습니다.'; }
     }
 
-    // 로그인
     async function doLogin(e) {
       e.preventDefault();
       const btn = document.getElementById('btnLogin');
@@ -224,12 +211,11 @@
         if (!res.ok) { showMsg(data.error || '로그인 실패', 'error'); return; }
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = 'dashboard.html';
+        window.location.href = 'issues.html';
       } catch { showMsg('서버 연결 오류', 'error'); }
       finally { btn.disabled = false; btn.textContent = '로그인'; }
     }
 
-    // 회원가입
     async function doRegister(e) {
       e.preventDefault();
       if (!emailChecked) { showMsg('이메일 중복확인을 해주세요.', 'error'); return; }
@@ -237,7 +223,6 @@
       const pw2 = document.getElementById('regPwConfirm').value;
       if (pw !== pw2) { showMsg('비밀번호가 일치하지 않습니다.', 'error'); return; }
       if (pw.length < 8) { showMsg('비밀번호는 8자 이상이어야 합니다.', 'error'); return; }
-
       const btn = document.getElementById('btnRegister');
       btn.disabled = true; btn.textContent = '처리 중...';
       try {

@@ -36,7 +36,7 @@ body {
 
 /* ── App Shell ─────────────────────────────────────────── */
 .app-wrap    { display: flex; flex-direction: column; min-height: 100vh; }
-.container   { max-width: 1300px; margin: 0 auto; padding: 2rem 1.5rem; flex: 1; }
+.container   { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; flex: 1; }
 
 /* ── App Header ────────────────────────────────────────── */
 .app-header {
@@ -45,13 +45,42 @@ body {
   padding: 0.65rem 0;
   box-shadow: var(--shadow-md);
 }
-.header-inner  { max-width: 1300px; margin: 0 auto; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.7rem; }
+.header-inner  { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem; display: flex; align-items: center; gap: 0.7rem; }
 .header-inner > .header-left { margin-right: auto; }
 .header-left   { display: flex; flex-direction: column; }
 .header-logo   { display: flex; align-items: center; gap: 0.45rem; }
 .logo-icon     { font-size: 1.15rem; }
 .logo-text     { font-size: 1.1rem; font-weight: 700; letter-spacing: -.3px; }
-.header-sub    { font-size: 0.73rem; opacity: 0.75; margin-top: 0.1rem; }
+.back-link     { color: #fff; text-decoration: none; display: flex; align-items: center; gap: 0.45rem; }
+.back-link:hover { opacity: 0.85; }
+
+/* ── Header User ───────────────────────────────────────── */
+.header-user { display: flex; align-items: center; gap: 0.7rem; }
+.header-username { font-size: 0.88rem; font-weight: 600; opacity: 0.95; }
+.btn-logout {
+  padding: 0.28rem 0.8rem;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: var(--font-sans);
+}
+.btn-logout:hover { background: rgba(255,255,255,0.28); }
+
+/* ── Page Header ───────────────────────────────────────── */
+.page-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.back-btn {
+  color: var(--text-secondary); text-decoration: none; font-size: 0.85rem;
+  padding: 0.3rem 0.7rem; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-card); transition: all 0.15s;
+  white-space: nowrap;
+}
+.back-btn:hover { border-color: var(--primary); color: var(--primary); }
+.page-title { font-size: 1.2rem; font-weight: 800; }
 
 /* ── Card ──────────────────────────────────────────────── */
 .card {
@@ -73,20 +102,6 @@ body {
   gap: 0.5rem;
   flex-wrap: wrap;
 }
-
-/* ── Status Bar ────────────────────────────────────────── */
-.status-bar {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  padding: 0.7rem 1rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  font-weight: 500;
-}
-.status-bar.success { background: var(--success-light); color: #065f46; }
-.status-bar.error   { background: var(--danger-light);  color: #991b1b; }
-.status-bar.info    { background: var(--primary-light); color: var(--primary-dark); }
 
 /* ── App Footer ────────────────────────────────────────── */
 .app-footer {
@@ -114,4 +129,5 @@ body {
 
 @media (max-width: 600px) {
   .header-inner { padding: 0 0.85rem; }
+  .container    { padding: 1.25rem 1rem; }
 }
