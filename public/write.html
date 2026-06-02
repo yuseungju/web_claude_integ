@@ -175,6 +175,31 @@
       word-break: break-word;
     }
 
+    /* ── 참고자료 패널 ── */
+    .ref-panel {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 0.7rem 1rem;
+      margin-bottom: 1rem; box-shadow: var(--shadow-sm);
+    }
+    .ref-panel-title {
+      font-size: 0.73rem; font-weight: 700; color: var(--text-secondary);
+      margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.3rem;
+    }
+    .ref-list {
+      list-style: none; display: flex; flex-direction: column; gap: 0.18rem;
+      max-height: 200px; overflow-y: auto;
+    }
+    .ref-list li { display: flex; align-items: baseline; gap: 0.3rem; }
+    .ref-list li::before {
+      content: '•'; color: var(--text-muted); font-size: 0.65rem; flex-shrink: 0;
+    }
+    .ref-list a {
+      font-size: 0.75rem; color: var(--primary); text-decoration: none;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      flex: 1; min-width: 0; transition: opacity 0.12s;
+    }
+    .ref-list a:hover { text-decoration: underline; opacity: 0.75; }
+
     /* ── 반응형 ── */
     @media (max-width: 768px) {
       .issue-meta { padding: 0.75rem 1rem; }
@@ -234,6 +259,9 @@
         </div>
         <div id="topActions" style="display:flex;gap:0.4rem;flex-shrink:0;flex-wrap:wrap"></div>
       </div>
+
+      <!-- 참고자료 패널 (편집 모드) -->
+      <div class="ref-panel" id="refPanel" style="display:none"></div>
 
       <!-- 섹션 -->
       <div class="sections-wrap" id="sectionsWrap"></div>
@@ -336,6 +364,7 @@
           `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')}`;
 
         renderTopActions(issue);
+        renderRefLinks(issue.reference_links);
         renderSections();
         renderActionBar();
 
@@ -363,6 +392,19 @@
         }
       }
       div.innerHTML = btns.join('');
+    }
+
+    function renderRefLinks(links) {
+      const panel = document.getElementById('refPanel');
+      if (!panel) return;
+      const editMode = isEditMode || !issueId;
+      if (!editMode || !Array.isArray(links) || !links.length) { panel.style.display = 'none'; return; }
+      panel.style.display = '';
+      panel.innerHTML = `
+        <div class="ref-panel-title">📎 참고자료 (${links.length}건)</div>
+        <ul class="ref-list">
+          ${links.map(l => `<li><a href="${l.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title)}</a></li>`).join('')}
+        </ul>`;
     }
 
     async function confirmDelete() {

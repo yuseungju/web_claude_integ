@@ -392,16 +392,22 @@ async function aiTopic(event) {
     const q = encodeURIComponent(`${category} ${extra}`);
     const rss = await fetchUrl(`https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`);
 
-    const titles = [];
-    const re = /<item>[\s\S]*?<title>([\s\S]*?)<\/title>/g;
-    let m;
-    while ((m = re.exec(rss)) !== null && titles.length < 25) {
-      const t = m[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
-      if (t && !t.toLowerCase().includes('google')) titles.push(t);
+    // 제목 + 링크 함께 파싱
+    const items = [];
+    const itemRe = /<item>([\s\S]*?)<\/item>/g;
+    let im;
+    while ((im = itemRe.exec(rss)) !== null && items.length < 30) {
+      const xml = im[1];
+      const tM = xml.match(/<title>([\s\S]*?)<\/title>/);
+      const lM = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+      if (!tM) continue;
+      const title = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
+      const link  = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      if (title && !title.toLowerCase().includes('google')) items.push({ title, link });
     }
-    if (!titles.length) throw new Error('뉴스를 가져올 수 없습니다.');
+    if (!items.length) throw new Error('뉴스를 가져올 수 없습니다.');
 
-    const shuffled = titles.sort(() => Math.random() - 0.5).slice(0, 12);
+    const shuffled = [...items].sort(() => Math.random() - 0.5).slice(0, 12);
     const existing = await pool.query('SELECT title FROM issues ORDER BY created_at DESC LIMIT 20');
     const existingTitles = existing.rows.map(r => r.title).join('\n');
 
@@ -410,14 +416,18 @@ async function aiTopic(event) {
       max_tokens: 150,
       messages: [{
         role: 'user',
-        content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.join('\n')}`
+        content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.map(i => i.title).join('\n')}`
       }]
     });
 
     const title = msg.content[0].text.trim();
+    // 링크가 있는 항목만 참고자료로 저장
+    const refLinks = items.filter(i => i.link && /^https?:\/\//i.test(i.link))
+                          .map(i => ({ title: i.title, url: i.link }));
+
     const r = await pool.query(
-      'INSERT INTO issues (user_id,title,category,is_draft) VALUES($1,$2,$3,TRUE) RETURNING id,title,category,created_at',
-      [user.id, title, category]
+      'INSERT INTO issues (user_id,title,category,is_draft,reference_links) VALUES($1,$2,$3,TRUE,$4) RETURNING id,title,category,created_at',
+      [user.id, title, category, JSON.stringify(refLinks)]
     );
     return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
   } catch (e) { console.error(e); return resp(500, { error: e.message || 'AI 주제 생성 실패' }); }
