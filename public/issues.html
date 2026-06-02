@@ -109,7 +109,7 @@
     .col-no       { width: 42px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
     .col-title    { width: auto; }
     .col-category { width: 62px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); }
-    .col-views    { width: 52px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
+    .col-views    { width: 88px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
     .col-author   { width: 80px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; }
     .col-date     { width: 82px; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
     .col-status   { width: 58px; text-align: center; white-space: nowrap; }
@@ -470,7 +470,7 @@
           </div>
         </td>
         <td class="col-category">${escHtml(issue.category || '문화')}</td>
-        <td class="col-views">${issue.view_count || 0}</td>
+        <td class="col-views">👁 ${issue.view_count || 0} &nbsp;👍 ${issue.likes || 0}</td>
         <td class="col-author">${escHtml(issue.author)}</td>
         <td class="col-date">${date}</td>
         <td class="col-status">${badge}</td>
