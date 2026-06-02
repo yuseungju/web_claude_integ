@@ -553,10 +553,19 @@ async function aiTopic(event) {
         reason: reasonLines[idx] || '',
       }));
 
-    const r = await pool.query(
-      'INSERT INTO issues (user_id,title,category,is_draft,reference_links) VALUES($1,$2,$3,TRUE,$4) RETURNING id,title,category,created_at',
-      [user.id, generatedTitle, category, JSON.stringify(refLinks)]
-    );
+    let r;
+    try {
+      r = await pool.query(
+        'INSERT INTO issues (user_id,title,category,is_draft,reference_links) VALUES($1,$2,$3,TRUE,$4) RETURNING id,title,category,created_at',
+        [user.id, generatedTitle, category, JSON.stringify(refLinks)]
+      );
+    } catch {
+      // reference_links 컬럼 없을 때 fallback
+      r = await pool.query(
+        'INSERT INTO issues (user_id,title,category,is_draft) VALUES($1,$2,$3,TRUE) RETURNING id,title,category,created_at',
+        [user.id, generatedTitle, category]
+      );
+    }
     return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
   } catch (e) { console.error(e); return resp(500, { error: e.message || 'AI 주제 생성 실패' }); }
 }
