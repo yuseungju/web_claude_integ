@@ -489,99 +489,63 @@ async function aiTopic(event) {
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
     const body = getBody(event);
-    const category = body.category || '문화';
+    const userTitle = (body.userTitle || '').trim();
+    const category  = body.category || '문화';
+    if (!userTitle) return resp(400, { error: '제목을 입력하세요.' });
 
-    // 분류별 보조 검색어 (RSS 최신성 확보)
-    const catExtra = {
-      '문화': '예술 공연 전시',   '정치': '국회 정책 정부',
-      '경제': '산업 금융 주식',   '사회': '사건 복지 환경',
-      '스포츠': '축구 야구 올림픽','연예': '드라마 K팝 영화',
-      'IT/과학': '인공지능 기술 연구','국제': '외교 세계 해외',
-      '교육': '학교 입시 대학',   '건강': '의료 병원 질병',
-    };
-    const extra = catExtra[category] || category;
-    const q = encodeURIComponent(`${category} ${extra}`);
+    // 1. Haiku로 핵심 키워드 추출
+    let keywords = userTitle.split(/\s+/).slice(0, 4).join(' ');
+    try {
+      const kwMsg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 40,
+        messages: [{ role: 'user', content: `기사 제목에서 검색에 유용한 핵심 명사 4개만 추출. 구체적 고유명사·전문용어 위주. 띄어쓰기로만 구분해서 단어들만 출력.\n제목: ${userTitle}` }]
+      });
+      keywords = kwMsg.content[0].text.trim().replace(/,/g, ' ').replace(/\s+/g, ' ');
+    } catch {}
+
+    // 2. RSS 검색 (최신순)
+    const q = encodeURIComponent(keywords);
     const rss = await fetchUrl(`https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`);
-
-    // 제목 + 링크 함께 파싱
     const items = [];
     const itemRe = /<item>([\s\S]*?)<\/item>/g;
     let im;
-    while ((im = itemRe.exec(rss)) !== null && items.length < 30) {
+    while ((im = itemRe.exec(rss)) !== null && items.length < 25) {
       const xml = im[1];
       const tM  = xml.match(/<title>([\s\S]*?)<\/title>/);
       const lM  = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
       const dM  = xml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
       if (!tM) continue;
-      const title   = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
-      const link    = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-      const pubDate = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-      if (title && !title.toLowerCase().includes('google')) items.push({ title, link, pubDate });
+      const t = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
+      const l = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      const d = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) items.push({ title: t, link: l, pubDate: d });
     }
-    if (!items.length) throw new Error('뉴스를 가져올 수 없습니다.');
+    items.sort((a, b) => (b.pubDate ? new Date(b.pubDate) : 0) - (a.pubDate ? new Date(a.pubDate) : 0));
 
-    // 날짜순 정렬 (최신 상단)
-    items.sort((a, b) => {
-      const da = a.pubDate ? new Date(a.pubDate) : 0;
-      const db = b.pubDate ? new Date(b.pubDate) : 0;
-      return db - da;
-    });
-
-    const shuffled = [...items].sort(() => Math.random() - 0.5).slice(0, 12);
-    const existing = await pool.query('SELECT title FROM issues ORDER BY created_at DESC LIMIT 20');
-    const existingTitles = existing.rows.map(r => r.title).join('\n');
-
-    // 제목만 생성 (섹션 자동작성은 편집모드 진입 시 별도 호출)
-    const topicMsg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 150,
-      messages: [{
-        role: 'user',
-        content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.map(i => i.title).join('\n')}`
-      }]
-    });
-
-    const generatedTitle = topicMsg.content[0].text.trim();
-
-    // 생성된 제목 키워드로 2차 RSS 검색 → 제목별 고유 참고링크 확보
-    let refSourceItems = items; // 기본: 분류 기반 결과
+    // 3. Haiku로 제목 다듬기
+    let finalTitle = userTitle;
     try {
-      const titleWords = generatedTitle.split(/\s+/).slice(0, 4).join(' ');
-      const tq = encodeURIComponent(titleWords);
-      const titleRss = await fetchUrl(`https://news.google.com/rss/search?q=${tq}&hl=ko&gl=KR&ceid=KR:ko`);
-      const titleItems = [];
-      const tRe = /<item>([\s\S]*?)<\/item>/g;
-      let tm;
-      while ((tm = tRe.exec(titleRss)) !== null && titleItems.length < 20) {
-        const xml = tm[1];
-        const tM  = xml.match(/<title>([\s\S]*?)<\/title>/);
-        const lM  = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
-        const dM  = xml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
-        if (!tM) continue;
-        const t = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
-        const l = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-        const d = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-        if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) {
-          titleItems.push({ title: t, link: l, pubDate: d });
-        }
-      }
-      if (titleItems.length >= 3) refSourceItems = titleItems; // 충분히 있으면 제목 기반으로 교체
+      const refContext = items.slice(0, 5).map(i => i.title).join('\n');
+      const titleMsg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 100,
+        messages: [{ role: 'user', content: `다음 기사 제목을 최신 뉴스를 참고해서 더 구체적이고 완성도 있게 다듬어주세요. 제목 텍스트만 출력.\n\n원본 제목: ${userTitle}\n\n최신 관련 뉴스:\n${refContext}` }]
+      });
+      const refined = titleMsg.content[0].text.trim();
+      if (refined && refined.length > 3) finalTitle = refined;
     } catch {}
 
-    const refLinks = refSourceItems
-      .filter(i => i.link && /^https?:\/\//i.test(i.link))
-      .map(i => ({ title: i.title, url: i.link, pubDate: i.pubDate || '' }));
+    const refLinks = items.map(i => ({ title: i.title, url: i.link, pubDate: i.pubDate || '' }));
 
     let r;
     try {
       r = await pool.query(
         'INSERT INTO issues (user_id,title,category,is_draft,reference_links) VALUES($1,$2,$3,TRUE,$4) RETURNING id,title,category,created_at',
-        [user.id, generatedTitle, category, JSON.stringify(refLinks)]
+        [user.id, finalTitle, category, JSON.stringify(refLinks)]
       );
     } catch {
-      // reference_links 컬럼 없을 때 fallback
       r = await pool.query(
         'INSERT INTO issues (user_id,title,category,is_draft) VALUES($1,$2,$3,TRUE) RETURNING id,title,category,created_at',
-        [user.id, generatedTitle, category]
+        [user.id, finalTitle, category]
       );
     }
     return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
@@ -975,7 +939,7 @@ async function autoFillSections(event, issueId) {
     const toGenerate = effectiveLabels.map((l, i) => ({ no: i + 1, label: l, guide: userGuides[i] }))
                                       .filter(s => s.label);
 
-    if (!toGenerate.length) return resp(200, { sections: [], labels: [] });
+    if (!toGenerate.length) return resp(200, { results: [], message: '섹션 제목이 설정되지 않았습니다.' });
 
     const refs = Array.isArray(reference_links) ? reference_links : [];
 
@@ -1013,8 +977,8 @@ async function autoFillSections(event, issueId) {
     }
 
     const contextSource = (Array.isArray(relatedItems) && relatedItems.length) ? relatedItems : refs;
-    const refContext = fetchedContent
-      || contextSource.slice(0, 8).map(r => r.title).join('\n');
+    const refContext = fetchedContent || contextSource.slice(0, 8).map(r => r.title).join('\n');
+    if (!refContext.trim()) return resp(200, { results: [], message: '참고할 내용이 없습니다. 참고링크를 먼저 추가하세요.' });
     const sectionSpecs = toGenerate.map(s =>
       `[${s.no}] ${s.label}${s.guide ? ` (가이드: ${s.guide})` : ''}`
     ).join('\n');

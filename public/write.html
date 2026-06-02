@@ -593,7 +593,10 @@
             .filter(l => l.url)
             .map(l => ({ title: l.title || l.url, url: l.url, pubDate: l.pubDate || '' }));
         }
-        if (isEditMode) await loadSectionGuides();
+        if (isEditMode) {
+          await loadSectionGuides();
+          if (savedRefLinks.length) editableRefLinks = savedRefLinks.map(l => ({ ...l }));
+        }
         renderTopActions(issue);
         if (!isEditMode) renderIssueReactBar(issue);
         renderRefLinks(issue.reference_links);
@@ -839,9 +842,7 @@
 
     async function saveSectionLabel(n) {
       const label = document.getElementById(`secLabel${n}`)?.value.trim();
-      if (!label) { showToast('제목을 입력하세요.', 'error'); return; }
-      const btn = document.querySelector(`.btn-label-save[onclick="saveSectionLabel(${n})"]`);
-      if (btn) { btn.textContent = '...'; btn.disabled = true; }
+      if (!label) return;
       try {
         const res = await api('/mypage/section-labels', {
           method: 'POST', body: JSON.stringify({ section_no: n, label }),
@@ -849,11 +850,9 @@
         if (!res.ok) throw new Error();
         userLabelDefaults[n - 1] = label;
         labelsData[n - 1] = label;
-        if (btn) { btn.textContent = '✓'; btn.disabled = false; btn.style.color = '#065f46'; btn.style.borderColor = 'var(--success)'; btn.style.background = 'var(--success-light)'; }
-        showToast(`섹션 ${n} 기본 제목이 저장됐습니다.`, 'success');
+        showToast(`섹션 ${n} 제목이 변경됐습니다.`, 'success');
       } catch {
         showToast('저장 실패', 'error');
-        if (btn) { btn.textContent = '✓'; btn.disabled = false; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
       }
     }
 
@@ -865,9 +864,9 @@
       if (!editMode || !issueId) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
       bar.innerHTML = `
-        <button class="btn" id="btnSearchRelated" onclick="searchRelatedArticles()">🔗 관련글 가져오기</button>
-        <button class="btn" id="btnAutoFill" onclick="autoFillSections()" disabled title="참고링크를 먼저 가져오세요">🤖 섹션 자동채우기</button>`;
-      if (editableRefLinks.length) updateAutoFillBtnState();
+        <button class="btn" id="btnAutoFill" onclick="autoFillSections()" disabled title="참고링크를 먼저 추가하세요">🤖 섹션 자동채우기</button>`;
+      renderEditRefPanel();  // 참고링크 패널 자동 표시
+      updateAutoFillBtnState();
     }
 
     async function autoFillSections() {
@@ -883,6 +882,7 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        if (!data.results?.length) { showToast(data.message || '참고할 내용이 없습니다.', 'info'); return; }
         for (const r of (data.results || [])) {
           const ta = document.getElementById(`sec${r.no}`);
           if (ta) ta.value = r.content;
@@ -915,53 +915,6 @@
       }
     }
 
-    /* ── 관련글 가져오기 ── */
-    async function searchRelatedArticles() {
-      const btn = document.getElementById('btnSearchRelated');
-
-      if (savedRefLinks.length > 0) {
-        // AI 이슈 생성 시 저장된 링크가 있으면 복원
-        if (editableRefLinks.length > 0) {
-          if (!confirm('현재 참고링크 목록을 초기화하고 원래 목록으로 복원하시겠습니까?')) return;
-        }
-        editableRefLinks = savedRefLinks.map(l => ({ ...l }));
-        renderEditRefPanel();
-        if (btn) {
-          btn.textContent = `🔗 가져오기 완료 (${editableRefLinks.length}건)`;
-          btn.style.color = '#065f46'; btn.style.borderColor = 'var(--success)'; btn.style.background = 'var(--success-light)';
-        }
-        return;
-      }
-
-      // 저장된 링크 없음 → 제목 핵심 키워드로 검색
-      if (editableRefLinks.length > 0) {
-        if (!confirm('현재 참고링크 목록을 초기화하고 새로 검색하시겠습니까?')) return;
-      }
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ 검색 중...'; btn.style.color = ''; btn.style.borderColor = ''; btn.style.background = ''; }
-      renderEditRefPanel(); // 로딩 상태
-
-      try {
-        const res = await api(`/issues/${issueId}/search-related`, { method: 'POST' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        const items = data.items || [];
-        editableRefLinks = items.map(i => ({ title: i.title, url: i.url, pubDate: i.pubDate || '' }));
-        renderEditRefPanel();
-        if (btn) {
-          btn.disabled = false;
-          if (items.length) {
-            btn.textContent = `🔗 가져오기 완료 (${items.length}건)`;
-            btn.style.color = '#065f46'; btn.style.borderColor = 'var(--success)'; btn.style.background = 'var(--success-light)';
-          } else {
-            btn.textContent = '🔗 관련글 가져오기';
-            showToast('관련 기사를 찾지 못했습니다.', 'info');
-          }
-        }
-      } catch (e) {
-        if (btn) { btn.disabled = false; btn.textContent = '🔗 관련글 가져오기'; }
-        showToast(e.message || '검색 실패', 'error');
-      }
-    }
 
     /* ── 섹션 AI 작성 ── */
     async function aiWriteSection(n) {
@@ -1171,8 +1124,8 @@
             <div class="section-label">
               <span class="sec-num">${n}</span>
               ${editable
-                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(customLabel)}" placeholder="${escHtml(label)}" />
-                   <button class="btn-label-save" onclick="saveSectionLabel(${n})" title="이 제목을 기본값으로 저장">✓</button>`
+                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(customLabel)}" placeholder="${escHtml(label)}"
+                     onkeydown="if(event.key==='Enter'){event.preventDefault();saveSectionLabel(${n})}" />`
                 : `<span class="sec-name">${escHtml(customLabel)}</span>`}
               ${myBadge}
               ${editorZone}

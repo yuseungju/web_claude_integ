@@ -536,18 +536,55 @@
       } catch (e) { showToast(e.message || '저장 실패', 'error'); }
     }
 
-    async function addAIIssue() {
-      const btn = document.getElementById('btnAI');
-      btn.disabled = true; btn.textContent = '⏳ AI 생성 중...';
+    function addAIIssue() {
+      if (!isLoggedIn) { showToast('로그인이 필요합니다.', 'error'); return; }
+      if (document.getElementById('aiInlineRow')) { document.getElementById('aiInlineTitle').focus(); return; }
+      // 기존 인라인 행 닫기
+      document.getElementById('inlineRow')?.remove();
+      if (!document.querySelector('.issue-table')) renderTable([], 1, 0);
+      const tbody = document.getElementById('issueBody');
+      const tr = document.createElement('tr');
+      tr.id = 'aiInlineRow'; tr.className = 'inline-row';
+      tr.innerHTML = `
+        <td></td>
+        <td class="col-title" colspan="3">
+          <input type="text" id="aiInlineTitle" class="inline-input" placeholder="제목 입력 후 Enter → AI가 키워드 추출·링크 수집·제목 다듬기" maxlength="200" />
+        </td>
+        <td></td>
+        <td class="col-action">
+          <div class="inline-acts">
+            <button class="btn-sm primary" id="btnAISave" onclick="saveAIIssue()">AI 저장</button>
+            <button class="btn-sm" onclick="cancelAIInlineRow()">취소</button>
+          </div>
+        </td>`;
+      tbody.insertBefore(tr, tbody.firstChild);
+      const inp = document.getElementById('aiInlineTitle');
+      inp.focus();
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveAIIssue();
+        if (e.key === 'Escape') cancelAIInlineRow();
+      });
+    }
+
+    function cancelAIInlineRow() { document.getElementById('aiInlineRow')?.remove(); }
+
+    async function saveAIIssue() {
+      const title = document.getElementById('aiInlineTitle')?.value.trim();
+      if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
+      const btn = document.getElementById('btnAISave');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ AI 처리 중...'; }
       try {
         const category = document.getElementById('catSelect')?.value || getCatCookie();
-        const res = await api('/topics/ai', { method: 'POST', body: JSON.stringify({ category }) });
+        const res = await api('/topics/ai', { method: 'POST', body: JSON.stringify({ userTitle: title, category }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        cancelAIInlineRow();
         showToast(`AI 이슈가 추가됐습니다.\n작성 완료 전까지 나만 볼 수 있습니다.`, 'success');
         loadIssues(1);
-      } catch (e) { showToast(e.message || 'AI 이슈 추가 실패', 'error'); }
-      finally { btn.disabled = false; btn.textContent = '🤖 AI 이슈 만들기'; }
+      } catch (e) {
+        showToast(e.message || 'AI 이슈 추가 실패', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'AI 저장'; }
+      }
     }
 
     function escHtml(s) {
