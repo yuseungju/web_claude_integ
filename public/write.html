@@ -6,6 +6,9 @@
   <title>이슈 – 이슈보드</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
+    /* ── 페이지 너비 ── */
+    .container { max-width: min(90vw, 1600px); }
+
     /* ── 공통 버튼 ── */
     .btn {
       padding: 0.55rem 1rem; border-radius: var(--radius-sm); font-size: 0.84rem;
@@ -338,18 +341,30 @@
     function renderAiPanelActs() {
       const editMode = isEditMode || !issueId;
       const acts = document.getElementById('aiPanelActs');
-      if (!acts) return;
+      const panel = document.getElementById('aiPanel');
       const textarea = document.getElementById('aiBody');
+      if (!acts || !panel || !textarea) return;
+
       textarea.readOnly = !editMode;
 
-      let html = '';
-      if (editMode) {
-        html += `<button class="btn-panel-sm import" onclick="importSections()">📥 가져오기</button>`;
+      // 조회 모드: 내용 있으면 복사만, 없으면 패널 숨김
+      if (!editMode) {
+        if (!textarea.value.trim()) {
+          panel.style.display = 'none';
+        } else {
+          panel.style.display = '';
+          acts.innerHTML = `<button class="btn-panel-sm" onclick="copyAI()">복사</button>`;
+        }
+        return;
       }
+
+      // 편집 모드: 가져오기 + AI 정리 + 복사
+      panel.style.display = '';
+      let html = `<button class="btn-panel-sm import" onclick="importSections()">📥 가져오기</button>`;
       if (isLoggedIn) {
         html += `<button class="btn-panel-sm" id="btnGenerate" onclick="generateArticle()">🤖 AI 정리</button>`;
       }
-      html += `<button class="btn-panel-sm" id="btnCopyAI" onclick="copyAI()">복사</button>`;
+      html += `<button class="btn-panel-sm" onclick="copyAI()">복사</button>`;
       acts.innerHTML = html;
     }
 
