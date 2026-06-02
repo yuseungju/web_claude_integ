@@ -6,6 +6,9 @@
   <title>이슈보드</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
+    /* ── 페이지 너비 ── */
+    main.container { max-width: 92%; width: 92%; padding: 1.25rem 1rem; }
+
     /* ── Toolbar ── */
     .toolbar {
       display: flex; align-items: center; justify-content: space-between;
@@ -69,10 +72,14 @@
     .f-reset:hover { color: var(--danger); border-color: #fca5a5; }
 
     /* ── 테이블 ── */
+    .table-scroll-wrap {
+      width: 100%; overflow-x: auto;
+      border-radius: var(--radius-md); border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
     .issue-table {
       width: 100%; border-collapse: collapse;
-      background: var(--bg-card); border-radius: var(--radius-md);
-      overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+      background: var(--bg-card);
       font-size: 0.82rem;
     }
     .issue-table th {
@@ -315,21 +322,23 @@
     function renderTable(issues, page, total) {
       const offset = (page - 1) * LIMIT;
       document.getElementById('tableWrap').innerHTML = `
-        <table class="issue-table">
-          <thead><tr>
-            <th class="col-no">번호</th>
-            <th class="col-title">제목</th>
-            <th class="col-author">작성자</th>
-            <th class="col-date">작성일</th>
-            <th class="col-status">상태</th>
-            <th class="col-action"></th>
-          </tr></thead>
-          <tbody id="issueBody">
-            ${issues.length === 0
-              ? `<tr><td colspan="6"><div class="empty-state"><span class="ei">📄</span><p>이슈가 없습니다.</p></div></td></tr>`
-              : issues.map((issue, idx) => renderRow(issue, total - offset - idx)).join('')}
-          </tbody>
-        </table>`;
+        <div class="table-scroll-wrap">
+          <table class="issue-table">
+            <thead><tr>
+              <th class="col-no">번호</th>
+              <th class="col-title">제목</th>
+              <th class="col-author">작성자</th>
+              <th class="col-date">작성일</th>
+              <th class="col-status">상태</th>
+              <th class="col-action"></th>
+            </tr></thead>
+            <tbody id="issueBody">
+              ${issues.length === 0
+                ? `<tr><td colspan="6"><div class="empty-state"><span class="ei">📄</span><p>이슈가 없습니다.</p></div></td></tr>`
+                : issues.map((issue, idx) => renderRow(issue, total - offset - idx)).join('')}
+            </tbody>
+          </table>
+        </div>`;
     }
 
     function renderPagination(page, pages, total) {
