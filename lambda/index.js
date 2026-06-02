@@ -263,7 +263,8 @@ async function getIssue(event, id) {
     const sr = await pool.query(
       `SELECT section_no, content,
               COALESCE(guide,'')      AS guide,
-              COALESCE(ai_content,'') AS ai_content
+              COALESCE(ai_content,'') AS ai_content,
+              COALESCE(label,'')      AS label
        FROM issue_sections WHERE issue_id=$1 ORDER BY section_no`, [id]
     );
     const sections = [1,2,3,4,5].map(n => {
@@ -277,6 +278,10 @@ async function getIssue(event, id) {
     const sectionAiContents = [1,2,3,4,5].map(n => {
       const f = sr.rows.find(r => r.section_no === n);
       return f ? f.ai_content : '';
+    });
+    const sectionLabels = [1,2,3,4,5].map(n => {
+      const f = sr.rows.find(r => r.section_no === n);
+      return f ? f.label : '';
     });
 
     const er = await pool.query(
@@ -303,7 +308,7 @@ async function getIssue(event, id) {
       reactions = rr.rows[0];
     } catch {}
 
-    return resp(200, { issue: { ...ir.rows[0], ...reactions }, sections, sectionGuides, sectionAiContents, editors });
+    return resp(200, { issue: { ...ir.rows[0], ...reactions }, sections, sectionGuides, sectionAiContents, sectionLabels, editors });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
@@ -337,7 +342,7 @@ async function updateIssue(event, id) {
 async function saveSections(event, id) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { sections, guides, is_draft, article_content } = getBody(event);
+  const { sections, guides, labels, is_draft, article_content } = getBody(event);
   if (!Array.isArray(sections) || sections.length !== 5)
     return resp(400, { error: '섹션 데이터가 올바르지 않습니다.' });
   try {
@@ -346,10 +351,10 @@ async function saveSections(event, id) {
     if (check.rows[0].user_id !== user.id) return resp(403, { error: '수정 권한이 없습니다.' });
     for (let i = 0; i < 5; i++) {
       await pool.query(
-        `INSERT INTO issue_sections (issue_id, section_no, content, guide, updated_at)
-         VALUES ($1,$2,$3,$4,NOW())
-         ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, updated_at=NOW()`,
-        [id, i + 1, sections[i] || '', (guides && guides[i]) || '']
+        `INSERT INTO issue_sections (issue_id, section_no, content, guide, label, updated_at)
+         VALUES ($1,$2,$3,$4,$5,NOW())
+         ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, label=$5, updated_at=NOW()`,
+        [id, i + 1, sections[i] || '', (guides && guides[i]) || '', (labels && labels[i]) || '']
       );
     }
     const draft = is_draft !== undefined ? is_draft : true;
@@ -464,32 +469,59 @@ async function aiTopic(event) {
     let im;
     while ((im = itemRe.exec(rss)) !== null && items.length < 30) {
       const xml = im[1];
-      const tM = xml.match(/<title>([\s\S]*?)<\/title>/);
-      const lM = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+      const tM  = xml.match(/<title>([\s\S]*?)<\/title>/);
+      const lM  = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+      const dM  = xml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
       if (!tM) continue;
-      const title = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
-      const link  = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-      if (title && !title.toLowerCase().includes('google')) items.push({ title, link });
+      const title   = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
+      const link    = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      const pubDate = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      if (title && !title.toLowerCase().includes('google')) items.push({ title, link, pubDate });
     }
     if (!items.length) throw new Error('뉴스를 가져올 수 없습니다.');
+
+    // 날짜순 정렬 (최신 상단)
+    items.sort((a, b) => {
+      const da = a.pubDate ? new Date(a.pubDate) : 0;
+      const db = b.pubDate ? new Date(b.pubDate) : 0;
+      return db - da;
+    });
 
     const shuffled = [...items].sort(() => Math.random() - 0.5).slice(0, 12);
     const existing = await pool.query('SELECT title FROM issues ORDER BY created_at DESC LIMIT 20');
     const existingTitles = existing.rows.map(r => r.title).join('\n');
 
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 150,
-      messages: [{
-        role: 'user',
-        content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.map(i => i.title).join('\n')}`
-      }]
-    });
+    // Claude에게 기사 제목 생성 + 각 참고자료 관련 이유 요약 요청
+    const refTitles = items.filter(i => i.link && /^https?:\/\//i.test(i.link)).slice(0, 15).map(i => i.title);
+    const [topicMsg, reasonMsg] = await Promise.all([
+      anthropic.messages.create({
+        model: 'claude-sonnet-4-6', max_tokens: 150,
+        messages: [{
+          role: 'user',
+          content: `아래 최신 뉴스 트렌드를 참고해서 [${category}] 분야의 기사 제목을 창작하세요.\n\n규칙:\n- 아래 뉴스 제목을 그대로 쓰거나 단순 변형하면 안 됩니다. 완전히 새로운 제목을 창작하세요.\n- 기존 이슈 목록과 중복·유사하면 안 됩니다.\n- 구체적인 인물·작품·행사·장소가 담긴 실감나는 제목으로 작성하세요.\n- 설명 없이 제목 텍스트만 출력하세요.\n\n[기존 이슈 (중복 금지)]\n${existingTitles || '없음'}\n\n[최신 트렌드 참고]\n${shuffled.map(i => i.title).join('\n')}`
+        }]
+      }),
+      refTitles.length ? anthropic.messages.create({
+        model: 'claude-sonnet-4-6', max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: `다음 뉴스 기사 목록에 대해, 각 항목이 [${category}] 분야 기사 작성에 왜 관련이 있는지 한 문장(15자 이내)으로 설명하세요.\n출력 형식: 번호 없이 줄마다 이유 하나씩.\n\n${refTitles.map((t, i) => `${i+1}. ${t}`).join('\n')}`
+        }]
+      }) : Promise.resolve(null)
+    ]);
 
-    const title = msg.content[0].text.trim();
-    // 링크가 있는 항목만 참고자료로 저장
-    const refLinks = items.filter(i => i.link && /^https?:\/\//i.test(i.link))
-                          .map(i => ({ title: i.title, url: i.link }));
+    const title = topicMsg.content[0].text.trim();
+    const reasonLines = reasonMsg ? reasonMsg.content[0].text.trim().split('\n') : [];
+
+    // 링크가 있는 항목만 참고자료로 저장 (날짜순, 관련 이유 포함)
+    const refLinks = items
+      .filter(i => i.link && /^https?:\/\//i.test(i.link))
+      .map((i, idx) => ({
+        title: i.title,
+        url: i.link,
+        pubDate: i.pubDate || '',
+        reason: reasonLines[idx] || '',
+      }));
 
     const r = await pool.query(
       'INSERT INTO issues (user_id,title,category,is_draft,reference_links) VALUES($1,$2,$3,TRUE,$4) RETURNING id,title,category,created_at',
@@ -730,13 +762,38 @@ async function searchRelated(event, issueId) {
     let im;
     while ((im = itemRe.exec(rss)) !== null && items.length < 15) {
       const xml = im[1];
-      const tM = xml.match(/<title>([\s\S]*?)<\/title>/);
-      const lM = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+      const tM  = xml.match(/<title>([\s\S]*?)<\/title>/);
+      const lM  = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+      const dM  = xml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
       if (!tM) continue;
       const t = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
       const l = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-      if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) items.push({ title: t, url: l });
+      const d = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google')) items.push({ title: t, url: l, pubDate: d });
     }
+
+    // 날짜순 정렬 (최신 상단)
+    items.sort((a, b) => {
+      const da = a.pubDate ? new Date(a.pubDate) : 0;
+      const db = b.pubDate ? new Date(b.pubDate) : 0;
+      return db - da;
+    });
+
+    // 관련 이유 생성
+    if (items.length) {
+      try {
+        const reasonMsg = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6', max_tokens: 300,
+          messages: [{
+            role: 'user',
+            content: `다음 뉴스 기사 목록이 "${title}" 기사 작성에 왜 관련이 있는지 각 항목마다 한 문장(15자 이내)으로 설명하세요.\n줄마다 이유 하나씩 출력.\n\n${items.map((i, n) => `${n+1}. ${i.title}`).join('\n')}`
+          }]
+        });
+        const lines = reasonMsg.content[0].text.trim().split('\n');
+        items.forEach((item, i) => { item.reason = lines[i] || ''; });
+      } catch {}
+    }
+
     return resp(200, { items });
   } catch (e) { console.error(e); return resp(500, { error: '검색 실패' }); }
 }
@@ -744,13 +801,13 @@ async function searchRelated(event, issueId) {
 async function aiWriteSection(event, issueId, sectionNo) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { content, guide } = getBody(event);
+  const { content, guide, label } = getBody(event);
   try {
     const ir = await pool.query('SELECT title FROM issues WHERE id=$1', [issueId]);
     if (!ir.rows.length) return resp(404, { error: '이슈를 찾을 수 없습니다.' });
     const issueTitle = ir.rows[0].title;
-    const LABELS = ['배경/발단', '주요 내용', '인터뷰/현장', '관련 자료', '결론/전망'];
-    const sectionLabel = LABELS[parseInt(sectionNo) - 1] || `섹션 ${sectionNo}`;
+    const DEFAULT_LABELS = ['배경/발단', '주요 내용', '인터뷰/현장', '관련 자료', '결론/전망'];
+    const sectionLabel = label?.trim() || DEFAULT_LABELS[parseInt(sectionNo) - 1] || `섹션 ${sectionNo}`;
     // 전달된 가이드 없으면 영구저장 가이드 사용
     let finalGuide = guide?.trim() || '';
     if (!finalGuide) {

@@ -199,6 +199,7 @@
       flex: 1; min-width: 0; transition: opacity 0.12s;
     }
     .ref-list a:hover { text-decoration: underline; opacity: 0.75; }
+    .ref-list li span { white-space: nowrap; }
 
     /* ── 댓글 섹션 ── */
     .comments-section {
@@ -284,6 +285,17 @@
     }
     .btn-guide-open:hover { border-color: var(--primary); color: var(--primary); }
     .btn-guide-open.has-guide { border-color: var(--success); color: #065f46; background: var(--success-light); }
+    .sec-name-input {
+      border: none; border-bottom: 1.5px dashed var(--border); background: transparent;
+      font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);
+      font-family: var(--font-sans); outline: none; width: 120px; padding: 0 0.15rem;
+      transition: border-color 0.15s;
+    }
+    .sec-name-input:focus { border-bottom-color: var(--primary); color: var(--text-primary); }
+    .ai-side-hint {
+      font-size: 0.64rem; color: var(--text-muted); padding: 0.22rem 0.9rem 0.35rem;
+      border-top: 1px dashed var(--border); font-style: italic;
+    }
 
     /* ── 섹션 2칸 레이아웃 (편집 모드) ── */
     .section-body-2col {
@@ -459,6 +471,7 @@
     let sectionsData     = ['', '', '', '', ''];
     let guideData        = ['', '', '', '', ''];
     let aiData           = ['', '', '', '', ''];
+    let labelsData       = ['', '', '', '', ''];
 
     renderHeader('#headerUser');
 
@@ -487,11 +500,12 @@
         const res = await fetch(API + '/issues/' + issueId, { headers });
         if (res.status === 403) { location.href = 'index.html'; return; }
         if (!res.ok) throw new Error();
-        const { issue, sections, editors: eds, sectionGuides: sg, sectionAiContents: sa } = await res.json();
+        const { issue, sections, editors: eds, sectionGuides: sg, sectionAiContents: sa, sectionLabels: sl } = await res.json();
 
         sectionsData = sections;
         guideData    = sg  || ['', '', '', '', ''];
         aiData       = sa  || ['', '', '', '', ''];
+        labelsData   = sl  || ['', '', '', '', ''];
         editors      = eds;
         isAuthor     = isLoggedIn && me && issue.user_id === me.id;
 
@@ -658,7 +672,15 @@
         panel.innerHTML = `
           <div class="related-panel-header">🔍 관련 최신글 (${items.length}건)</div>
           <ul class="ref-list">
-            ${items.map(l => `<li><a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title)}</a></li>`).join('')}
+            ${items.map(l => {
+              const date   = fmtPubDate(l.pubDate);
+              const reason = l.reason ? escHtml(l.reason) : '';
+              const meta   = [date, reason].filter(Boolean).join(' · ');
+              return `<li>
+                <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title)}</a>
+                ${meta ? `<span style="font-size:.62rem;color:var(--text-muted);flex-shrink:0">${meta}</span>` : ''}
+              </li>`;
+            }).join('')}
           </ul>`;
       } catch (e) {
         panel.innerHTML = `<div class="related-panel-header">🔍 관련 최신글</div><div style="font-size:.74rem;color:var(--danger)">${escHtml(e.message || '검색 실패')}</div>`;
@@ -669,13 +691,14 @@
     async function aiWriteSection(n) {
       const content = document.getElementById(`sec${n}`)?.value || '';
       const guide   = document.getElementById(`guide${n}`)?.value || '';
+      const label   = document.getElementById(`secLabel${n}`)?.value || LABELS[n-1];
       const btn     = document.getElementById(`btnAiSec${n}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
       const contentDiv = document.getElementById(`aiSecContent${n}`);
       if (contentDiv) contentDiv.innerHTML = '<div class="ai-side-placeholder">AI가 작성 중...</div>';
       try {
         const res = await api(`/issues/${issueId}/sections/${n}/ai-write`, {
-          method: 'POST', body: JSON.stringify({ content, guide }),
+          method: 'POST', body: JSON.stringify({ content, guide, label }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
@@ -704,6 +727,15 @@
         .catch(() => showToast('복사 실패', 'error'));
     }
 
+    function fmtPubDate(str) {
+      if (!str) return '';
+      try {
+        const d = new Date(str);
+        if (isNaN(d)) return '';
+        return d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
+      } catch { return ''; }
+    }
+
     function renderRefLinks(links) {
       const panel = document.getElementById('refPanel');
       if (!panel) return;
@@ -713,7 +745,15 @@
       panel.innerHTML = `
         <div class="ref-panel-title">📎 참고자료 (${links.length}건)</div>
         <ul class="ref-list">
-          ${links.map(l => `<li><a href="${l.url.replace(/"/g, '&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title)}</a></li>`).join('')}
+          ${links.map(l => {
+            const date   = fmtPubDate(l.pubDate);
+            const reason = l.reason ? escHtml(l.reason) : '';
+            const meta   = [date, reason].filter(Boolean).join(' · ');
+            return `<li>
+              <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title)}</a>
+              ${meta ? `<span style="font-size:.62rem;color:var(--text-muted);flex-shrink:0">${meta}</span>` : ''}
+            </li>`;
+          }).join('')}
         </ul>`;
     }
 
@@ -777,13 +817,14 @@
         return;
       }
       document.getElementById('sectionsWrap').innerHTML = LABELS.map((label, i) => {
-        const n         = i + 1;
-        const editable  = editableSections.includes(n);
-        const editor    = editors[i];
-        const isMyEdit  = !isAuthor && editable;
-        const content   = sectionsData[i] || '';
-        const guide     = guideData[i]    || '';
-        const aiContent = aiData[i]       || '';
+        const n            = i + 1;
+        const editable     = editableSections.includes(n);
+        const editor       = editors[i];
+        const isMyEdit     = !isAuthor && editable;
+        const content      = sectionsData[i] || '';
+        const guide        = guideData[i]    || '';
+        const aiContent    = aiData[i]       || '';
+        const customLabel  = labelsData[i]   || label;
 
         let editorZone = '';
         if (isAuthor && issueId) {
@@ -807,6 +848,7 @@
               aiContent ? escHtml(aiContent) : '<div class="ai-side-placeholder">✨ AI작성 버튼으로 내용을 생성하세요</div>'
             }</div>
             ${aiContent ? `<button class="sec-ai-copy-btn" onclick="copySectionAI(${n})">📋 복사</button>` : ''}
+            <div class="ai-side-hint">💡 AI 내용을 활용하려면 좌측에 붙여넣고 편집하세요</div>
           </div>`;
 
         const bodyHtml = editable
@@ -824,7 +866,9 @@
           <div class="section-card">
             <div class="section-label">
               <span class="sec-num">${n}</span>
-              <span class="sec-name">${label}</span>
+              ${editable
+                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(customLabel)}" placeholder="${escHtml(label)}" />`
+                : `<span class="sec-name">${escHtml(customLabel)}</span>`}
               ${myBadge}
               ${editorZone}
             </div>
@@ -952,7 +996,8 @@
             method: 'POST',
             body: JSON.stringify({
               sections: getSections(),
-              guides: [1,2,3,4,5].map(j => document.getElementById(`guide${j}`)?.value || ''),
+              guides:  [1,2,3,4,5].map(j => document.getElementById(`guide${j}`)?.value    || ''),
+              labels:  [1,2,3,4,5].map(j => document.getElementById(`secLabel${j}`)?.value || ''),
               is_draft: isDraft,
               article_content: getArticleContent(),
             }),
