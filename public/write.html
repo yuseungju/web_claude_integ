@@ -539,7 +539,7 @@
         }
 
         document.getElementById('issueSub').textContent =
-          `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleDateString('ko-KR')} · 조회 ${issue.view_count ?? 0}`;
+          `작성자: ${issue.author} · ${new Date(issue.created_at).toLocaleString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false })} · 조회 ${issue.view_count ?? 0}`;
 
         if (isEditMode) await loadSectionGuides();
         renderTopActions(issue);
