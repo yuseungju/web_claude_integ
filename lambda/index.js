@@ -522,6 +522,8 @@ async function aiTopic(event) {
     }
     items.sort((a, b) => (b.pubDate ? new Date(b.pubDate) : 0) - (a.pubDate ? new Date(a.pubDate) : 0));
 
+    if (!items.length) return resp(422, { error: '입력한 제목으로 관련 최신 기사를 찾지 못했습니다. 다른 제목으로 시도해보세요.' });
+
     // 3. Haiku로 제목 다듬기
     let finalTitle = userTitle;
     try {
