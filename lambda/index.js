@@ -98,10 +98,12 @@ exports.handler = async (event) => {
 
   // Mypage
   const sampleM = path.match(/^\/mypage\/samples\/(\d+)$/);
-  if (path === '/mypage'         && method === 'GET')    return getMypage(event);
-  if (path === '/mypage/style'   && method === 'POST')   return saveStyle(event);
-  if (path === '/mypage/upload'  && method === 'POST')   return uploadSample(event);
-  if (sampleM                    && method === 'DELETE') return deleteSample(event, sampleM[1]);
+  if (path === '/mypage'                && method === 'GET')    return getMypage(event);
+  if (path === '/mypage/style'          && method === 'POST')   return saveStyle(event);
+  if (path === '/mypage/upload'         && method === 'POST')   return uploadSample(event);
+  if (path === '/mypage/section-guides' && method === 'GET')    return getSectionGuides(event);
+  if (path === '/mypage/section-guides' && method === 'POST')   return saveSectionGuide(event);
+  if (sampleM                           && method === 'DELETE') return deleteSample(event, sampleM[1]);
 
   return resp(404, { error: 'Not found' });
 };
@@ -749,7 +751,18 @@ async function aiWriteSection(event, issueId, sectionNo) {
     const issueTitle = ir.rows[0].title;
     const LABELS = ['배경/발단', '주요 내용', '인터뷰/현장', '관련 자료', '결론/전망'];
     const sectionLabel = LABELS[parseInt(sectionNo) - 1] || `섹션 ${sectionNo}`;
-    const guideNote   = guide?.trim()   ? `\n\n[작성 가이드]\n${guide}`   : '';
+    // 전달된 가이드 없으면 영구저장 가이드 사용
+    let finalGuide = guide?.trim() || '';
+    if (!finalGuide) {
+      try {
+        const gr = await pool.query(
+          'SELECT guide FROM user_section_guides WHERE user_id=$1 AND section_no=$2',
+          [user.id, sectionNo]
+        );
+        finalGuide = gr.rows[0]?.guide || '';
+      } catch {}
+    }
+    const guideNote   = finalGuide   ? `\n\n[작성 가이드]\n${finalGuide}`   : '';
     const contentNote = content?.trim() ? `\n\n[작성자 메모]\n${content}` : '';
     const ur = await pool.query('SELECT writing_style FROM users WHERE id=$1', [user.id]);
     const writingStyle = ur.rows[0]?.writing_style || '';
@@ -772,4 +785,36 @@ async function aiWriteSection(event, issueId, sectionNo) {
     );
     return resp(200, { ai_content: aiContent });
   } catch (e) { console.error(e); return resp(500, { error: e.message || 'AI 작성 실패' }); }
+}
+
+async function getSectionGuides(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const r = await pool.query(
+      'SELECT section_no, guide FROM user_section_guides WHERE user_id=$1 ORDER BY section_no',
+      [user.id]
+    );
+    const guides = [1,2,3,4,5].map(n => {
+      const f = r.rows.find(row => row.section_no === n);
+      return f ? f.guide : '';
+    });
+    return resp(200, { guides });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function saveSectionGuide(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { section_no, guide } = getBody(event);
+  if (!section_no || section_no < 1 || section_no > 5) return resp(400, { error: '잘못된 섹션 번호' });
+  try {
+    await pool.query(
+      `INSERT INTO user_section_guides (user_id, section_no, guide, updated_at)
+       VALUES ($1,$2,$3,NOW())
+       ON CONFLICT (user_id, section_no) DO UPDATE SET guide=$3, updated_at=NOW()`,
+      [user.id, section_no, guide || '']
+    );
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }

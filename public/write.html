@@ -270,6 +270,21 @@
     }
     .comment-login-notice:hover { border-color: var(--primary); color: var(--primary); }
 
+    /* ── 섹션 컨트롤 바 (편집 모드) ── */
+    .section-controls {
+      padding: 0.32rem 0.9rem; background: #f5f3ff;
+      border-bottom: 1px solid #ede9fe;
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+    }
+    .btn-guide-open {
+      padding: 0.22rem 0.65rem; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.72rem; font-weight: 600;
+      cursor: pointer; background: var(--bg); color: var(--text-secondary);
+      font-family: var(--font-sans); transition: all 0.12s; white-space: nowrap;
+    }
+    .btn-guide-open:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-guide-open.has-guide { border-color: var(--success); color: #065f46; background: var(--success-light); }
+
     /* ── 섹션 2칸 레이아웃 (편집 모드) ── */
     .section-body-2col {
       display: grid; grid-template-columns: 1fr 1fr;
@@ -513,6 +528,7 @@
         document.getElementById('aiBody').value = articleContent;
         renderAiPanelActs();
 
+        if (isEditMode) await loadSectionGuides();
         if (isEditMode && isAuthor) loadCookie();
         if (!isEditMode) loadComments();
       } catch {
@@ -557,6 +573,74 @@
         document.getElementById('issLikeBtn').className    = `react-btn${data.my_reaction === 'like'    ? ' active-like'    : ''}`;
         document.getElementById('issDislikeBtn').className = `react-btn${data.my_reaction === 'dislike' ? ' active-dislike' : ''}`;
       } catch (e) { showToast(e.message || '처리 실패', 'error'); }
+    }
+
+    /* ── 섹션 가이드 (영구저장) ── */
+    async function loadSectionGuides() {
+      if (!isLoggedIn) return;
+      try {
+        const res = await api('/mypage/section-guides');
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.guides)) guideData = data.guides;
+      } catch {}
+    }
+
+    function _ensureGuideModal() {
+      if (document.getElementById('guideModal')) return;
+      const div = document.createElement('div');
+      div.id = 'guideModal';
+      div.className = 'modal-overlay';
+      div.innerHTML = `
+        <div class="modal-backdrop-click" onclick="closeGuideModal()"></div>
+        <div class="modal-box" style="max-width:560px">
+          <button class="modal-close" onclick="closeGuideModal()">✕</button>
+          <div id="guideModalTitle" style="font-size:.95rem;font-weight:800;color:var(--text-primary);margin-bottom:.5rem"></div>
+          <p style="font-size:.74rem;color:var(--text-muted);margin-bottom:.7rem">영구 저장되며 이후 기사 작성 시에도 자동 적용됩니다.</p>
+          <textarea id="guideModalTA" style="width:100%;min-height:200px;padding:.75rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;font-family:var(--font-sans);resize:vertical;outline:none;line-height:1.75;color:var(--text-primary);background:var(--bg);box-sizing:border-box" placeholder="AI가 이 섹션을 작성할 방향, 톤, 포함할 내용 등을 자세히 입력하세요..."></textarea>
+          <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.85rem">
+            <button onclick="closeGuideModal()" style="padding:.5rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);font-size:.84rem;font-weight:600;cursor:pointer;font-family:var(--font-sans)">취소</button>
+            <button onclick="saveGuideFromModal()" style="padding:.5rem 1.1rem;border:none;border-radius:var(--radius-sm);background:var(--primary);color:#fff;font-size:.84rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">저장</button>
+          </div>
+        </div>`;
+      document.body.appendChild(div);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGuideModal(); });
+    }
+
+    function openGuideModal(n) {
+      _ensureGuideModal();
+      const modal = document.getElementById('guideModal');
+      document.getElementById('guideModalTitle').textContent = `섹션 ${n} 작성 가이드 — ${LABELS[n-1]}`;
+      document.getElementById('guideModalTA').value = guideData[n - 1] || '';
+      modal.dataset.section = n;
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => document.getElementById('guideModalTA').focus(), 50);
+    }
+
+    function closeGuideModal() {
+      const m = document.getElementById('guideModal');
+      if (m) m.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    async function saveGuideFromModal() {
+      const modal = document.getElementById('guideModal');
+      const n     = parseInt(modal.dataset.section);
+      const guide = document.getElementById('guideModalTA').value.trim();
+      try {
+        const res = await api('/mypage/section-guides', {
+          method: 'POST', body: JSON.stringify({ section_no: n, guide }),
+        });
+        if (!res.ok) throw new Error();
+        guideData[n - 1] = guide;
+        const btn = document.getElementById(`btnGuide${n}`);
+        if (btn) {
+          btn.className = `btn-guide-open${guide ? ' has-guide' : ''}`;
+          btn.textContent = guide ? '📝 가이드 설정됨' : '📝 작성 가이드 설정';
+        }
+        closeGuideModal();
+        showToast('가이드가 저장됐습니다.', 'success');
+      } catch { showToast('저장 실패', 'error'); }
     }
 
     /* ── 관련글 검색 ── */
@@ -708,9 +792,11 @@
         }
 
         const myBadge   = isMyEdit ? `<span class="my-sec-badge">내 편집 구역</span>` : '';
-        const guideRow  = editable
-          ? `<div class="sec-guide-wrap">
-               <input type="text" class="sec-guide-input" id="guide${n}" placeholder="작성 가이드..." value="${escHtml(guide)}" />
+        const controlBar = editable
+          ? `<div class="section-controls">
+               <button class="btn-guide-open${guide ? ' has-guide' : ''}" id="btnGuide${n}" onclick="openGuideModal(${n})">
+                 📝 ${guide ? '가이드 설정됨' : '작성 가이드 설정'}
+               </button>
                <button class="btn-ai-sec" id="btnAiSec${n}" onclick="aiWriteSection(${n})">✨ AI작성</button>
              </div>` : '';
 
@@ -739,10 +825,10 @@
               <span class="sec-num">${n}</span>
               <span class="sec-name">${label}</span>
               ${myBadge}
-              ${guideRow}
               ${editorZone}
             </div>
             ${edFormHtml}
+            ${controlBar}
             ${bodyHtml}
           </div>`;
       }).join('');
