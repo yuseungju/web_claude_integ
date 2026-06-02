@@ -154,6 +154,33 @@
     .btn-panel-sm.import { border-color: #a7f3d0; color: #065f46; background: #fff; }
     .btn-panel-sm.import:hover { background: #10b981; color: #fff; border-color: #10b981; }
 
+    /* ── 기사 조회 뷰 ── */
+    .view-headline {
+      font-size: 1.55rem !important;
+      font-weight: 900 !important;
+      letter-spacing: -0.025em;
+      line-height: 1.3 !important;
+    }
+    .ai-panel.view-mode {
+      border-color: var(--border);
+      border-width: 1px;
+    }
+    .ai-panel.view-mode .ai-panel-header {
+      background: var(--bg-card);
+      border-bottom-color: var(--border);
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .article-view-body {
+      padding: 1.5rem 1.75rem 2rem;
+      font-size: 1rem;
+      line-height: 2.1;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
     /* ── 반응형 ── */
     @media (max-width: 768px) {
       .issue-meta { padding: 0.75rem 1rem; }
@@ -163,6 +190,8 @@
       .ai-panel-body { padding: 0.85rem; }
     }
     @media (max-width: 600px) {
+      .view-headline { font-size: 1.2rem !important; }
+      .article-view-body { padding: 1rem 1rem 1.5rem; font-size: 0.95rem; }
       .issue-meta { flex-direction: column; gap: 0.5rem; }
       .btn { padding: 0.5rem 0.85rem; font-size: 0.82rem; min-height: 40px; }
       .issue-title-view { font-size: 0.98rem; }
@@ -306,7 +335,7 @@
         } else {
           document.getElementById('pageTitle').textContent = '이슈 조회';
           document.getElementById('titleArea').innerHTML =
-            `<div class="issue-title-view">${escHtml(issue.title)}</div>`;
+            `<div class="issue-title-view view-headline">${escHtml(issue.title)}</div>`;
         }
 
         document.getElementById('issueSub').textContent =
@@ -349,14 +378,25 @@
 
       textarea.readOnly = !editMode;
 
-      // 조회 모드: 내용 있으면 복사만, 없으면 패널 숨김
+      // 조회 모드: 기사 본문을 진짜 기사 형식으로 표시
       if (!editMode) {
-        if (!textarea.value.trim()) {
+        const content = textarea.value.trim();
+        if (!content) {
           panel.style.display = 'none';
-        } else {
-          panel.style.display = '';
-          acts.innerHTML = `<button class="btn-panel-sm" onclick="copyAI()">복사</button>`;
+          return;
         }
+        panel.style.display = '';
+        panel.classList.add('view-mode');
+        textarea.style.display = 'none';
+
+        const oldView = panel.querySelector('.article-view-body');
+        if (oldView) oldView.remove();
+        const viewDiv = document.createElement('div');
+        viewDiv.className = 'article-view-body';
+        viewDiv.textContent = content;
+        panel.appendChild(viewDiv);
+
+        acts.innerHTML = `<button class="btn-panel-sm" onclick="copyAI()">복사</button>`;
         return;
       }
 

@@ -128,30 +128,53 @@ async function checkEmail(event) {
   } catch (e) { return resp(500, { error: '서버 오류' }); }
 }
 
-// 비로그인: 완료된 이슈만 / 로그인: 완료 + 본인 작성 + 편집 권한 있는 초안
+// 비로그인: 완료된 이슈만 / 로그인: 완료 + 본인 + 편집권한 초안 / 검색·필터·페이징 지원
 async function getIssues(event) {
   const user = verifyToken(event);
+  const qs     = event.queryStringParameters || {};
+  const q      = (qs.q     || '').trim();
+  const author = (qs.author || '').trim();
+  const date   = (qs.date  || '').trim();
+  const mine   = qs.mine  === '1' && !!user;
+  const draft  = qs.draft === '1' && !!user;
+  const page   = Math.max(1, parseInt(qs.page) || 1);
+  const limit  = 30;
+  const offset = (page - 1) * limit;
+
   try {
-    let r;
-    if (user) {
-      r = await pool.query(
-        `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
-         FROM issues i JOIN users u ON i.user_id = u.id
-         WHERE i.is_draft = false
-            OR i.user_id = $1
-            OR i.id IN (SELECT issue_id FROM issue_section_editors WHERE user_id = $1)
-         ORDER BY i.created_at DESC`,
-        [user.id]
-      );
+    const conds = [];
+    const params = [];
+    let idx = 1;
+
+    // 가시성 조건
+    if (mine) {
+      conds.push(`i.user_id = $${idx}`); params.push(user.id); idx++;
+    } else if (user) {
+      conds.push(`(i.is_draft = false OR i.user_id = $${idx} OR i.id IN (SELECT issue_id FROM issue_section_editors WHERE user_id = $${idx}))`);
+      params.push(user.id); idx++;
     } else {
-      r = await pool.query(
-        `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
-         FROM issues i JOIN users u ON i.user_id = u.id
-         WHERE i.is_draft = false
-         ORDER BY i.created_at DESC`
-      );
+      conds.push('i.is_draft = false');
     }
-    return resp(200, { issues: r.rows });
+
+    if (draft && user) conds.push('i.is_draft = true');
+
+    if (q)      { conds.push(`i.title ILIKE $${idx++}`);           params.push(`%${q}%`); }
+    if (author) { conds.push(`u.name  ILIKE $${idx++}`);           params.push(`%${author}%`); }
+    if (date)   { conds.push(`DATE(i.created_at) = $${idx++}`);    params.push(date); }
+
+    const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+    const base  = `FROM issues i JOIN users u ON i.user_id = u.id ${where}`;
+
+    const countR = await pool.query(`SELECT COUNT(*) ${base}`, params);
+    const total  = parseInt(countR.rows[0].count);
+
+    const dataR = await pool.query(
+      `SELECT i.id, i.title, i.is_draft, i.created_at, u.name AS author, i.user_id
+       ${base} ORDER BY i.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, limit, offset]
+    );
+
+    return resp(200, { issues: dataR.rows, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
