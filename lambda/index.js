@@ -555,11 +555,17 @@ async function generateArticle(event) {
   const { title, sections, content } = getBody(event);
   if (!title) return resp(400, { error: '제목을 입력하세요.' });
   try {
-    const ur = await pool.query(
-      `SELECT writing_style, COALESCE(article_style,'') AS article_style FROM users WHERE id=$1`, [user.id]
-    );
-    const writingStyle = ur.rows[0]?.writing_style  || '';
-    const articleStyle = ur.rows[0]?.article_style   || '';
+    let writingStyle = '', articleStyle = '';
+    try {
+      const ur = await pool.query(
+        `SELECT writing_style, COALESCE(article_style,'') AS article_style FROM users WHERE id=$1`, [user.id]
+      );
+      writingStyle = ur.rows[0]?.writing_style || '';
+      articleStyle = ur.rows[0]?.article_style  || '';
+    } catch {
+      const ur = await pool.query('SELECT writing_style FROM users WHERE id=$1', [user.id]);
+      writingStyle = ur.rows[0]?.writing_style || '';
+    }
 
     const sr = await pool.query('SELECT file_name, s3_key FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC', [user.id]);
     const sampleTexts = [];
@@ -612,7 +618,9 @@ async function getMypage(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
-    const ur = await pool.query('SELECT name, email, writing_style, COALESCE(article_style,\'\') AS article_style FROM users WHERE id=$1', [user.id]);
+    const ur = await pool.query(
+      `SELECT name, email, writing_style, COALESCE(article_style,'') AS article_style FROM users WHERE id=$1`, [user.id]
+    );
     const sr = await pool.query(
       'SELECT id, file_name, s3_key, file_size, created_at FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC',
       [user.id]
