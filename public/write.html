@@ -310,13 +310,16 @@
       color: var(--text-primary); white-space: pre-wrap; word-break: break-word;
     }
     .ai-side-placeholder { font-size: 0.74rem; color: var(--text-muted); font-style: italic; }
-    .sec-ai-copy-btn {
-      align-self: flex-end; margin: 0 0.5rem 0.4rem;
-      padding: 0.15rem 0.5rem; border: 1px solid #c4b5fd; border-radius: var(--radius-sm);
-      font-size: 0.67rem; font-weight: 600; cursor: pointer; color: #7c3aed;
-      background: #fff; font-family: var(--font-sans); transition: all 0.12s;
+    .sec-ai-btn-row { display: flex; gap: 0.28rem; align-self: flex-end; margin: 0 0.5rem 0.4rem; }
+    .sec-ai-copy-btn, .sec-ai-apply-btn {
+      padding: 0.15rem 0.5rem; border-radius: var(--radius-sm);
+      font-size: 0.67rem; font-weight: 600; cursor: pointer;
+      font-family: var(--font-sans); transition: all 0.12s;
     }
-    .sec-ai-copy-btn:hover { background: #7c3aed; color: #fff; }
+    .sec-ai-copy-btn  { border: 1px solid #c4b5fd; color: #7c3aed; background: #fff; }
+    .sec-ai-copy-btn:hover  { background: #7c3aed; color: #fff; }
+    .sec-ai-apply-btn { border: 1px solid var(--success); color: #065f46; background: var(--success-light); }
+    .sec-ai-apply-btn:hover { background: var(--success); color: #fff; }
     .sec-guide-wrap {
       display: flex; align-items: center; gap: 0.28rem; flex: 1; min-width: 0;
     }
@@ -767,7 +770,10 @@
         if (side) {
           side.innerHTML = `
             <div class="section-ai-content" id="aiSecContent${n}">${escHtml(data.ai_content)}</div>
-            <button class="sec-ai-copy-btn" onclick="copySectionAI(${n})">📋 복사</button>`;
+            <div class="sec-ai-btn-row">
+              <button class="sec-ai-copy-btn"  onclick="copySectionAI(${n})">📋 복사</button>
+              <button class="sec-ai-apply-btn" onclick="applySectionAI(${n})">✅ 적용</button>
+            </div>`;
         }
         aiData[n - 1] = data.ai_content;
         showToast(`섹션 ${n} AI 작성 완료`, 'success');
@@ -786,6 +792,16 @@
       navigator.clipboard.writeText(text)
         .then(() => showToast('복사됐습니다.', 'success'))
         .catch(() => showToast('복사 실패', 'error'));
+    }
+
+    function applySectionAI(n) {
+      const text = document.getElementById(`aiSecContent${n}`)?.textContent?.trim() || '';
+      if (!text) { showToast('적용할 내용이 없습니다.', 'error'); return; }
+      const ta = document.getElementById(`sec${n}`);
+      if (!ta || ta.readOnly) { showToast('편집 권한이 없는 섹션입니다.', 'error'); return; }
+      ta.value = text;
+      ta.focus();
+      showToast(`섹션 ${n} 내용이 좌측에 적용됐습니다.`, 'success');
     }
 
     function fmtPubDate(str) {
@@ -912,7 +928,7 @@
             <div class="section-ai-content" id="aiSecContent${n}">${
               aiContent ? escHtml(aiContent) : '<div class="ai-side-placeholder">✨ AI작성 버튼으로 내용을 생성하세요</div>'
             }</div>
-            ${aiContent ? `<button class="sec-ai-copy-btn" onclick="copySectionAI(${n})">📋 복사</button>` : ''}
+            ${aiContent ? `<div class="sec-ai-btn-row"><button class="sec-ai-copy-btn" onclick="copySectionAI(${n})">📋 복사</button><button class="sec-ai-apply-btn" onclick="applySectionAI(${n})">✅ 적용</button></div>` : ''}
             <div class="ai-side-hint">💡 AI 내용을 활용하려면 좌측에 붙여넣고 편집하세요</div>
           </div>`;
 
