@@ -3,10 +3,6 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const https = require('https');
-const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-
-const s3 = new S3Client({ region: process.env.AWS_REGION || 'ap-southeast-2' });
-const S3_BUCKET = process.env.S3_BUCKET;
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -100,16 +96,22 @@ exports.handler = async (event) => {
   if (commentReactM && method === 'POST')   return reactComment(event, commentReactM[1]);
 
   // Mypage
-  const sampleM = path.match(/^\/mypage\/samples\/(\d+)$/);
   if (path === '/mypage'                && method === 'GET')    return getMypage(event);
-  if (path === '/mypage/style'          && method === 'POST')   return saveStyle(event);
-  if (path === '/mypage/upload'         && method === 'POST')   return uploadSample(event);
-  if (path === '/mypage/section-guides'  && method === 'GET')    return getSectionGuides(event);
-  if (path === '/mypage/section-guides'  && method === 'POST')   return saveSectionGuide(event);
-  if (path === '/mypage/section-labels'  && method === 'GET')    return getSectionLabels(event);
-  if (path === '/mypage/section-labels'  && method === 'POST')   return saveSectionLabelOne(event);
-  if (path === '/mypage/article-style'   && method === 'POST')   return saveArticleStyle(event);
-  if (sampleM                           && method === 'DELETE') return deleteSample(event, sampleM[1]);
+  if (path === '/mypage/article-style'  && method === 'POST')   return saveArticleStyle(event);
+  if (path === '/mypage/section-guides' && method === 'GET')    return getSectionGuides(event);
+  if (path === '/mypage/section-guides' && method === 'POST')   return saveSectionGuide(event);
+  if (path === '/mypage/section-labels' && method === 'GET')    return getSectionLabels(event);
+  if (path === '/mypage/section-labels' && method === 'POST')   return saveSectionLabelOne(event);
+
+  // 링크 북마크
+  const folderM      = path.match(/^\/bookmarks\/folders\/(\d+)$/);
+  const folderLinksM = path.match(/^\/bookmarks\/folders\/(\d+)\/links$/);
+  const linkM        = path.match(/^\/bookmarks\/links\/(\d+)$/);
+  if (path === '/bookmarks'          && method === 'GET')    return getBookmarks(event);
+  if (path === '/bookmarks/folders'  && method === 'POST')   return createFolder(event);
+  if (folderM       && method === 'DELETE') return deleteFolder(event, folderM[1]);
+  if (folderLinksM  && method === 'POST')   return addLink(event, folderLinksM[1]);
+  if (linkM         && method === 'DELETE') return deleteLink(event, linkM[1]);
 
   return resp(404, { error: 'Not found' });
 };
@@ -574,20 +576,6 @@ async function generateArticle(event) {
       writingStyle = ur.rows[0]?.writing_style || '';
     }
 
-    const sr = await pool.query('SELECT file_name, s3_key FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC', [user.id]);
-    const sampleTexts = [];
-    for (const sample of sr.rows) {
-      const ext = sample.file_name.split('.').pop().toLowerCase();
-      if (['txt', 'md', 'text'].includes(ext)) {
-        try {
-          const obj = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET, Key: sample.s3_key }));
-          const chunks = [];
-          for await (const chunk of obj.Body) chunks.push(chunk);
-          const text = Buffer.concat(chunks).toString('utf-8').slice(0, 1500);
-          sampleTexts.push(`[${sample.file_name}]\n${text}`);
-        } catch {}
-      }
-    }
 
     let promptContent;
 
@@ -596,7 +584,6 @@ async function generateArticle(event) {
       let styleBlock = '';
       if (articleStyle) styleBlock += `\n\n[기사 완성본 스타일 예시 — 이 문체와 형식을 참고]\n${articleStyle}`;
       if (writingStyle) styleBlock += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
-      if (sampleTexts.length) styleBlock += `\n\n[샘플 기사]\n${sampleTexts.join('\n\n')}`;
       const styleNote = styleBlock ? '\n위 스타일 가이드의 문체와 형식을 반영하되, 원고의 모든 내용은 반드시 유지하세요.' : '';
       promptContent = `아래 기사 원고를 다듬어주세요.
 
@@ -618,7 +605,6 @@ ${content}${styleBlock}`;
       let personalSection = '';
       if (articleStyle) personalSection += `\n\n[기사 완성본 스타일 예시]\n${articleStyle}`;
       if (writingStyle)  personalSection += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
-      if (sampleTexts.length) personalSection += `\n\n[샘플 기사]\n${sampleTexts.join('\n\n')}`;
       const styleNote = personalSection ? '\n위 스타일 예시와 가이드를 최대한 반영하세요.' : '';
       promptContent = `아래 제목과 5개 섹션 내용을 바탕으로 완성도 높은 뉴스 기사를 작성해 주세요.\n육하원칙에 따라 자연스럽게 이어지는 기사 형식으로 작성하세요.${styleNote}\n\n제목: ${title}\n\n${body}${personalSection}`;
     }
@@ -637,69 +623,15 @@ async function getMypage(event) {
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
     const ur = await pool.query(
-      `SELECT name, email, writing_style, COALESCE(article_style,'') AS article_style FROM users WHERE id=$1`, [user.id]
-    );
-    const sr = await pool.query(
-      'SELECT id, file_name, s3_key, file_size, created_at FROM user_samples WHERE user_id=$1 ORDER BY created_at ASC',
-      [user.id]
+      `SELECT name, email, COALESCE(article_style,'') AS article_style FROM users WHERE id=$1`, [user.id]
     );
     return resp(200, {
       profile: { name: ur.rows[0].name, email: ur.rows[0].email },
-      writing_style:  ur.rows[0]?.writing_style  || '',
-      article_style:  ur.rows[0]?.article_style   || '',
-      samples: sr.rows,
+      article_style: ur.rows[0]?.article_style || '',
     });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
-async function saveStyle(event) {
-  const user = verifyToken(event);
-  if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { writing_style } = getBody(event);
-  try {
-    await pool.query('UPDATE users SET writing_style=$1 WHERE id=$2', [writing_style || '', user.id]);
-    return resp(200, { ok: true });
-  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
-}
-
-async function uploadSample(event) {
-  const user = verifyToken(event);
-  if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { fileName, fileType, fileData, fileSize } = getBody(event);
-  if (!fileName || !fileData) return resp(400, { error: '파일 데이터가 없습니다.' });
-  try {
-    const count = await pool.query('SELECT COUNT(*) FROM user_samples WHERE user_id=$1', [user.id]);
-    if (parseInt(count.rows[0].count) >= 3) return resp(400, { error: '샘플은 최대 3개까지 업로드할 수 있습니다.' });
-
-    const buf = Buffer.from(fileData, 'base64');
-    const safeFileName = fileName.replace(/[^a-zA-Z0-9._\-가-힣]/g, '_');
-    const key = `samples/${user.id}/${Date.now()}_${safeFileName}`;
-    await s3.send(new PutObjectCommand({
-      Bucket: S3_BUCKET,
-      Key: key,
-      Body: buf,
-      ContentType: fileType || 'application/octet-stream',
-    }));
-    const r = await pool.query(
-      'INSERT INTO user_samples (user_id, file_name, s3_key, file_size) VALUES($1,$2,$3,$4) RETURNING id, file_name, s3_key, file_size, created_at',
-      [user.id, fileName, key, fileSize || buf.length]
-    );
-    return resp(201, { sample: r.rows[0] });
-  } catch (e) { console.error(e); return resp(500, { error: e.message || '업로드 실패' }); }
-}
-
-async function deleteSample(event, id) {
-  const user = verifyToken(event);
-  if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  try {
-    const r = await pool.query('SELECT s3_key, user_id FROM user_samples WHERE id=$1', [id]);
-    if (!r.rows.length) return resp(404, { error: '파일을 찾을 수 없습니다.' });
-    if (r.rows[0].user_id !== user.id) return resp(403, { error: '삭제 권한이 없습니다.' });
-    await s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: r.rows[0].s3_key }));
-    await pool.query('DELETE FROM user_samples WHERE id=$1', [id]);
-    return resp(200, { ok: true });
-  } catch (e) { console.error(e); return resp(500, { error: e.message || '삭제 실패' }); }
-}
 
 async function reactIssue(event, issueId) {
   const user = verifyToken(event);
@@ -1086,6 +1018,79 @@ async function saveSectionGuide(event) {
        ON CONFLICT (user_id, section_no) DO UPDATE SET guide=$3, updated_at=NOW()`,
       [user.id, section_no, guide || '']
     );
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function getBookmarks(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const folders = await pool.query(
+      'SELECT id, name, created_at FROM link_folders WHERE user_id=$1 ORDER BY created_at ASC', [user.id]
+    );
+    const links = await pool.query(
+      'SELECT id, folder_id, title, url, created_at FROM link_bookmarks WHERE user_id=$1 ORDER BY created_at ASC', [user.id]
+    );
+    const result = folders.rows.map(f => ({
+      ...f,
+      links: links.rows.filter(l => l.folder_id === f.id),
+    }));
+    return resp(200, { folders: result });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function createFolder(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { name } = getBody(event);
+  if (!name?.trim()) return resp(400, { error: '폴더 이름을 입력하세요.' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO link_folders (user_id, name) VALUES($1,$2) RETURNING id, name, created_at',
+      [user.id, name.trim()]
+    );
+    return resp(201, { folder: { ...r.rows[0], links: [] } });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function deleteFolder(event, folderId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const r = await pool.query('SELECT user_id FROM link_folders WHERE id=$1', [folderId]);
+    if (!r.rows.length) return resp(404, { error: '폴더를 찾을 수 없습니다.' });
+    if (r.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+    await pool.query('DELETE FROM link_folders WHERE id=$1', [folderId]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function addLink(event, folderId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { url, title } = getBody(event);
+  if (!url?.trim()) return resp(400, { error: 'URL을 입력하세요.' });
+  try {
+    const f = await pool.query('SELECT user_id FROM link_folders WHERE id=$1', [folderId]);
+    if (!f.rows.length) return resp(404, { error: '폴더를 찾을 수 없습니다.' });
+    if (f.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+    const r = await pool.query(
+      'INSERT INTO link_bookmarks (folder_id, user_id, title, url) VALUES($1,$2,$3,$4) RETURNING id, folder_id, title, url, created_at',
+      [folderId, user.id, title?.trim() || '', url.trim()]
+    );
+    return resp(201, { link: r.rows[0] });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function deleteLink(event, linkId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const r = await pool.query('SELECT user_id FROM link_bookmarks WHERE id=$1', [linkId]);
+    if (!r.rows.length) return resp(404, { error: '링크를 찾을 수 없습니다.' });
+    if (r.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+    await pool.query('DELETE FROM link_bookmarks WHERE id=$1', [linkId]);
     return resp(200, { ok: true });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }

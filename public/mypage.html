@@ -3,93 +3,115 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>마이페이지</title>
+  <title>마이페이지 – 뉴스 제보 / 기사 작성</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
-    .section-card {
+    main.container { max-width: 92%; width: 92%; padding: 1.25rem 1rem; }
+    .sc {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
       padding: 1.25rem 1.5rem; margin-bottom: 1.1rem;
     }
-    .section-title {
+    .sc-title {
       font-size: 0.88rem; font-weight: 800; color: var(--text-primary);
       margin-bottom: 0.9rem; display: flex; align-items: center; gap: 0.4rem;
     }
-    .section-title span { font-size: 1rem; }
-
     .profile-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
     .profile-field { display: flex; flex-direction: column; gap: 0.22rem; }
     .profile-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
     .profile-value { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
 
-    .style-textarea {
-      width: 100%; min-height: 130px; resize: vertical;
-      padding: 0.65rem 0.85rem; border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm); font-size: 0.85rem;
-      font-family: var(--font-sans); outline: none;
-      background: var(--bg); color: var(--text-primary);
-      transition: border-color 0.15s; line-height: 1.6;
+    /* 폴더 */
+    .folder-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .7rem; }
+    .btn-new-folder {
+      padding: .3rem .75rem; background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: .78rem;
+      font-weight: 700; cursor: pointer; font-family: var(--font-sans);
+      transition: background .15s;
     }
-    .style-textarea:focus { border-color: var(--primary); background: #fff; }
-    .style-hint { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.4rem; }
+    .btn-new-folder:hover { background: var(--primary-dark); }
 
-    .btn-save {
-      margin-top: 0.65rem; padding: 0.45rem 1.1rem;
-      background: var(--primary); border: none; border-radius: var(--radius-sm);
-      color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer;
-      font-family: var(--font-sans); transition: background 0.15s; min-height: 36px;
+    .folder-item {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      margin-bottom: .55rem; overflow: hidden;
     }
-    .btn-save:hover:not(:disabled) { background: var(--primary-dark); }
-    .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+    .folder-row {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .5rem .85rem; background: #f8fafc; cursor: pointer;
+      user-select: none;
+    }
+    .folder-row:hover { background: #f1f5f9; }
+    .folder-name { font-size: .82rem; font-weight: 700; flex: 1; color: var(--text-primary); }
+    .folder-count { font-size: .68rem; color: var(--text-muted); }
+    .folder-toggle { font-size: .7rem; color: var(--text-muted); transition: transform .15s; }
+    .folder-toggle.open { transform: rotate(90deg); }
+    .btn-del-folder {
+      padding: .14rem .38rem; border: 1px solid #fca5a5; border-radius: 3px;
+      font-size: .65rem; color: #dc2626; cursor: pointer; background: none;
+      font-family: var(--font-sans); transition: all .12s;
+    }
+    .btn-del-folder:hover { background: #dc2626; color: #fff; }
 
-    /* Samples */
-    .samples-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.85rem; }
-    .sample-item {
-      display: flex; align-items: center; gap: 0.6rem;
-      padding: 0.5rem 0.75rem; border: 1px solid var(--border);
-      border-radius: var(--radius-sm); background: var(--bg); font-size: 0.82rem;
-    }
-    .sample-icon { font-size: 1.1rem; flex-shrink: 0; }
-    .sample-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-    .sample-meta { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
-    .btn-del {
-      padding: 0.18rem 0.5rem; font-size: 0.68rem; font-weight: 700;
-      border-radius: 3px; cursor: pointer; border: 1px solid #fca5a5;
-      background: var(--bg-card); color: #dc2626; font-family: var(--font-sans);
-      transition: all 0.12s; flex-shrink: 0;
-    }
-    .btn-del:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
-    .btn-del:disabled { opacity: 0.5; cursor: not-allowed; }
+    .folder-body { display: none; padding: .5rem .85rem .65rem; background: var(--bg-card); }
+    .folder-body.open { display: block; }
 
-    .upload-area {
-      border: 2px dashed var(--border); border-radius: var(--radius-sm);
-      padding: 1.1rem; text-align: center; transition: border-color 0.15s;
-      cursor: pointer;
+    .link-item {
+      display: flex; align-items: center; gap: .45rem; padding: .28rem 0;
+      border-bottom: 1px solid #f1f5f9; font-size: .78rem;
     }
-    .upload-area:hover:not(.disabled) { border-color: var(--primary); }
-    .upload-area.disabled { opacity: 0.45; cursor: not-allowed; }
-    .upload-area.dragover { border-color: var(--primary); background: var(--primary-light); }
-    .upload-label { font-size: 0.82rem; color: var(--text-secondary); }
-    .upload-label strong { color: var(--primary); }
-    .upload-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.3rem; }
-    .upload-limit { font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.5rem; }
-    .limit-bar { display: flex; gap: 0.3rem; justify-content: center; margin-top: 0.4rem; }
-    .limit-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--border); transition: background 0.2s;
+    .link-item:last-of-type { border-bottom: none; }
+    .link-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .link-title a { color: var(--primary); text-decoration: none; }
+    .link-title a:hover { text-decoration: underline; }
+    .btn-del-link {
+      padding: .1rem .3rem; border: 1px solid #fca5a5; border-radius: 3px;
+      font-size: .62rem; color: #dc2626; cursor: pointer; background: none;
+      font-family: var(--font-sans); transition: all .12s; flex-shrink: 0;
     }
-    .limit-dot.used { background: var(--primary); }
+    .btn-del-link:hover { background: #dc2626; color: #fff; }
 
-    .upload-progress {
-      margin-top: 0.5rem; font-size: 0.78rem; color: var(--primary); display: none;
+    .add-link-row {
+      display: flex; gap: .3rem; align-items: center; margin-top: .5rem; flex-wrap: wrap;
+    }
+    .link-input {
+      padding: .28rem .55rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-size: .76rem; font-family: var(--font-sans); outline: none;
+      background: var(--bg); color: var(--text-primary); transition: border-color .15s;
+    }
+    .link-input:focus { border-color: var(--primary); }
+    .link-url-in  { flex: 2; min-width: 160px; }
+    .link-title-in { flex: 1; min-width: 100px; max-width: 180px; }
+    .btn-add-link {
+      padding: .28rem .65rem; background: var(--success); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: .74rem;
+      font-weight: 700; cursor: pointer; font-family: var(--font-sans); white-space: nowrap;
+      transition: background .12s;
+    }
+    .btn-add-link:hover { background: #059669; }
+
+    .empty-folder { font-size: .76rem; color: var(--text-muted); padding: .3rem 0; }
+
+    /* 폴더 이름 입력 인라인 */
+    .new-folder-row {
+      display: flex; gap: .3rem; align-items: center; margin-bottom: .6rem;
+    }
+    .new-folder-input {
+      flex: 1; padding: .3rem .6rem; border: 1.5px solid var(--primary);
+      border-radius: var(--radius-sm); font-size: .82rem; font-family: var(--font-sans);
+      outline: none; background: #fff; color: var(--text-primary);
+    }
+    .btn-folder-save {
+      padding: .3rem .7rem; background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: .78rem;
+      font-weight: 700; cursor: pointer; font-family: var(--font-sans);
+    }
+    .btn-folder-cancel {
+      padding: .3rem .6rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--bg-card); color: var(--text-secondary); font-size: .78rem;
+      font-weight: 600; cursor: pointer; font-family: var(--font-sans);
     }
 
-    .empty-samples { font-size: 0.8rem; color: var(--text-muted); padding: 0.4rem 0; }
-
-    @media (max-width: 600px) {
-      .section-card { padding: 1rem 1rem; }
-      .style-textarea { font-size: 16px; }
-    }
+    @media (max-width: 600px) { .sc { padding: 1rem; } }
   </style>
 </head>
 <body>
@@ -115,8 +137,8 @@
       <div id="pageContent" style="display:none">
 
         <!-- 프로필 -->
-        <div class="section-card">
-          <div class="section-title"><span>👤</span> 프로필</div>
+        <div class="sc">
+          <div class="sc-title">👤 프로필</div>
           <div class="profile-row">
             <div class="profile-field">
               <span class="profile-label">이름</span>
@@ -129,35 +151,26 @@
           </div>
         </div>
 
-        <!-- 기사 작성 스타일 -->
-        <div class="section-card">
-          <div class="section-title"><span>✍️</span> 기사 작성 스타일</div>
-          <textarea id="styleInput" class="style-textarea"
-            placeholder="예: 간결하고 객관적인 육하원칙 중심의 기사 스타일, 인용문은 큰따옴표 사용, 전문 용어는 괄호로 풀이, 문단당 3~4문장..."></textarea>
-          <p class="style-hint">AI 기사 생성 시 이 스타일 가이드를 참고합니다.</p>
-          <button class="btn-save" id="btnSaveStyle" onclick="saveStyle()">저장</button>
-        </div>
+        <!-- 내 기사 링크 -->
+        <div class="sc">
+          <div class="sc-title">🔖 내 기사 링크</div>
 
-        <!-- 샘플 기사 -->
-        <div class="section-card">
-          <div class="section-title"><span>📄</span> 샘플 기사 <span id="sampleCount" style="font-size:0.75rem;font-weight:600;color:var(--text-muted);margin-left:0.2rem"></span></div>
-          <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:0.75rem;">
-            내 글쓰기 스타일이 담긴 기사 파일을 올려두면, AI 기사 생성 시 문체를 반영합니다.<br>
-            텍스트 파일(.txt, .md)은 내용을 직접 읽어 반영하며, 최대 3개까지 저장됩니다.<br>
-            파일은 AWS S3에 영구 저장됩니다.
-          </p>
-          <div class="samples-list" id="samplesList"></div>
-          <div class="upload-area" id="uploadArea" onclick="triggerUpload()">
-            <div class="upload-label">클릭하거나 파일을 드래그하세요 <strong>파일 선택</strong></div>
-            <div class="upload-hint">.txt .md .pdf .docx 등 · 최대 5MB</div>
-            <div class="limit-bar" id="limitBar"></div>
-            <div class="upload-progress" id="uploadProgress">⏳ 업로드 중...</div>
+          <div class="folder-header">
+            <span style="font-size:.74rem;color:var(--text-muted)">폴더를 만들고 기사 링크를 저장하세요</span>
+            <button class="btn-new-folder" onclick="showNewFolderRow()">+ 폴더 만들기</button>
           </div>
-          <input type="file" id="fileInput" style="display:none" onchange="handleFile(this)" accept=".txt,.md,.text,.pdf,.docx,.doc,.hwp" />
+
+          <div id="newFolderRow" style="display:none" class="new-folder-row">
+            <input type="text" id="newFolderName" class="new-folder-input" placeholder="폴더 이름 입력..." maxlength="50" />
+            <button class="btn-folder-save" onclick="createFolder()">만들기</button>
+            <button class="btn-folder-cancel" onclick="hideNewFolderRow()">취소</button>
+          </div>
+
+          <div id="folderList"></div>
         </div>
 
       </div>
-      <div id="loadMsg" class="loading" style="padding:3rem 1rem;text-align:center;color:var(--text-muted);font-size:0.82rem;">불러오는 중...</div>
+      <div id="loadMsg" style="padding:3rem 1rem;text-align:center;color:var(--text-muted);font-size:.82rem">불러오는 중...</div>
     </main>
 
     <footer class="app-footer">
@@ -171,20 +184,19 @@
     if (!requireAuth()) throw new Error('auth');
     renderHeader('#headerUser');
 
-    let samplesData = [];
+    let foldersData = [];
 
     loadMypage();
 
     async function loadMypage() {
       try {
-        const res = await api('/mypage');
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        document.getElementById('profileName').textContent = data.profile.name;
-        document.getElementById('profileEmail').textContent = data.profile.email;
-        document.getElementById('styleInput').value = data.writing_style || '';
-        samplesData = data.samples || [];
-        renderSamples();
+        const [mpRes, bkRes] = await Promise.all([api('/mypage'), api('/bookmarks')]);
+        const mp = await mpRes.json();
+        const bk = await bkRes.json();
+        document.getElementById('profileName').textContent  = mp.profile?.name  || '—';
+        document.getElementById('profileEmail').textContent = mp.profile?.email || '—';
+        foldersData = bk.folders || [];
+        renderFolders();
         document.getElementById('loadMsg').style.display = 'none';
         document.getElementById('pageContent').style.display = '';
       } catch {
@@ -192,147 +204,119 @@
       }
     }
 
-    function renderSamples() {
-      const list = document.getElementById('samplesList');
-      const count = samplesData.length;
-      document.getElementById('sampleCount').textContent = `(${count}/3)`;
-
-      // limit dots
-      const bar = document.getElementById('limitBar');
-      bar.innerHTML = [0,1,2].map(i =>
-        `<div class="limit-dot${i < count ? ' used' : ''}"></div>`
-      ).join('');
-
-      // upload area state
-      const area = document.getElementById('uploadArea');
-      if (count >= 3) {
-        area.classList.add('disabled');
-      } else {
-        area.classList.remove('disabled');
-      }
-
-      if (!count) {
-        list.innerHTML = '<p class="empty-samples">아직 샘플 파일이 없습니다.</p>';
+    function renderFolders() {
+      const el = document.getElementById('folderList');
+      if (!foldersData.length) {
+        el.innerHTML = '<p style="font-size:.78rem;color:var(--text-muted);padding:.3rem 0">아직 폴더가 없습니다.</p>';
         return;
       }
-      list.innerHTML = samplesData.map(s => {
-        const size = s.file_size ? formatSize(s.file_size) : '';
-        const date = new Date(s.created_at).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit' });
-        const icon = fileIcon(s.file_name);
-        return `<div class="sample-item" id="si-${s.id}">
-          <span class="sample-icon">${icon}</span>
-          <span class="sample-name" title="${escHtml(s.file_name)}">${escHtml(s.file_name)}</span>
-          <span class="sample-meta">${size}${size && date ? ' · ' : ''}${date}</span>
-          <button class="btn-del" id="del-${s.id}" onclick="deleteSample(${s.id}, this)">삭제</button>
-        </div>`;
-      }).join('');
+      el.innerHTML = foldersData.map(f => `
+        <div class="folder-item" id="folder-${f.id}">
+          <div class="folder-row" onclick="toggleFolder(${f.id})">
+            <span class="folder-toggle" id="ftog-${f.id}">▶</span>
+            <span class="folder-name">📁 ${escHtml(f.name)}</span>
+            <span class="folder-count">${f.links.length}개</span>
+            <button class="btn-del-folder" onclick="event.stopPropagation();deleteFolder(${f.id})" title="폴더 삭제">🗑</button>
+          </div>
+          <div class="folder-body" id="fbody-${f.id}">
+            ${f.links.length
+              ? f.links.map(l => `
+                <div class="link-item" id="link-${l.id}">
+                  <div class="link-title">
+                    <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener" title="${escHtml(l.url)}">${escHtml(l.title || l.url)}</a>
+                  </div>
+                  <button class="btn-del-link" onclick="deleteLink(${l.id}, ${f.id})" title="삭제">✕</button>
+                </div>`).join('')
+              : '<p class="empty-folder">링크가 없습니다.</p>'}
+            <div class="add-link-row">
+              <input type="url" class="link-input link-url-in" id="lurl-${f.id}" placeholder="https://..." />
+              <input type="text" class="link-input link-title-in" id="ltitle-${f.id}" placeholder="제목(선택)" />
+              <button class="btn-add-link" onclick="addLink(${f.id})">+ 추가</button>
+            </div>
+          </div>
+        </div>`).join('');
     }
 
-    async function saveStyle() {
-      const btn = document.getElementById('btnSaveStyle');
-      const writing_style = document.getElementById('styleInput').value;
-      btn.disabled = true; btn.textContent = '저장 중...';
+    function toggleFolder(id) {
+      const body = document.getElementById(`fbody-${id}`);
+      const tog  = document.getElementById(`ftog-${id}`);
+      const open = body.classList.toggle('open');
+      tog.classList.toggle('open', open);
+    }
+
+    function showNewFolderRow() {
+      document.getElementById('newFolderRow').style.display = 'flex';
+      document.getElementById('newFolderName').focus();
+    }
+    function hideNewFolderRow() {
+      document.getElementById('newFolderRow').style.display = 'none';
+      document.getElementById('newFolderName').value = '';
+    }
+
+    async function createFolder() {
+      const name = document.getElementById('newFolderName').value.trim();
+      if (!name) { showToast('폴더 이름을 입력하세요.', 'error'); return; }
       try {
-        const res = await api('/mypage/style', { method: 'POST', body: JSON.stringify({ writing_style }) });
+        const res = await api('/bookmarks/folders', { method: 'POST', body: JSON.stringify({ name }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        showToast('스타일이 저장됐습니다.', 'success');
-      } catch (e) { showToast(e.message || '저장 실패', 'error'); }
-      finally { btn.disabled = false; btn.textContent = '저장'; }
+        foldersData.push(data.folder);
+        renderFolders();
+        hideNewFolderRow();
+        showToast(`"${name}" 폴더가 생성됐습니다.`, 'success');
+      } catch (e) { showToast(e.message || '생성 실패', 'error'); }
     }
 
-    function triggerUpload() {
-      if (samplesData.length >= 3) { showToast('최대 3개까지만 업로드할 수 있습니다.', 'error'); return; }
-      document.getElementById('fileInput').click();
-    }
-
-    async function handleFile(input) {
-      const file = input.files[0];
-      if (!file) return;
-      input.value = '';
-      if (file.size > 5 * 1024 * 1024) { showToast('파일 크기는 5MB 이하여야 합니다.', 'error'); return; }
-      if (samplesData.length >= 3) { showToast('최대 3개까지만 업로드할 수 있습니다.', 'error'); return; }
-
-      const prog = document.getElementById('uploadProgress');
-      prog.style.display = '';
-      document.getElementById('uploadArea').style.pointerEvents = 'none';
+    async function deleteFolder(id) {
+      const f = foldersData.find(x => x.id === id);
+      if (!confirm(`"${f?.name}" 폴더와 링크 ${f?.links.length}개를 모두 삭제하시겠습니까?`)) return;
       try {
-        const fileData = await toBase64(file);
-        const res = await api('/mypage/upload', {
-          method: 'POST',
-          body: JSON.stringify({
-            fileName: file.name,
-            fileType: file.type,
-            fileData,
-            fileSize: file.size,
-          }),
+        const res = await api(`/bookmarks/folders/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        foldersData = foldersData.filter(x => x.id !== id);
+        renderFolders();
+        showToast('폴더가 삭제됐습니다.', 'success');
+      } catch { showToast('삭제 실패', 'error'); }
+    }
+
+    async function addLink(folderId) {
+      const url   = document.getElementById(`lurl-${folderId}`)?.value.trim();
+      const title = document.getElementById(`ltitle-${folderId}`)?.value.trim();
+      if (!url || !/^https?:\/\//i.test(url)) { showToast('올바른 URL을 입력하세요.', 'error'); return; }
+      try {
+        const res = await api(`/bookmarks/folders/${folderId}/links`, {
+          method: 'POST', body: JSON.stringify({ url, title }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        samplesData.push(data.sample);
-        renderSamples();
-        showToast('업로드됐습니다.', 'success');
-      } catch (e) { showToast(e.message || '업로드 실패', 'error'); }
-      finally {
-        prog.style.display = 'none';
-        document.getElementById('uploadArea').style.pointerEvents = '';
-      }
+        const folder = foldersData.find(f => f.id === folderId);
+        if (folder) folder.links.push(data.link);
+        renderFolders();
+        // 해당 폴더 펼치기
+        const body = document.getElementById(`fbody-${folderId}`);
+        const tog  = document.getElementById(`ftog-${folderId}`);
+        if (body && !body.classList.contains('open')) { body.classList.add('open'); tog?.classList.add('open'); }
+        showToast('링크가 추가됐습니다.', 'success');
+      } catch (e) { showToast(e.message || '추가 실패', 'error'); }
     }
 
-    async function deleteSample(id, btn) {
-      if (!confirm('이 파일을 삭제하시겠습니까?\nS3에서도 영구 삭제됩니다.')) return;
-      btn.disabled = true;
+    async function deleteLink(linkId, folderId) {
       try {
-        const res = await api(`/mypage/samples/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        samplesData = samplesData.filter(s => s.id !== id);
-        renderSamples();
-        showToast('삭제됐습니다.', 'success');
-      } catch (e) { showToast(e.message || '삭제 실패', 'error'); btn.disabled = false; }
-    }
-
-    function toBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    function formatSize(bytes) {
-      if (bytes < 1024) return bytes + 'B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
-    }
-
-    function fileIcon(name) {
-      const ext = name.split('.').pop().toLowerCase();
-      if (['txt','md','text'].includes(ext)) return '📝';
-      if (ext === 'pdf') return '📕';
-      if (['doc','docx'].includes(ext)) return '📘';
-      if (ext === 'hwp') return '📙';
-      return '📄';
+        const res = await api(`/bookmarks/links/${linkId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        const folder = foldersData.find(f => f.id === folderId);
+        if (folder) folder.links = folder.links.filter(l => l.id !== linkId);
+        renderFolders();
+        const body = document.getElementById(`fbody-${folderId}`);
+        const tog  = document.getElementById(`ftog-${folderId}`);
+        if (body) { body.classList.add('open'); tog?.classList.add('open'); }
+        showToast('링크가 삭제됐습니다.', 'success');
+      } catch { showToast('삭제 실패', 'error'); }
     }
 
     function escHtml(s) {
       return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
-
-    // Drag & drop
-    const area = document.getElementById('uploadArea');
-    area.addEventListener('dragover', e => { e.preventDefault(); if (samplesData.length < 3) area.classList.add('dragover'); });
-    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
-    area.addEventListener('drop', e => {
-      e.preventDefault(); area.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (!file) return;
-      const dt = new DataTransfer(); dt.items.add(file);
-      const inp = document.getElementById('fileInput');
-      inp.files = dt.files;
-      handleFile(inp);
-    });
 
     let toastTimer;
     function showToast(msg, type = 'info') {
@@ -341,6 +325,11 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => el.className = `toast ${type}`, 2800);
     }
+
+    document.getElementById('newFolderName')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') createFolder();
+      if (e.key === 'Escape') hideNewFolderRow();
+    });
   </script>
 </body>
 </html>
