@@ -157,11 +157,13 @@
     .empty-state p { font-size: 0.82rem; }
     .loading { text-align: center; padding: 2.5rem; color: var(--text-muted); font-size: 0.82rem; }
 
-    /* 좋아요/싫어요 행 색상 */
+    /* 좋아요/싫어요/신규 행 색상 */
     tr.row-liked    td { background: #eff6ff; }
     tr.row-disliked td { background: #fff7ed; }
     tr.row-liked:hover    td { background: #dbeafe; }
     tr.row-disliked:hover td { background: #ffedd5; }
+    tr.row-new      td { background: #eef2ff; }
+    tr.row-new:hover td  { background: #e0e7ff; }
 
     /* 베스트 섹션 */
     .best-section {
@@ -460,13 +462,15 @@
         <button class="act-btn del" onclick="event.stopPropagation();deleteIssue(${issue.id}, this)">삭제</button>` : '';
       const likes    = issue.likes    || 0;
       const dislikes = issue.dislikes || 0;
-      const rowClass = isBest ? '' : likes > dislikes && likes > 0 ? ' row-liked' : dislikes > likes && dislikes > 0 ? ' row-disliked' : '';
+      const isNew    = issue.id === newIssueId;
+      const rowClass = isBest ? '' : isNew ? ' row-new' : likes > dislikes && likes > 0 ? ' row-liked' : dislikes > likes && dislikes > 0 ? ' row-disliked' : '';
       const bestBadge = isBest ? '<span class="badge" style="background:#fef3c7;color:#92400e">🏆 베스트</span> ' : '';
+      const newBadge  = isNew  ? '<span class="badge" style="background:#e0e7ff;color:#3730a3;margin-right:.2rem">방금 작성</span> ' : '';
       return `<tr class="${rowClass}">
         <td class="col-no">${num}</td>
         <td class="col-title">
           <div class="title-cell">
-            <a href="write.html?id=${issue.id}${issue.is_draft ? '&mode=edit' : ''}" class="title-link">${bestBadge}${escHtml(issue.title)}</a>
+            <a href="write.html?id=${issue.id}${issue.is_draft ? '&mode=edit' : ''}" class="title-link">${bestBadge}${newBadge}${escHtml(issue.title)}</a>
           </div>
         </td>
         <td class="col-category">${escHtml(issue.category || '문화')}</td>
@@ -536,11 +540,15 @@
       } catch (e) { showToast(e.message || '저장 실패', 'error'); }
     }
 
+    let newIssueId = null; // 방금 생성된 이슈 ID
+
     function addAIIssue() {
       if (!isLoggedIn) { showToast('로그인이 필요합니다.', 'error'); return; }
       if (document.getElementById('aiInlineRow')) { document.getElementById('aiInlineTitle').focus(); return; }
-      // 기존 인라인 행 닫기
       document.getElementById('inlineRow')?.remove();
+      // 입력창 보이는 동안 AI 버튼 비활성
+      const aiBtn = document.getElementById('btnAI');
+      if (aiBtn) aiBtn.disabled = true;
       if (!document.querySelector('.issue-table')) renderTable([], 1, 0);
       const tbody = document.getElementById('issueBody');
       const tr = document.createElement('tr');
@@ -566,7 +574,11 @@
       });
     }
 
-    function cancelAIInlineRow() { document.getElementById('aiInlineRow')?.remove(); }
+    function cancelAIInlineRow() {
+      document.getElementById('aiInlineRow')?.remove();
+      const aiBtn = document.getElementById('btnAI');
+      if (aiBtn) aiBtn.disabled = false; // 버튼 재활성
+    }
 
     async function saveAIIssue() {
       const title = document.getElementById('aiInlineTitle')?.value.trim();
@@ -578,6 +590,7 @@
         const res = await api('/topics/ai', { method: 'POST', body: JSON.stringify({ userTitle: title, category }) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
+        newIssueId = data.issue.id; // 방금 생성 표시용
         cancelAIInlineRow();
         showToast(`AI 이슈가 추가됐습니다.\n작성 완료 전까지 나만 볼 수 있습니다.`, 'success');
         loadIssues(1);
