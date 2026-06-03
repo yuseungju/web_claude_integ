@@ -1637,7 +1637,7 @@
     /* ── 기사 본문 글자수 ── */
     const AI_BODY_BASE = 800;   // 일반 기사 기준 글자수
     const AI_BODY_WARN = Math.round(AI_BODY_BASE * 1.2);  // 960
-    const AI_BODY_OVER = Math.round(AI_BODY_BASE * 1.4);  // 1120
+    const AI_BODY_OVER = Math.round(AI_BODY_BASE * 2.0);  // 1600
 
     function updateAiBodyCounter() {
       const text = document.getElementById('aiBody')?.value || '';
@@ -1648,7 +1648,7 @@
 
       if (len >= AI_BODY_OVER) {
         el.className = 'ai-body-counter over';
-        el.textContent = `${len.toLocaleString()}자 ⚠ 권장량(${AI_BODY_BASE}자) 1.4배 초과 — 글자수를 줄이세요`;
+        el.textContent = `${len.toLocaleString()}자 ⚠ 권장량(${AI_BODY_BASE}자) 2배 초과 — 글자수를 줄이세요`;
         if (btn) { btn.disabled = true; btn.title = '글자수가 너무 많습니다. 줄여주세요.'; }
       } else if (len >= AI_BODY_WARN) {
         el.className = 'ai-body-counter warn';
