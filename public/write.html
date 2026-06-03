@@ -470,6 +470,30 @@
       <!-- 관련글 검색 패널 (편집 모드) -->
       <div class="related-panel" id="relatedPanel" style="display:none"></div>
 
+      <!-- 첫 작성 가이드 -->
+      <div id="firstTimeGuide" style="display:none" class="guide-card">
+        <div class="guide-header">
+          📋 기사 작성 가이드
+          <button class="guide-close" onclick="dismissGuide()">✕ 닫기</button>
+        </div>
+        <ol class="guide-steps">
+          <li>섹션 번호 옆 제목 칸에 <strong>문단 제목을 입력</strong>하고 Enter로 저장하세요</li>
+          <li>좌측 입력칸에 <strong>섹션 내용을 직접 작성</strong>하세요</li>
+          <li><strong>✨ AI작성</strong> 버튼을 누르면 우측에 AI가 내용을 정리해줍니다<br>
+            <span style="font-size:.7rem;color:#a16207;margin-left:1.65rem">📋 복사 또는 ✅ 적용으로 좌측에 반영하세요</span>
+          </li>
+          <div class="guide-divider"></div>
+          <li><strong>2 ~ 5번 섹션도 동일하게</strong> 제목 → 내용 작성 → AI작성 순으로 진행하세요</li>
+          <div class="guide-divider"></div>
+          <li>하단 <strong>✨ 기사 본문</strong> 영역에서 <strong>📥 가져오기</strong> 버튼을 클릭하세요<br>
+            <span style="font-size:.7rem;color:#a16207;margin-left:1.65rem">5개 섹션 내용이 기사 본문으로 합쳐집니다</span>
+          </li>
+          <li><strong>🤖 AI로 다듬기</strong> 버튼으로 전체 기사를 완성된 문장으로 다듬으세요<br>
+            <span style="font-size:.7rem;color:#a16207;margin-left:1.65rem">미리보기 팝업에서 확인 후 ✅ 본문에 적용</span>
+          </li>
+        </ol>
+      </div>
+
       <!-- 섹션 툴바 (편집 모드) -->
       <div id="sectionToolbar" style="display:none;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap"></div>
 
@@ -677,10 +701,27 @@
         const gData = await gRes.json();
         const mData = await mRes.json();
         const lData = await lRes.json();
-        if (gRes.ok && Array.isArray(gData.guides))  guideData        = gData.guides;
-        if (mRes.ok)                                  articleStyleData = mData.article_style || '';
+        if (gRes.ok && Array.isArray(gData.guides))  guideData         = gData.guides;
+        if (mRes.ok)                                  articleStyleData  = mData.article_style || '';
         if (lRes.ok && Array.isArray(lData.labels))   userLabelDefaults = lData.labels;
       } catch {}
+      // 첫 작성자 가이드 표시
+      showFirstTimeGuide();
+    }
+
+    function showFirstTimeGuide() {
+      if (!isEditMode || !issueId) return;
+      if (sessionStorage.getItem('guideDismissed')) return;
+      // 저장된 섹션 라벨이 하나도 없으면 첫 작성자
+      if (userLabelDefaults.some(l => l?.trim())) return;
+      const el = document.getElementById('firstTimeGuide');
+      if (el) el.style.display = '';
+    }
+
+    function dismissGuide() {
+      const el = document.getElementById('firstTimeGuide');
+      if (el) el.style.display = 'none';
+      sessionStorage.setItem('guideDismissed', '1');
     }
 
     /* ── AI 정리 미리보기 모달 ── */
@@ -920,6 +961,40 @@
       } catch {
         showToast('저장 실패', 'error');
       }
+    }
+
+    /* ── 첫 작성 가이드 ── */
+    .guide-card {
+      background: #fffbeb; border: 1.5px solid #fbbf24;
+      border-radius: var(--radius-md); padding: .85rem 1.1rem;
+      margin-bottom: 1rem; box-shadow: var(--shadow-sm);
+    }
+    .guide-header {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .82rem; font-weight: 800; color: #92400e; margin-bottom: .55rem;
+    }
+    .guide-close {
+      padding: .15rem .45rem; border: 1px solid #fbbf24; border-radius: var(--radius-sm);
+      background: none; font-size: .7rem; color: #92400e; cursor: pointer;
+      font-family: var(--font-sans); transition: all .12s;
+    }
+    .guide-close:hover { background: #fbbf24; }
+    .guide-steps {
+      list-style: none; display: flex; flex-direction: column; gap: .3rem;
+      padding: 0; counter-reset: guide-step;
+    }
+    .guide-steps li {
+      counter-increment: guide-step; display: flex; align-items: baseline; gap: .45rem;
+      font-size: .78rem; color: #78350f; line-height: 1.5;
+    }
+    .guide-steps li::before {
+      content: counter(guide-step); display: inline-flex; align-items: center; justify-content: center;
+      width: 1.2rem; height: 1.2rem; background: #f59e0b; color: #fff;
+      border-radius: 50%; font-size: .62rem; font-weight: 800; flex-shrink: 0; margin-top: .08rem;
+    }
+    .guide-steps li strong { color: #92400e; }
+    .guide-divider {
+      margin: .35rem 0 .35rem 1.65rem; height: 1px; background: #fde68a;
     }
 
     /* ── 섹션 툴바 (관련글 검색 + 자동채우기) ── */
