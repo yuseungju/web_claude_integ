@@ -1109,8 +1109,9 @@
     /* ── 섹션 AI 작성 ── */
     async function aiWriteSection(n) {
       const content = document.getElementById(`sec${n}`)?.value || '';
-      const guide   = guideData[n - 1] || '';
-      const label   = LABELS[n - 1];
+      // 1번 섹션만 고정 가이드, 나머지는 가이드 없음
+      const guide = n === 1 ? '보통 기사의 "본문"처럼 변환해주세요.' : '';
+      const label = '';
       const btn     = document.getElementById(`btnAiSec${n}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
       // 사이드 패널 전체 초기화 (복사·적용 버튼 포함)
@@ -1258,13 +1259,9 @@
         const delBtn  = (editable && n > 1)
           ? `<button class="btn-hide-sec" onclick="deleteSection(${n})" title="내용 삭제 후 숨김">🗑 삭제</button>`
           : '';
-        const hasGuide = guide.trim().length >= 5;
         const contentEmpty = !content.trim();
         const controlBar = editable
           ? `<div class="section-controls">
-               <button class="btn-guide-open${hasGuide ? ' has-guide' : ''}" id="btnGuide${n}" onclick="openGuideModal(${n})">
-                 📝 ${hasGuide ? '가이드 설정됨' : '작성 가이드 설정'}
-               </button>
                <button class="btn-ai-sec" id="btnAiSec${n}" onclick="aiWriteSection(${n})"
                  ${contentEmpty ? 'disabled title="좌측 내용을 먼저 입력하세요"' : ''}>✨ AI작성</button>
              </div>` : '';
@@ -1281,12 +1278,12 @@
         const bodyHtml = editable
           ? `<div class="section-body-2col">
                <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
-                 <textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="8" oninput="onSecInput(${n})">${escHtml(content)}</textarea>
+                 <textarea id="sec${n}" class="section-textarea" placeholder="작성 가이드에 맞는 내용을 작성해주세요." rows="8" oninput="onSecInput(${n})">${escHtml(content)}</textarea>
                  <div class="sec-sources" id="secSrc${n}" style="display:none"></div>
                </div>
                ${aiSide}
              </div>`
-          : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="${HINTS[i]}" rows="8">${escHtml(content)}</textarea>${aiSide}</div>`;
+          : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="작성 가이드에 맞는 내용을 작성해주세요." rows="8">${escHtml(content)}</textarea>${aiSide}</div>`;
 
         const edFormHtml = (isAuthor && issueId)
           ? `<div class="editor-form" id="eform${n}">
