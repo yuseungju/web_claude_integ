@@ -1292,9 +1292,10 @@
           const r2 = await api(`/issues/${issueId}/sections`, {
             method: 'POST',
             body: JSON.stringify({
-              sections: getSections(),
-              guides:  [1,2,3,4,5].map(j => document.getElementById(`guide${j}`)?.value    || ''),
-              labels:  [1,2,3,4,5].map(j => document.getElementById(`secLabel${j}`)?.value || ''),
+              sections:   getSections(),
+              guides:     [1,2,3,4,5].map(j => document.getElementById(`guide${j}`)?.value        || ''),
+              labels:     [1,2,3,4,5].map(j => document.getElementById(`secLabel${j}`)?.value     || ''),
+              aiContents: [1,2,3,4,5].map(j => document.getElementById(`aiSecContent${j}`)?.textContent?.trim() || ''),
               is_draft: isDraft,
               article_content: getArticleContent(),
             }),

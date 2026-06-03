@@ -356,7 +356,7 @@ async function updateIssue(event, id) {
 async function saveSections(event, id) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { sections, guides, labels, is_draft, article_content } = getBody(event);
+  const { sections, guides, labels, aiContents, is_draft, article_content } = getBody(event);
   if (!Array.isArray(sections) || sections.length !== 5)
     return resp(400, { error: '섹션 데이터가 올바르지 않습니다.' });
   try {
@@ -366,10 +366,10 @@ async function saveSections(event, id) {
     for (let i = 0; i < 5; i++) {
       try {
         await pool.query(
-          `INSERT INTO issue_sections (issue_id, section_no, content, guide, label, updated_at)
-           VALUES ($1,$2,$3,$4,$5,NOW())
-           ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, label=$5, updated_at=NOW()`,
-          [id, i + 1, sections[i] || '', (guides && guides[i]) || '', (labels && labels[i]) || '']
+          `INSERT INTO issue_sections (issue_id, section_no, content, guide, label, ai_content, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,NOW())
+           ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, label=$5, ai_content=$6, updated_at=NOW()`,
+          [id, i + 1, sections[i] || '', (guides && guides[i]) || '', (labels && labels[i]) || '', (aiContents && aiContents[i]) || '']
         );
       } catch {
         await pool.query(
