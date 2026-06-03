@@ -571,14 +571,12 @@
       tr.id = 'aiInlineRow'; tr.className = 'inline-row';
       tr.innerHTML = `
         <td></td>
-        <td class="col-title" colspan="3">
-          <input type="text" id="aiInlineTitle" class="inline-input" placeholder="제목 입력 후 Enter → AI가 키워드 추출·링크 수집·제목 다듬기" maxlength="200" />
-        </td>
-        <td></td>
-        <td class="col-action">
-          <div class="inline-acts">
-            <button class="btn-sm primary" id="btnAISave" onclick="saveAIIssue()">AI 저장</button>
-            <button class="btn-sm" onclick="cancelAIInlineRow()">취소</button>
+        <td colspan="8">
+          <div style="display:flex;gap:.4rem;align-items:center;padding:.1rem 0">
+            <input type="text" id="aiInlineTitle" class="inline-input" style="flex:1;min-width:0"
+              placeholder="제목 입력 후 Enter → AI가 키워드 추출·링크 수집·제목 다듬기" maxlength="200" />
+            <button class="btn-sm primary" id="btnAISave" onclick="saveAIIssue()" style="flex-shrink:0">AI 저장</button>
+            <button class="btn-sm" onclick="cancelAIInlineRow()" style="flex-shrink:0">취소</button>
           </div>
         </td>`;
       tbody.insertBefore(tr, tbody.firstChild);
