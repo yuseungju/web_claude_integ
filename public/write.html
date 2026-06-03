@@ -348,6 +348,38 @@
       border-top: 1px dashed var(--border); font-style: italic;
     }
 
+    /* ── 첫 작성 가이드 ── */
+    .guide-card {
+      background: #fffbeb; border: 1.5px solid #fbbf24;
+      border-radius: var(--radius-md); padding: .85rem 1.1rem;
+      margin-bottom: 1rem; box-shadow: var(--shadow-sm);
+    }
+    .guide-header {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .82rem; font-weight: 800; color: #92400e; margin-bottom: .55rem;
+    }
+    .guide-close {
+      padding: .15rem .45rem; border: 1px solid #fbbf24; border-radius: var(--radius-sm);
+      background: none; font-size: .7rem; color: #92400e; cursor: pointer;
+      font-family: var(--font-sans); transition: all .12s;
+    }
+    .guide-close:hover { background: #fbbf24; }
+    .guide-steps {
+      list-style: none; display: flex; flex-direction: column; gap: .3rem;
+      padding: 0; counter-reset: guide-step;
+    }
+    .guide-steps li {
+      counter-increment: guide-step; display: flex; align-items: baseline; gap: .45rem;
+      font-size: .78rem; color: #78350f; line-height: 1.5;
+    }
+    .guide-steps li::before {
+      content: counter(guide-step); display: inline-flex; align-items: center; justify-content: center;
+      width: 1.2rem; height: 1.2rem; background: #f59e0b; color: #fff;
+      border-radius: 50%; font-size: .62rem; font-weight: 800; flex-shrink: 0; margin-top: .08rem;
+    }
+    .guide-steps li strong { color: #92400e; }
+    .guide-divider { margin: .35rem 0 .35rem 1.65rem; height: 1px; background: #fde68a; }
+
     /* ── 섹션 2칸 레이아웃 (편집 모드) ── */
     .section-body-2col {
       display: grid; grid-template-columns: 1fr 1fr;
@@ -965,40 +997,6 @@
       } catch {
         showToast('저장 실패', 'error');
       }
-    }
-
-    /* ── 첫 작성 가이드 ── */
-    .guide-card {
-      background: #fffbeb; border: 1.5px solid #fbbf24;
-      border-radius: var(--radius-md); padding: .85rem 1.1rem;
-      margin-bottom: 1rem; box-shadow: var(--shadow-sm);
-    }
-    .guide-header {
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: .82rem; font-weight: 800; color: #92400e; margin-bottom: .55rem;
-    }
-    .guide-close {
-      padding: .15rem .45rem; border: 1px solid #fbbf24; border-radius: var(--radius-sm);
-      background: none; font-size: .7rem; color: #92400e; cursor: pointer;
-      font-family: var(--font-sans); transition: all .12s;
-    }
-    .guide-close:hover { background: #fbbf24; }
-    .guide-steps {
-      list-style: none; display: flex; flex-direction: column; gap: .3rem;
-      padding: 0; counter-reset: guide-step;
-    }
-    .guide-steps li {
-      counter-increment: guide-step; display: flex; align-items: baseline; gap: .45rem;
-      font-size: .78rem; color: #78350f; line-height: 1.5;
-    }
-    .guide-steps li::before {
-      content: counter(guide-step); display: inline-flex; align-items: center; justify-content: center;
-      width: 1.2rem; height: 1.2rem; background: #f59e0b; color: #fff;
-      border-radius: 50%; font-size: .62rem; font-weight: 800; flex-shrink: 0; margin-top: .08rem;
-    }
-    .guide-steps li strong { color: #92400e; }
-    .guide-divider {
-      margin: .35rem 0 .35rem 1.65rem; height: 1px; background: #fde68a;
     }
 
     /* ── 섹션 툴바 (관련글 검색 + 자동채우기) ── */
