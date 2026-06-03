@@ -71,7 +71,7 @@
       width: 100%; padding: 0.8rem 1rem; border: none; outline: none;
       font-size: 0.88rem; font-family: var(--font-sans);
       color: var(--text-primary); background: var(--bg-card);
-      resize: vertical; min-height: 100px; line-height: 1.75;
+      resize: vertical; min-height: 150px; line-height: 1.75;
     }
     .section-textarea::placeholder { color: var(--text-muted); }
     .section-textarea[readonly] { background: #f8fafc; cursor: default; }
@@ -347,10 +347,11 @@
     }
     .section-ai-side {
       background: #f8fafc; border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; min-height: 100px; position: relative;
+      display: flex; flex-direction: column; height: 150px; position: relative;
+      overflow: hidden;
     }
     .section-ai-content {
-      flex: 1; padding: 0.8rem 1rem; font-size: 0.85rem; line-height: 1.75;
+      flex: 1; overflow-y: auto; padding: 0.8rem 1rem; font-size: 0.85rem; line-height: 1.75;
       color: var(--text-primary); white-space: pre-wrap; word-break: break-word;
     }
     .ai-side-placeholder { font-size: 0.74rem; color: var(--text-muted); font-style: italic; }
@@ -1088,12 +1089,12 @@
         const bodyHtml = editable
           ? `<div class="section-body-2col">
                <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
-                 <textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="4" oninput="onSecInput(${n})">${escHtml(content)}</textarea>
+                 <textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="6" oninput="onSecInput(${n})">${escHtml(content)}</textarea>
                  <div class="sec-sources" id="secSrc${n}" style="display:none"></div>
                </div>
                ${aiSide}
              </div>`
-          : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="${HINTS[i]}" rows="4">${escHtml(content)}</textarea>${aiSide}</div>`;
+          : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="${HINTS[i]}" rows="6">${escHtml(content)}</textarea>${aiSide}</div>`;
 
         const edFormHtml = (isAuthor && issueId)
           ? `<div class="editor-form" id="eform${n}">
