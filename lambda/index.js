@@ -836,7 +836,7 @@ async function aiWriteSection(event, issueId, sectionNo) {
       max_tokens: 800,
       messages: [{
         role: 'user',
-        content: `다음 기사의 "${sectionLabel}" 섹션을 전문 기자 스타일로 작성해주세요.\n기사 제목: ${issueTitle}${guideNote}${contentNote}${styleNote}\n\n규칙:\n- 작성자 메모를 바탕으로 완성도 높은 기사 문장으로 정리하세요.\n- 가이드가 있으면 그 방향에 맞게 작성하세요.\n- 섹션 내용만 출력하세요. 제목이나 설명 없이.`
+        content: `다음 기사의 "${sectionLabel}" 섹션을 전문 기자 스타일로 작성해주세요.\n기사 제목: ${issueTitle}${guideNote}${contentNote}${styleNote}\n\n규칙:\n- 작성자 메모를 바탕으로 완성도 높은 기사 문장으로 정리하세요.\n- 가이드가 있으면 그 방향에 맞게 작성하세요.\n- 섹션 제목·번호를 본문에 포함하지 마세요.\n- 본문 내용만 출력하세요. 제목, 설명, 머리말 없이 바로 시작.`
       }]
     });
     const aiContent = msg.content[0].text.trim();
@@ -938,7 +938,7 @@ async function autoFillSections(event, issueId) {
       model: 'claude-haiku-4-5-20251001', max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `기사 제목: ${title}\n\n[${contextLabel}]\n${refContext || '없음'}\n\n위 내용을 바탕으로 각 섹션을 2~3문장으로 작성하세요.\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용`
+        content: `기사 제목: ${title}\n\n[${contextLabel}]\n${refContext || '없음'}\n\n위 내용을 바탕으로 각 섹션을 2~3문장으로 작성하세요.\n각 섹션 본문에 섹션 번호·제목을 포함하지 마세요. 내용만 출력하세요.\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용`
       }]
     });
 
