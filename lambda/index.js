@@ -609,9 +609,11 @@ ${content}${styleBlock}`;
       promptContent = `아래 제목과 5개 섹션 내용을 바탕으로 완성도 높은 뉴스 기사를 작성해 주세요.\n육하원칙에 따라 자연스럽게 이어지는 기사 형식으로 작성하세요.${styleNote}\n\n제목: ${title}\n\n${body}${personalSection}`;
     }
 
+    // 다듬기(content 전달) → Haiku(빠름), 섹션 기반 생성 → Sonnet
+    const useHaiku = !!(content?.trim());
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+      model:      useHaiku ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6',
+      max_tokens: useHaiku ? 6000 : 3000,
       messages: [{ role: 'user', content: promptContent }]
     });
     return resp(200, { article: msg.content[0].text.trim() });
