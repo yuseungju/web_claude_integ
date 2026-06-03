@@ -135,7 +135,7 @@
     .ai-panel-acts { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
     .ai-panel-body {
       width: 100%; padding: 1.1rem; font-size: 0.88rem; line-height: 1.9;
-      color: var(--text-primary); min-height: 1250px; border: none; outline: none;
+      color: var(--text-primary); min-height: 780px; border: none; outline: none;
       font-family: var(--font-sans); resize: vertical; background: var(--bg-card);
       display: block;
     }
@@ -156,14 +156,10 @@
 
     /* 글자수 카운터 */
     .ai-body-counter {
-      padding: .3rem 1.1rem .4rem;
-      font-size: .72rem; text-align: right;
-      color: var(--text-muted); background: var(--bg-card);
-      border-top: 1px solid var(--border);
-      transition: color .2s;
+      font-size: .72rem; color: var(--text-muted); transition: color .2s;
     }
-    .ai-body-counter.warn  { color: #d97706; font-weight: 600; }
-    .ai-body-counter.over  { color: #dc2626; font-weight: 700; }
+    .ai-body-counter.warn { color: #d97706; font-weight: 600; }
+    .ai-body-counter.over { color: #dc2626; font-weight: 700; }
 
     /* ── 기사 조회 뷰 ── */
     .ai-panel.view-mode {
@@ -487,12 +483,12 @@
       <div class="ai-panel" id="aiPanel">
         <div class="ai-panel-header">
           <span>✨ 기사 본문</span>
+          <div id="aiBodyCounter" class="ai-body-counter" style="border:none;padding:0;background:transparent;margin-left:.5rem;flex-shrink:0">0자</div>
           <div class="ai-panel-acts" id="aiPanelActs"></div>
         </div>
-        <textarea id="aiBody" class="ai-panel-body" rows="50"
+        <textarea id="aiBody" class="ai-panel-body" rows="30"
           placeholder="AI로 정리하거나, 가져오기로 섹션 내용을 불러오거나, 직접 입력하세요."
           oninput="updateAiBodyCounter()"></textarea>
-        <div class="ai-body-counter" id="aiBodyCounter">0자</div>
       </div>
 
       <!-- 댓글 -->
