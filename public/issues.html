@@ -110,8 +110,9 @@
     .col-title    { overflow: hidden; max-width: 0; }
     .col-category { width: 48px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
     .col-views    { width: 54px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
-    .col-author   { width: 64px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
-    .col-date     { width: 100px; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
+    .col-comments { width: 36px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
+    .col-author   { width: 60px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
+    .col-date     { width: 96px; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
     .col-status   { width: 48px; text-align: center; white-space: nowrap; }
     .col-action   { width: 68px; text-align: right; white-space: nowrap; }
 
@@ -211,7 +212,7 @@
       .filter-bar { padding: 0.5rem 0.75rem; }
     }
     @media (max-width: 600px) {
-      .col-author, .col-date, .col-no, .col-category, .col-views { display: none; }
+      .col-author, .col-date, .col-no, .col-category, .col-views, .col-comments { display: none; }
       .toolbar { gap: 0.4rem; }
       .toolbar-title { font-size: 0.92rem; }
       .act-btn { padding: 0.22rem 0.45rem; font-size: 0.66rem; }
@@ -408,7 +409,7 @@
               <div class="table-scroll-wrap" style="border:none;border-radius:0;box-shadow:none">
                 <table class="issue-table" style="table-layout:fixed;width:100%">
                   <colgroup>
-                    <col style="width:36px"><col><col style="width:48px"><col style="width:54px"><col style="width:64px"><col style="width:100px"><col style="width:48px"><col style="width:68px">
+                    <col style="width:36px"><col><col style="width:48px"><col style="width:54px"><col style="width:36px"><col style="width:60px"><col style="width:96px"><col style="width:48px"><col style="width:68px">
                   </colgroup>
                   <tbody>${bestItems.map(b => `<tr class="best-row">${renderRow(b, '', true)}</tr>`).join('')}</tbody>
                 </table>
@@ -425,6 +426,7 @@
               <th class="col-title">제목</th>
               <th class="col-category">분류</th>
               <th class="col-views">조회</th>
+              <th class="col-comments">💬</th>
               <th class="col-author">작성자</th>
               <th class="col-date">작성일</th>
               <th class="col-status">상태</th>
@@ -483,6 +485,7 @@
         </td>
         <td class="col-category">${escHtml(issue.category || '문화')}</td>
         <td class="col-views">👁 ${issue.view_count || 0} &nbsp;👍 ${issue.likes || 0}</td>
+        <td class="col-comments">${issue.comment_count || 0}</td>
         <td class="col-author"><span class="author-link" onclick="filterByAuthor('${escHtml(issue.author)}')" title="${escHtml(issue.author)} 글만 보기">${escHtml(issue.author)}</span></td>
         <td class="col-date">${date}</td>
         <td class="col-status">${badge}</td>

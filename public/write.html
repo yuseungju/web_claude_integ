@@ -474,7 +474,12 @@
       <div id="firstTimeGuide" style="display:none" class="guide-card">
         <div class="guide-header">
           📋 기사 작성 가이드
-          <button class="guide-close" onclick="dismissGuide()">✕ 닫기</button>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label style="font-size:.68rem;font-weight:400;color:#a16207;display:flex;align-items:center;gap:.25rem;cursor:pointer">
+              <input type="checkbox" id="guideNeverCheck" style="cursor:pointer"> 다시보지않기
+            </label>
+            <button class="guide-close" onclick="dismissGuide()">✕ 닫기</button>
+          </div>
         </div>
         <ol class="guide-steps">
           <li>섹션 번호 옆 제목 칸에 <strong>문단 제목을 입력</strong>하고 Enter로 저장하세요</li>
@@ -711,9 +716,7 @@
 
     function showFirstTimeGuide() {
       if (!isEditMode || !issueId) return;
-      if (sessionStorage.getItem('guideDismissed')) return;
-      // 저장된 섹션 라벨이 하나도 없으면 첫 작성자
-      if (userLabelDefaults.some(l => l?.trim())) return;
+      if (localStorage.getItem('guideNeverShow')) return; // 다시보지않기 체크한 경우만 제외
       const el = document.getElementById('firstTimeGuide');
       if (el) el.style.display = '';
     }
@@ -721,7 +724,8 @@
     function dismissGuide() {
       const el = document.getElementById('firstTimeGuide');
       if (el) el.style.display = 'none';
-      sessionStorage.setItem('guideDismissed', '1');
+      const chk = document.getElementById('guideNeverCheck');
+      if (chk?.checked) localStorage.setItem('guideNeverShow', '1');
     }
 
     /* ── AI 정리 미리보기 모달 ── */

@@ -206,7 +206,8 @@ async function getIssues(event) {
       dataR = await pool.query(
         `SELECT i.id, i.title, i.is_draft, i.category, i.view_count, i.created_at, u.name AS author, i.user_id,
           COALESCE((SELECT SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END) FROM issue_reactions WHERE issue_id=i.id),0)::int AS likes,
-          COALESCE((SELECT SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END) FROM issue_reactions WHERE issue_id=i.id),0)::int AS dislikes
+          COALESCE((SELECT SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END) FROM issue_reactions WHERE issue_id=i.id),0)::int AS dislikes,
+          COALESCE((SELECT COUNT(*) FROM comments WHERE issue_id=i.id),0)::int AS comment_count
          ${base} ORDER BY i.created_at DESC LIMIT $${idx} OFFSET $${idx+1}`,
         [...params, limit, offset]
       );
