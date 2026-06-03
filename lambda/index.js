@@ -586,18 +586,22 @@ async function generateArticle(event) {
       if (articleStyle) styleBlock += `\n\n[기사 완성본 스타일 예시 — 이 문체와 형식을 참고]\n${articleStyle}`;
       if (writingStyle) styleBlock += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
       const styleNote = styleBlock ? '\n위 스타일 가이드의 문체와 형식을 반영하되, 원고의 모든 내용은 반드시 유지하세요.' : '';
-      promptContent = `아래 기사 원고를 다듬어주세요.
+      const hasStyle = !!(articleStyle?.trim());
+      const styleGuideNote = hasStyle
+        ? `\n\n[기사 스타일 가이드 — 이 문체·구조·분량 기준을 참고해 다듬기]\n${articleStyle}`
+        : '';
+      promptContent = `아래 기사 원고를 전문 뉴스 기사 형식으로 자연스럽게 다듬어주세요.
 
-규칙 (반드시 준수):
-1. 원고의 모든 사실·정보·내용을 절대 삭제하거나 줄이지 마세요
-2. 맞춤법, 문법, 어색한 표현만 수정하세요
-3. 문장을 자연스럽게 연결하고 가독성을 높이세요
-4. 내용을 추가하거나 재창작하지 마세요${styleNote}
+반드시 지켜야 할 규칙:
+1. 원고의 모든 사실·정보·내용을 절대 삭제하거나 줄이지 마세요 — 내용 손실 없음
+2. 문장 흐름·맞춤법·어색한 표현만 개선하세요
+3. ${hasStyle ? '위 스타일 가이드의 문체·구조에 맞게 다듬으세요' : '전문 뉴스 기사처럼 육하원칙에 맞게 자연스러운 문장으로 연결하세요'}
+4. 내용을 임의로 추가하거나 재창작하지 마세요
 
 기사 제목: ${title}
 
-[원고 — 이 내용을 전부 유지하면서 다듬기]
-${content}${styleBlock}`;
+[원고 — 이 내용 전체를 유지하면서 다듬기]
+${content}${styleGuideNote}`;
     } else {
       // 섹션 기반 생성 모드 (기존)
       if (!Array.isArray(sections)) return resp(400, { error: '섹션 내용을 입력하세요.' });
