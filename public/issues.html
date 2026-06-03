@@ -396,13 +396,14 @@
       if (page === 1) {
         const done = issues.filter(i => !i.is_draft && (i.likes || 0) > 0);
         if (done.length) {
-          const best = done.reduce((a, b) => (b.likes || 0) > (a.likes || 0) ? b : a);
+          const maxLikes = Math.max(...done.map(i => i.likes || 0));
+          const bestItems = done.filter(i => (i.likes || 0) === maxLikes);
           bestWrap.innerHTML = `
             <div class="best-section">
-              <div class="best-header">🏆 베스트 글</div>
+              <div class="best-header">🏆 베스트 글 <span style="font-weight:400;font-size:.68rem">— 좋아요 ${maxLikes}건</span></div>
               <div class="table-scroll-wrap" style="border:none;border-radius:0;box-shadow:none">
                 <table class="issue-table">
-                  <tbody><tr class="best-row">${renderRow(best, '', true)}</tr></tbody>
+                  <tbody>${bestItems.map(b => `<tr class="best-row">${renderRow(b, '', true)}</tr>`).join('')}</tbody>
                 </table>
               </div>
             </div>`;
