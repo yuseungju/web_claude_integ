@@ -583,6 +583,13 @@
   <script src="assets/js/auth.js"></script>
   <script>
     const LABELS = ['배경 / 발단', '주요 내용', '인터뷰 / 현장', '관련 자료', '결론 / 전망'];
+    const GUIDE_DEFAULTS = [
+      '보통 뉴스 기사의 "본문"처럼 작성해주세요.',
+      '보통 뉴스 기사의 "본문"처럼 작성해주세요.',
+      '보통 뉴스 기사의 "인터뷰"처럼 작성해주세요.',
+      '보통 뉴스 기사의 "참고자료"처럼 작성해주세요.',
+      '보통 뉴스 기사의 "결론"처럼 작성해주세요.',
+    ];
     const HINTS  = [
       '이슈가 발생한 배경과 발단을 입력하세요',
       '핵심 사건이나 주요 내용을 입력하세요',
@@ -908,9 +915,8 @@
       _ensureGuideModal();
       const modal = document.getElementById('guideModal');
       document.getElementById('guideModalTitle').textContent = `섹션 ${n} 작성 가이드`;
-      const savedGuide = (guideData[n - 1] || '').trim();
-      // 저장된 가이드 없으면 섹션명 기반 기본 텍스트 제공
-      const defaultGuide = savedGuide || `"${LABELS[n-1]}"에 해당됩니다. 보통 기사의 "${LABELS[n-1]}"처럼 작성하세요.`;
+      const savedGuide   = (guideData[n - 1] || '').trim();
+      const defaultGuide = savedGuide || GUIDE_DEFAULTS[n - 1] || '';
       document.getElementById('guideModalTA').value = defaultGuide;
       modal.dataset.section = n;
       modal.classList.add('open');
@@ -1160,7 +1166,7 @@
       try {
         const d = new Date(str);
         if (isNaN(d)) return '';
-        return d.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
+        return d.toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' });
       } catch { return ''; }
     }
 
@@ -1235,7 +1241,6 @@
       const orderedNums = [...visibleSections].sort((a, b) => a - b);
       let sectionsHtml = orderedNums.map(n => {
         const i        = n - 1;
-        const label    = LABELS[i];
         const editable = editableSections.includes(n);
         const editor       = editors[i];
         const isMyEdit     = !isAuthor && editable;
@@ -1295,7 +1300,6 @@
           <div class="section-card">
             <div class="section-label">
               <span class="sec-num">${n}</span>
-              <span class="sec-name">${escHtml(label)}</span>
               ${myBadge}
               ${delBtn}
               ${editorZone}

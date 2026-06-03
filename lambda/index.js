@@ -369,10 +369,10 @@ async function saveSections(event, id) {
     for (let i = 0; i < 5; i++) {
       try {
         await pool.query(
-          `INSERT INTO issue_sections (issue_id, section_no, content, guide, label, ai_content, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,NOW())
-           ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, label=$5, ai_content=$6, updated_at=NOW()`,
-          [id, i + 1, sections[i] || '', (guides && guides[i]) || '', (labels && labels[i]) || '', (aiContents && aiContents[i]) || '']
+          `INSERT INTO issue_sections (issue_id, section_no, content, guide, ai_content, updated_at)
+           VALUES ($1,$2,$3,$4,$5,NOW())
+           ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, guide=$4, ai_content=$5, updated_at=NOW()`,
+          [id, i + 1, sections[i] || '', (guides && guides[i]) || '', (aiContents && aiContents[i]) || '']
         );
       } catch {
         await pool.query(
