@@ -71,7 +71,7 @@
       width: 100%; padding: 0.8rem 1rem; border: none; outline: none;
       font-size: 0.88rem; font-family: var(--font-sans);
       color: var(--text-primary); background: var(--bg-card);
-      resize: vertical; min-height: 150px; line-height: 1.75;
+      resize: vertical; min-height: 195px; line-height: 1.75;
     }
     .section-textarea::placeholder { color: var(--text-muted); }
     .section-textarea[readonly] { background: #f8fafc; cursor: default; }
@@ -135,7 +135,7 @@
     .ai-panel-acts { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
     .ai-panel-body {
       width: 100%; padding: 1.1rem; font-size: 0.88rem; line-height: 1.9;
-      color: var(--text-primary); min-height: 180px; border: none; outline: none;
+      color: var(--text-primary); min-height: 390px; border: none; outline: none;
       font-family: var(--font-sans); resize: vertical; background: var(--bg-card);
       display: block;
     }
@@ -347,7 +347,7 @@
     }
     .section-ai-side {
       background: #f8fafc; border-left: 1px solid var(--border);
-      display: flex; flex-direction: column; height: 150px; position: relative;
+      display: flex; flex-direction: column; height: 195px; position: relative;
       overflow: hidden;
     }
     .section-ai-content {
@@ -478,7 +478,7 @@
           <span>✨ 기사 본문</span>
           <div class="ai-panel-acts" id="aiPanelActs"></div>
         </div>
-        <textarea id="aiBody" class="ai-panel-body"
+        <textarea id="aiBody" class="ai-panel-body" rows="15"
           placeholder="AI로 정리하거나, 가져오기로 섹션 내용을 불러오거나, 직접 입력하세요."></textarea>
       </div>
 
@@ -1089,12 +1089,12 @@
         const bodyHtml = editable
           ? `<div class="section-body-2col">
                <div style="display:flex;flex-direction:column;min-width:0;overflow:hidden">
-                 <textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="6" oninput="onSecInput(${n})">${escHtml(content)}</textarea>
+                 <textarea id="sec${n}" class="section-textarea" placeholder="${HINTS[i]}" rows="8" oninput="onSecInput(${n})">${escHtml(content)}</textarea>
                  <div class="sec-sources" id="secSrc${n}" style="display:none"></div>
                </div>
                ${aiSide}
              </div>`
-          : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="${HINTS[i]}" rows="6">${escHtml(content)}</textarea>${aiSide}</div>`;
+          : `<div class="section-body-2col"><textarea id="sec${n}" class="section-textarea" readonly placeholder="${HINTS[i]}" rows="8">${escHtml(content)}</textarea>${aiSide}</div>`;
 
         const edFormHtml = (isAuthor && issueId)
           ? `<div class="editor-form" id="eform${n}">
