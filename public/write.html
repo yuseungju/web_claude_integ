@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>이슈 – 이슈보드</title>
+  <title>이슈 – 뉴스 제보 / 기사 작성</title>
   <link rel="stylesheet" href="assets/css/common.css" />
   <style>
     /* ── 페이지 너비 ── */
@@ -135,7 +135,7 @@
     .ai-panel-acts { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
     .ai-panel-body {
       width: 100%; padding: 1.1rem; font-size: 0.88rem; line-height: 1.9;
-      color: var(--text-primary); min-height: 390px; border: none; outline: none;
+      color: var(--text-primary); min-height: 1250px; border: none; outline: none;
       font-family: var(--font-sans); resize: vertical; background: var(--bg-card);
       display: block;
     }
@@ -433,7 +433,7 @@
           <div class="header-logo">
             <a href="issues.html" class="back-link">
               <span class="logo-icon">📋</span>
-              <span class="logo-text">이슈보드</span>
+              <span class="logo-text">뉴스 제보 / 기사 작성</span>
             </a>
           </div>
         </div>
@@ -478,7 +478,7 @@
           <span>✨ 기사 본문</span>
           <div class="ai-panel-acts" id="aiPanelActs"></div>
         </div>
-        <textarea id="aiBody" class="ai-panel-body" rows="15"
+        <textarea id="aiBody" class="ai-panel-body" rows="50"
           placeholder="AI로 정리하거나, 가져오기로 섹션 내용을 불러오거나, 직접 입력하세요."></textarea>
       </div>
 

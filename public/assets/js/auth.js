@@ -112,7 +112,7 @@ function _ensureModal() {
       <button class="modal-close" onclick="closeLoginModal()">✕</button>
       <div style="text-align:center;margin-bottom:1rem">
         <div style="font-size:1.7rem;margin-bottom:.25rem">📋</div>
-        <div style="font-size:1rem;font-weight:800;color:var(--primary)">이슈보드</div>
+        <div style="font-size:1rem;font-weight:800;color:var(--primary)">뉴스 제보 / 기사 작성</div>
       </div>
       <div class="m-tabs">
         <div class="m-tab active" id="mTabLogin" onclick="modalSwitchTab('login')">로그인</div>
