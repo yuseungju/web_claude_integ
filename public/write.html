@@ -924,8 +924,9 @@
       const label   = document.getElementById(`secLabel${n}`)?.value || LABELS[n-1];
       const btn     = document.getElementById(`btnAiSec${n}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
-      const contentDiv = document.getElementById(`aiSecContent${n}`);
-      if (contentDiv) contentDiv.innerHTML = '<div class="ai-side-placeholder">AI가 작성 중...</div>';
+      // 사이드 패널 전체 초기화 (복사·적용 버튼 포함)
+      const side = document.getElementById(`aisec${n}`);
+      if (side) side.innerHTML = `<div class="section-ai-content" id="aiSecContent${n}"><div class="ai-side-placeholder">⏳ AI가 작성 중...</div></div>`;
       try {
         const res = await api(`/issues/${issueId}/sections/${n}/ai-write`, {
           method: 'POST', body: JSON.stringify({ content, guide, label }),
@@ -944,7 +945,7 @@
         aiData[n - 1] = data.ai_content;
         showToast(`섹션 ${n} AI 작성 완료`, 'success');
       } catch (e) {
-        if (contentDiv) contentDiv.innerHTML = '<div class="ai-side-placeholder">AI 작성 실패</div>';
+        if (side) side.innerHTML = `<div class="section-ai-content" id="aiSecContent${n}"><div class="ai-side-placeholder">AI 작성 실패</div></div>`;
         showToast(e.message || 'AI 작성 실패', 'error');
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = '✨ AI작성'; }
