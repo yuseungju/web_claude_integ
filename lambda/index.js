@@ -592,13 +592,24 @@ async function generateArticle(event) {
     let promptContent;
 
     if (content?.trim()) {
-      // 다듬기 모드: 가져온 원고를 기사로 다듬기
+      // 다듬기 모드: 원고 내용 그대로 유지하면서 스타일·맞춤법만 교정
       let styleBlock = '';
-      if (articleStyle) styleBlock += `\n\n[기사 완성본 스타일 예시 — 이 형식과 문체에 맞게 작성]\n${articleStyle}`;
+      if (articleStyle) styleBlock += `\n\n[기사 완성본 스타일 예시 — 이 문체와 형식을 참고]\n${articleStyle}`;
       if (writingStyle) styleBlock += `\n\n[작성자 스타일 가이드]\n${writingStyle}`;
       if (sampleTexts.length) styleBlock += `\n\n[샘플 기사]\n${sampleTexts.join('\n\n')}`;
-      const styleNote = styleBlock ? '\n위 스타일 예시와 가이드를 최대한 반영하세요.' : '';
-      promptContent = `아래 기사 원고를 전문 기자 수준의 완성된 뉴스 기사로 다듬어주세요.\n육하원칙에 맞게 자연스럽게 이어지도록 작성하세요.${styleNote}\n\n기사 제목: ${title}\n\n[원고]\n${content}${styleBlock}`;
+      const styleNote = styleBlock ? '\n위 스타일 가이드의 문체와 형식을 반영하되, 원고의 모든 내용은 반드시 유지하세요.' : '';
+      promptContent = `아래 기사 원고를 다듬어주세요.
+
+규칙 (반드시 준수):
+1. 원고의 모든 사실·정보·내용을 절대 삭제하거나 줄이지 마세요
+2. 맞춤법, 문법, 어색한 표현만 수정하세요
+3. 문장을 자연스럽게 연결하고 가독성을 높이세요
+4. 내용을 추가하거나 재창작하지 마세요${styleNote}
+
+기사 제목: ${title}
+
+[원고 — 이 내용을 전부 유지하면서 다듬기]
+${content}${styleBlock}`;
     } else {
       // 섹션 기반 생성 모드 (기존)
       if (!Array.isArray(sections)) return resp(400, { error: '섹션 내용을 입력하세요.' });
@@ -614,7 +625,7 @@ async function generateArticle(event) {
 
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2000,
+      max_tokens: 4000,
       messages: [{ role: 'user', content: promptContent }]
     });
     return resp(200, { article: msg.content[0].text.trim() });
