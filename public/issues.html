@@ -106,14 +106,14 @@
     .issue-table tr:last-child td { border-bottom: none; }
     .issue-table tbody tr:not(.inline-row):hover { background: #f8f9fe; }
 
-    .col-no       { width: 36px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
+    .col-no       { width: 32px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
     .col-title    { }
-    .col-category { width: 52px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
-    .col-views    { width: 76px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.72rem; }
-    .col-author   { width: 68px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
-    .col-date     { width: 90px; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
-    .col-status   { width: 52px; text-align: center; white-space: nowrap; }
-    .col-action   { width: 80px; text-align: right; white-space: nowrap; }
+    .col-category { width: 48px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
+    .col-views    { width: 54px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
+    .col-author   { width: 64px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
+    .col-date     { width: 100px; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
+    .col-status   { width: 48px; text-align: center; white-space: nowrap; }
+    .col-action   { width: 44px; text-align: right; white-space: nowrap; }
 
     .title-cell { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
     .title-link {
@@ -127,10 +127,10 @@
     .badge-done  { background: var(--success-light);  color: #065f46; }
 
     .act-btn {
-      padding: 0.18rem 0.5rem; font-size: 0.68rem; font-weight: 700;
+      padding: 0.15rem 0.32rem; font-size: 0.82rem; font-weight: 400;
       border-radius: 3px; cursor: pointer; border: 1px solid var(--border);
       background: var(--bg-card); color: var(--text-secondary);
-      font-family: var(--font-sans); transition: all 0.12s;
+      font-family: var(--font-sans); transition: all 0.12s; line-height: 1;
     }
     .act-btn:hover { border-color: var(--primary); color: var(--primary); }
     .act-btn.del { border-color: #fca5a5; color: #dc2626; }
@@ -459,8 +459,8 @@
         : '<span class="badge badge-done">완료</span>';
       const isMyPost = isLoggedIn && me && issue.user_id === me.id;
       const actions = isMyPost ? `
-        <button class="act-btn" onclick="event.stopPropagation();editIssue(${issue.id})">편집</button>
-        <button class="act-btn del" onclick="event.stopPropagation();deleteIssue(${issue.id}, this)">삭제</button>` : '';
+        <button class="act-btn" onclick="event.stopPropagation();editIssue(${issue.id})" title="편집">✏️</button>
+        <button class="act-btn del" onclick="event.stopPropagation();deleteIssue(${issue.id}, this)" title="삭제">🗑</button>` : '';
       const likes    = issue.likes    || 0;
       const dislikes = issue.dislikes || 0;
       const isNew    = issue.id === newIssueId;
