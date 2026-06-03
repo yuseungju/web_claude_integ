@@ -979,26 +979,9 @@
     }
 
     function renderRefLinks(links) {
+      // 참고링크는 편집 모드(relatedPanel)에서만 표시 — 조회 모드에서는 숨김
       const panel = document.getElementById('refPanel');
-      if (!panel) return;
-      const editMode = isEditMode || !issueId;
-      // 편집 모드에서는 자동 표시 안 함 (관련글 검색 버튼으로만 조회)
-      if (editMode) { panel.style.display = 'none'; return; }
-      if (!Array.isArray(links) || !links.length) { panel.style.display = 'none'; return; }
-      panel.style.display = '';
-      panel.innerHTML = `
-        <div class="ref-panel-title">📎 참고자료 (${links.length}건)</div>
-        <ul class="ref-list">
-          ${links.map(l => {
-            const date   = fmtPubDate(l.pubDate);
-            const reason = l.reason ? escHtml(l.reason) : '';
-            const meta   = [date, reason].filter(Boolean).join(' · ');
-            return `<li>
-              <a href="${l.url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${escHtml(l.title)}</a>
-              ${meta ? `<span style="font-size:.62rem;color:var(--text-muted);flex-shrink:0">${meta}</span>` : ''}
-            </li>`;
-          }).join('')}
-        </ul>`;
+      if (panel) panel.style.display = 'none';
     }
 
     async function confirmDelete() {
