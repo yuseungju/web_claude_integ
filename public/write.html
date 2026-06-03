@@ -380,6 +380,21 @@
     .guide-steps li strong { color: #92400e; }
     .guide-divider { margin: .35rem 0 .35rem 1.65rem; height: 1px; background: #fde68a; }
 
+    /* ── 섹션 추가/숨김 ── */
+    .sec-add-row {
+      display: flex; align-items: center; gap: .5rem; padding: .5rem .9rem;
+      border: 1.5px dashed var(--border); border-radius: var(--radius-sm);
+      background: var(--bg); cursor: pointer; transition: all .15s; margin-top: .4rem;
+    }
+    .sec-add-row:hover { border-color: var(--primary); background: var(--primary-light); }
+    .btn-add-sec { background: none; border: none; color: var(--primary); font-size: .8rem; font-weight: 800; cursor: pointer; font-family: var(--font-sans); }
+    .btn-hide-sec {
+      padding: .1rem .4rem; border: 1px solid #fca5a5; border-radius: 3px;
+      font-size: .63rem; color: #dc2626; cursor: pointer; background: none;
+      font-family: var(--font-sans); transition: all .12s;
+    }
+    .btn-hide-sec:hover { background: #dc2626; color: #fff; }
+
     /* ── 섹션 2칸 레이아웃 (편집 모드) ── */
     .section-body-2col {
       display: grid; grid-template-columns: 1fr 1fr;
@@ -590,6 +605,7 @@
     let guideData        = ['', '', '', '', ''];
     let aiData           = ['', '', '', '', ''];
     let labelsData       = ['', '', '', '', ''];
+    let visibleCount     = 2; // 기본 2개, 최대 5개
     let hasImported        = false;
     let articleStyleData   = '';
     let userLabelDefaults  = ['', '', '', '', ''];
@@ -608,6 +624,7 @@
 
     /* ── 신규 ── */
     function renderNewPage() {
+      visibleCount = 2;
       document.getElementById('pageTitle').textContent = '새 이슈';
       document.getElementById('titleArea').innerHTML =
         `<input id="titleInput" class="issue-title-input" placeholder="이슈 제목을 입력하세요" maxlength="200" />`;
@@ -630,6 +647,11 @@
         guideData    = sg  || ['', '', '', '', ''];
         aiData       = sa  || ['', '', '', '', ''];
         labelsData   = sl  || ['', '', '', '', ''];
+        // 내용 있는 섹션까지 표시 (최소 2)
+        visibleCount = 2;
+        for (let i = 4; i >= 2; i--) {
+          if ((sections[i] || '').trim() || (sa && (sa[i] || '').trim())) { visibleCount = i + 1; break; }
+        }
         editors      = eds;
         isAuthor     = isLoggedIn && me && issue.user_id === me.id;
 
@@ -980,6 +1002,29 @@
       if (btn) btn.disabled = !document.getElementById(`sec${n}`)?.value.trim();
     }
 
+    function addSection() {
+      if (visibleCount >= 5) return;
+      visibleCount++;
+      saveSectionsSnapshot();
+      renderSections();
+      restoreSectionsSnapshot();
+    }
+
+    function hideLastSection() {
+      if (visibleCount <= 2) return;
+      const n = visibleCount;
+      // 내용 초기화
+      sectionsData[n - 1] = '';
+      aiData[n - 1]       = '';
+      labelsData[n - 1]   = '';
+      guideData[n - 1]    = '';
+      visibleCount--;
+      saveSectionsSnapshot();
+      renderSections();
+      restoreSectionsSnapshot();
+      showToast(`섹션 ${n} 내용이 삭제됐습니다.`, 'info');
+    }
+
     async function saveSectionLabel(n) {
       const label = document.getElementById(`secLabel${n}`)?.value.trim();
       if (!label) return;
@@ -1187,7 +1232,8 @@
         document.getElementById('sectionsWrap').style.display = 'none';
         return;
       }
-      document.getElementById('sectionsWrap').innerHTML = LABELS.map((label, i) => {
+      const vLabels = LABELS.slice(0, visibleCount);
+      let sectionsHtml = vLabels.map((label, i) => {
         const n            = i + 1;
         const editable     = editableSections.includes(n);
         const editor       = editors[i];
@@ -1196,7 +1242,10 @@
         const guide        = guideData[i]    || '';
         const aiContent    = aiData[i]       || '';
         // 우선순위: 이슈별 라벨 > 사용자 저장 라벨 > 하드코딩 기본값
-        const customLabel = labelsData[i] || userLabelDefaults[i] || label;
+        const rawLabel    = labelsData[i] || userLabelDefaults[i] || '';
+        const customLabel = rawLabel || label;
+        // placeholder: 저장된 라벨 없으면 (예시) 표시로 편집 가능함을 암시
+        const labelPlaceholder = rawLabel ? escHtml(rawLabel) : `(예시) ${escHtml(label)}`;
 
         let editorZone = '';
         if (isAuthor && issueId) {
@@ -1206,6 +1255,10 @@
         }
 
         const myBadge   = isMyEdit ? `<span class="my-sec-badge">내 편집 구역</span>` : '';
+        const isLastSec = n === visibleCount && n > 2;
+        const hideBtn   = (editable && isLastSec)
+          ? `<button class="btn-hide-sec" onclick="hideLastSection()" title="이 섹션 숨기기 (내용 삭제)">✕ 숨김</button>`
+          : '';
         const hasGuide = guide.trim().length >= 4;
         const contentEmpty = !content.trim();
         const controlBar = editable
@@ -1248,10 +1301,11 @@
             <div class="section-label">
               <span class="sec-num">${n}</span>
               ${editable
-                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(customLabel)}" placeholder="${escHtml(label)}"
+                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(rawLabel)}" placeholder="${labelPlaceholder}"
                      onkeydown="if(event.key==='Enter'){event.preventDefault();saveSectionLabel(${n})}" />`
                 : `<span class="sec-name">${escHtml(customLabel)}</span>`}
               ${myBadge}
+              ${hideBtn}
               ${editorZone}
             </div>
             ${edFormHtml}
@@ -1259,6 +1313,17 @@
             ${bodyHtml}
           </div>`;
       }).join('');
+
+      // 추가 버튼
+      const canAdd = editMode && visibleCount < 5 && (isAuthor || editableSections.length > 0);
+      const addBtnHtml = canAdd
+        ? `<div class="sec-add-row" onclick="addSection()">
+             <button class="btn-add-sec" style="pointer-events:none">+ 문단 추가</button>
+             <span style="font-size:.68rem;color:var(--text-muted);margin-left:auto">${visibleCount}/5</span>
+           </div>`
+        : '';
+
+      document.getElementById('sectionsWrap').innerHTML = sectionsHtml + addBtnHtml;
     }
 
     /* ── 하단 액션바 ── */
