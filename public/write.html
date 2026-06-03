@@ -603,7 +603,6 @@
     let sectionsData     = ['', '', '', '', ''];
     let guideData        = ['', '', '', '', ''];
     let aiData           = ['', '', '', '', ''];
-    let labelsData       = ['', '', '', '', ''];
     let visibleSections  = new Set([1]); // 기본 1개, 내용 있으면 추가
     let hasImported        = false;
     let articleStyleData   = '';
@@ -640,12 +639,11 @@
         const res = await fetch(API + '/issues/' + issueId, { headers });
         if (res.status === 403) { location.href = 'index.html'; return; }
         if (!res.ok) throw new Error();
-        const { issue, sections, editors: eds, sectionGuides: sg, sectionAiContents: sa, sectionLabels: sl } = await res.json();
+        const { issue, sections, editors: eds, sectionGuides: sg, sectionAiContents: sa } = await res.json();
 
         sectionsData = sections;
         guideData    = sg  || ['', '', '', '', ''];
         aiData       = sa  || ['', '', '', '', ''];
-        labelsData   = sl  || ['', '', '', '', ''];
         // 내용 있는 섹션 자동 표시
         visibleSections = new Set([1]);
         for (let i = 1; i <= 4; i++) {
@@ -748,17 +746,14 @@
     async function loadSectionGuides() {
       if (!isLoggedIn) return;
       try {
-        const [gRes, mRes, lRes] = await Promise.all([
+        const [gRes, mRes] = await Promise.all([
           api('/mypage/section-guides'),
           api('/mypage'),
-          api('/mypage/section-labels'),
         ]);
         const gData = await gRes.json();
         const mData = await mRes.json();
-        const lData = await lRes.json();
-        if (gRes.ok && Array.isArray(gData.guides))  guideData         = gData.guides;
-        if (mRes.ok)                                  articleStyleData  = mData.article_style || '';
-        if (lRes.ok && Array.isArray(lData.labels))   userLabelDefaults = lData.labels;
+        if (gRes.ok && Array.isArray(gData.guides)) guideData        = gData.guides;
+        if (mRes.ok)                                articleStyleData = mData.article_style || '';
       } catch {}
       // 첫 작성자 가이드 표시
       showFirstTimeGuide();
@@ -912,8 +907,11 @@
     function openGuideModal(n) {
       _ensureGuideModal();
       const modal = document.getElementById('guideModal');
-      document.getElementById('guideModalTitle').textContent = `섹션 ${n} 작성 가이드 — ${LABELS[n-1]}`;
-      document.getElementById('guideModalTA').value = guideData[n - 1] || '';
+      document.getElementById('guideModalTitle').textContent = `섹션 ${n} 작성 가이드`;
+      const savedGuide = (guideData[n - 1] || '').trim();
+      // 저장된 가이드 없으면 섹션명 기반 기본 텍스트 제공
+      const defaultGuide = savedGuide || `"${LABELS[n-1]}"에 해당됩니다. 보통 기사의 "${LABELS[n-1]}"처럼 작성하세요.`;
+      document.getElementById('guideModalTA').value = defaultGuide;
       modal.dataset.section = n;
       modal.classList.add('open');
       document.body.style.overflow = 'hidden';
@@ -930,6 +928,7 @@
       const modal = document.getElementById('guideModal');
       const n     = parseInt(modal.dataset.section);
       const guide = document.getElementById('guideModalTA').value.trim();
+      if (guide.length < 5) { showToast('가이드는 5자 이상 입력해야 저장됩니다.', 'error'); return; }
       try {
         const res = await api('/mypage/section-guides', {
           method: 'POST', body: JSON.stringify({ section_no: n, guide }),
@@ -1105,8 +1104,8 @@
     /* ── 섹션 AI 작성 ── */
     async function aiWriteSection(n) {
       const content = document.getElementById(`sec${n}`)?.value || '';
-      const guide   = document.getElementById(`guide${n}`)?.value || '';
-      const label   = document.getElementById(`secLabel${n}`)?.value || LABELS[n-1];
+      const guide   = guideData[n - 1] || '';
+      const label   = LABELS[n - 1];
       const btn     = document.getElementById(`btnAiSec${n}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
       // 사이드 패널 전체 초기화 (복사·적용 버튼 포함)
@@ -1243,11 +1242,6 @@
         const content      = sectionsData[i] || '';
         const guide        = guideData[i]    || '';
         const aiContent    = aiData[i]       || '';
-        // 우선순위: 이슈별 라벨 > 사용자 저장 라벨 > 하드코딩 기본값
-        const rawLabel    = labelsData[i] || userLabelDefaults[i] || '';
-        const customLabel = rawLabel || label;
-        // placeholder: 저장된 라벨 없으면 (예시) 표시로 편집 가능함을 암시
-        const labelPlaceholder = rawLabel ? escHtml(rawLabel) : `(예시) ${escHtml(label)}`;
 
         let editorZone = '';
         if (isAuthor && issueId) {
@@ -1260,7 +1254,7 @@
         const delBtn  = (editable && n > 1)
           ? `<button class="btn-hide-sec" onclick="deleteSection(${n})" title="내용 삭제 후 숨김">🗑 삭제</button>`
           : '';
-        const hasGuide = guide.trim().length >= 4;
+        const hasGuide = guide.trim().length >= 5;
         const contentEmpty = !content.trim();
         const controlBar = editable
           ? `<div class="section-controls">
@@ -1301,10 +1295,7 @@
           <div class="section-card">
             <div class="section-label">
               <span class="sec-num">${n}</span>
-              ${editable
-                ? `<input type="text" class="sec-name-input" id="secLabel${n}" value="${escHtml(rawLabel)}" placeholder="${labelPlaceholder}"
-                     onkeydown="if(event.key==='Enter'){event.preventDefault();saveSectionLabel(${n})}" />`
-                : `<span class="sec-name">${escHtml(customLabel)}</span>`}
+              <span class="sec-name">${escHtml(label)}</span>
               ${myBadge}
               ${delBtn}
               ${editorZone}
