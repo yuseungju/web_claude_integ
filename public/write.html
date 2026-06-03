@@ -1345,7 +1345,7 @@
       if (btn) { btn.disabled = true; btn.textContent = '⏳ AI 정리 중...'; }
 
       const textarea = document.getElementById('aiBody');
-      textarea.value = 'AI가 기사를 정리하고 있습니다...';
+      // 원본 내용 유지 — AI 결과는 팝업에서만 표시
 
       try {
         const sections = (isEditMode || !issueId) ? getSections() : sectionsData;
@@ -1359,7 +1359,6 @@
           || document.querySelector('.issue-title-view')?.textContent.trim() || '';
         openArticlePreviewModal(previewTitle, data.article);
       } catch (e) {
-        textarea.value = '';
         showToast('AI 정리 실패: ' + e.message, 'error');
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = '🤖 AI 정리'; }
