@@ -106,8 +106,8 @@
     .issue-table tr:last-child td { border-bottom: none; }
     .issue-table tbody tr:not(.inline-row):hover { background: #f8f9fe; }
 
-    .col-no       { width: 32px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
-    .col-title    { }
+    .col-no       { width: 36px; color: var(--text-muted); font-size: 0.72rem; text-align: center; }
+    .col-title    { overflow: hidden; max-width: 0; }
     .col-category { width: 48px; white-space: nowrap; font-size: 0.72rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; }
     .col-views    { width: 54px; text-align: right; white-space: nowrap; color: var(--text-muted); font-size: 0.68rem; }
     .col-author   { width: 64px; white-space: nowrap; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; }
@@ -133,6 +133,10 @@
       font-family: var(--font-sans); transition: all 0.12s; line-height: 1;
     }
     .act-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .author-link {
+      cursor: pointer; color: inherit;
+    }
+    .author-link:hover { color: var(--primary); text-decoration: underline; }
     .act-btn.del { border-color: #fca5a5; color: #dc2626; }
     .act-btn.del:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
 
@@ -474,12 +478,12 @@
         <td class="col-no">${num}</td>
         <td class="col-title">
           <div class="title-cell">
-            <a href="write.html?id=${issue.id}${issue.is_draft ? '&mode=edit' : ''}" class="title-link">${bestBadge}${newBadge}${escHtml(issue.title)}</a>
+            <a href="write.html?id=${issue.id}${issue.is_draft ? '&mode=edit' : ''}" class="title-link" title="${escHtml(issue.title)}">${bestBadge}${newBadge}${escHtml(issue.title)}</a>
           </div>
         </td>
         <td class="col-category">${escHtml(issue.category || '문화')}</td>
         <td class="col-views">👁 ${issue.view_count || 0} &nbsp;👍 ${issue.likes || 0}</td>
-        <td class="col-author">${escHtml(issue.author)}</td>
+        <td class="col-author"><span class="author-link" onclick="filterByAuthor('${escHtml(issue.author)}')" title="${escHtml(issue.author)} 글만 보기">${escHtml(issue.author)}</span></td>
         <td class="col-date">${date}</td>
         <td class="col-status">${badge}</td>
         <td class="col-action">${actions}</td>
@@ -487,6 +491,11 @@
     }
 
     function editIssue(id) { location.href = `write.html?id=${id}&mode=edit`; }
+
+    function filterByAuthor(name) {
+      document.getElementById('fAuthor').value = name;
+      doSearch();
+    }
 
     async function deleteIssue(id, btn) {
       if (!confirm('이 이슈를 삭제하시겠습니까?')) return;
