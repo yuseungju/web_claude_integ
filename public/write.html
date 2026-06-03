@@ -674,6 +674,63 @@
       } catch {}
     }
 
+    /* ── AI 정리 미리보기 모달 ── */
+    let _previewArticle = '';
+
+    function openArticlePreviewModal(title, article) {
+      _ensureModalStyles();
+      _previewArticle = article;
+
+      if (!document.getElementById('articlePreviewModal')) {
+        const div = document.createElement('div');
+        div.id = 'articlePreviewModal';
+        div.className = 'modal-overlay';
+        div.innerHTML = `
+          <div class="modal-backdrop-click" onclick="closeArticlePreviewModal()"></div>
+          <div class="modal-box" style="max-width:660px;padding:1.5rem 1.75rem">
+            <button class="modal-close" onclick="closeArticlePreviewModal()">✕</button>
+            <div style="font-size:.65rem;font-weight:700;color:var(--text-muted);letter-spacing:.05em;margin-bottom:.55rem">AI 정리 미리보기</div>
+            <div id="previewArticleTitle" style="font-size:1.05rem;font-weight:900;color:var(--text-primary);line-height:1.4;margin-bottom:.65rem;padding-bottom:.6rem;border-bottom:2px solid var(--border)"></div>
+            <div id="previewArticleBody" style="font-size:.82rem;line-height:1.9;color:var(--text-primary);white-space:pre-wrap;word-break:break-word;max-height:55vh;overflow-y:auto;padding-right:.25rem"></div>
+            <div style="display:flex;justify-content:flex-end;gap:.45rem;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)">
+              <button onclick="closeArticlePreviewModal()" style="padding:.45rem .9rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--font-sans)">닫기</button>
+              <button onclick="copyArticlePreview()" style="padding:.45rem .9rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);color:var(--text-secondary);font-size:.82rem;font-weight:600;cursor:pointer;font-family:var(--font-sans)">📋 복사</button>
+              <button onclick="applyArticlePreview()" style="padding:.45rem 1rem;border:none;border-radius:var(--radius-sm);background:var(--primary);color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;font-family:var(--font-sans)">✅ 본문에 적용</button>
+            </div>
+          </div>`;
+        document.body.appendChild(div);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeArticlePreviewModal(); });
+      }
+
+      document.getElementById('previewArticleTitle').textContent = title;
+      document.getElementById('previewArticleBody').textContent  = article;
+      document.getElementById('articlePreviewModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeArticlePreviewModal() {
+      const m = document.getElementById('articlePreviewModal');
+      if (m) m.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function copyArticlePreview() {
+      if (!_previewArticle) return;
+      navigator.clipboard.writeText(_previewArticle)
+        .then(() => { showToast('복사됐습니다.', 'success'); })
+        .catch(() => showToast('복사 실패', 'error'));
+    }
+
+    function applyArticlePreview() {
+      if (!_previewArticle) return;
+      document.getElementById('aiBody').value = _previewArticle;
+      hasImported = true;
+      const btn = document.getElementById('btnGenerate');
+      if (btn) { btn.disabled = false; btn.removeAttribute('title'); }
+      closeArticlePreviewModal();
+      showToast('기사 본문에 적용됐습니다.', 'success');
+    }
+
     /* ── 기사 스타일 모달 ── */
     function openArticleStyleModal() {
       _ensureModalStyles();
@@ -1297,8 +1354,9 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        textarea.value = data.article;
-        textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const previewTitle = document.getElementById('titleInput')?.value.trim()
+          || document.querySelector('.issue-title-view')?.textContent.trim() || '';
+        openArticlePreviewModal(previewTitle, data.article);
       } catch (e) {
         textarea.value = '';
         showToast('AI 정리 실패: ' + e.message, 'error');
