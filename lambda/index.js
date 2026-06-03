@@ -529,11 +529,13 @@ async function aiTopic(event) {
     try {
       const refContext = items.slice(0, 5).map(i => i.title).join('\n');
       const titleMsg = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 100,
-        messages: [{ role: 'user', content: `다음 기사 제목을 최신 뉴스를 참고해서 더 구체적이고 완성도 있게 다듬어주세요. 제목 텍스트만 출력.\n\n원본 제목: ${userTitle}\n\n최신 관련 뉴스:\n${refContext}` }]
+        model: 'claude-haiku-4-5-20251001', max_tokens: 80,
+        messages: [{ role: 'user', content: `기사 제목을 최신 뉴스 참고해서 더 구체적으로 다듬어 한 줄로 출력하세요.\n규칙: 반드시 완성된 기사 제목 텍스트만 출력. 설명·이유·실패메시지·부연 문장 절대 금지.\n적합한 제목을 못 찾으면 원본 제목을 그대로 출력.\n\n원본 제목: ${userTitle}\n최신 뉴스:\n${refContext}` }]
       });
-      const refined = titleMsg.content[0].text.trim();
-      if (refined && refined.length > 3) finalTitle = refined;
+      const refined = titleMsg.content[0].text.trim().split('\n')[0]; // 첫 줄만
+      // 실패·설명 메시지로 보이면 원본 유지
+      const isFailMsg = /완전하지|부족|실패|없습니다|찾지 못|불가능|어렵습니다|적합하지|모르겠|죄송/.test(refined);
+      if (refined && refined.length > 3 && refined.length < 120 && !isFailMsg) finalTitle = refined;
     } catch {}
 
     const refLinks = items.map(i => ({ title: i.title, url: i.link, pubDate: i.pubDate || '' }));
