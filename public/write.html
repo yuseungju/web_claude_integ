@@ -545,6 +545,12 @@
       <!-- 섹션 툴바 (편집 모드) -->
       <div id="sectionToolbar" style="display:none;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap"></div>
 
+      <!-- 섹션 안내 (편집 모드) -->
+      <div id="sectionNote" style="display:none;font-size:.72rem;color:var(--text-muted);background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius-sm);padding:.4rem .85rem;margin-bottom:.5rem;line-height:1.6">
+        📝 여기에 작성한 내용은 <strong>하단 기사 전체 내용</strong>을 위한 참고 자료로 사용됩니다.<br>
+        섹션 내용은 기사로 직접 조회되지 않습니다 — 하단에서 가져오기 후 AI 다듬기로 완성하세요.
+      </div>
+
       <!-- 섹션 -->
       <div class="sections-wrap" id="sectionsWrap"></div>
 
@@ -554,7 +560,7 @@
       <!-- 기사 본문 -->
       <div class="ai-panel" id="aiPanel">
         <div class="ai-panel-header">
-          <span>✨ 기사 본문</span>
+          <span>✨ 기사 전체 내용(조회)</span>
           <div id="aiBodyCounter" class="ai-body-counter" style="border:none;padding:0;background:transparent;margin-left:.5rem;flex-shrink:0">0자</div>
           <div class="ai-panel-acts" id="aiPanelActs"></div>
         </div>
@@ -1055,6 +1061,8 @@
       bar.style.display = 'flex';
       bar.innerHTML = `
         <button class="btn" id="btnAutoFill" onclick="autoFillSections()" disabled title="참고링크를 먼저 추가하세요">🤖 섹션 자동채우기</button>`;
+      const note = document.getElementById('sectionNote');
+      if (note) note.style.display = '';
       renderEditRefPanel();  // 참고링크 패널 자동 표시
       updateAutoFillBtnState();
     }
