@@ -402,7 +402,10 @@
             <div class="best-section">
               <div class="best-header">🏆 베스트 글 <span style="font-weight:400;font-size:.68rem">— 좋아요 ${maxLikes}건</span></div>
               <div class="table-scroll-wrap" style="border:none;border-radius:0;box-shadow:none">
-                <table class="issue-table">
+                <table class="issue-table" style="table-layout:fixed;width:100%">
+                  <colgroup>
+                    <col style="width:32px"><col><col style="width:48px"><col style="width:54px"><col style="width:64px"><col style="width:100px"><col style="width:48px"><col style="width:58px">
+                  </colgroup>
                   <tbody>${bestItems.map(b => `<tr class="best-row">${renderRow(b, '', true)}</tr>`).join('')}</tbody>
                 </table>
               </div>
