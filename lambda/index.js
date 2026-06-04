@@ -929,19 +929,42 @@ async function autoFillSections(event, issueId) {
       links.slice(0, 4).forEach(l => usedLinks.push({ url: l.url, title: l.title || l.url }));
     }
 
-    const contextSource = (Array.isArray(relatedItems) && relatedItems.length) ? relatedItems : refs;
-    const refContext = fetchedContent || contextSource.slice(0, 8).map(r => r.title).join('\n');
-    if (!refContext.trim()) return resp(200, { results: [], message: '참고할 내용이 없습니다. 참고링크를 먼저 추가하세요.' });
+    // 현재 참고링크 목록 제목 (URL 조회 실패 시 보조 컨텍스트)
+    const linkTitles = links.slice(0, 10).map((l, idx) => `${idx + 1}. ${l.title}`).join('\n');
+    if (!fetchedContent && !linkTitles.trim()) {
+      return resp(200, { results: [], message: '참고할 내용이 없습니다. 참고링크를 먼저 추가하세요.' });
+    }
+    // 참고자료 본문 + 제목 목록 합산
+    const fullContext = fetchedContent
+      ? `${fetchedContent}\n\n[참고 기사 목록]\n${linkTitles}`
+      : linkTitles;
+
     const sectionSpecs = toGenerate.map(s =>
-      `[${s.no}] ${s.label}${s.guide ? ` (가이드: ${s.guide})` : ''}`
+      `[${s.no}]${s.guide ? ` (${s.guide})` : ''}`
     ).join('\n');
 
-    const contextLabel = fetchedContent ? '참고자료 본문' : '참고 뉴스';
     const batchMsg = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001', max_tokens: 1500,
       messages: [{
         role: 'user',
-        content: `기사 제목: ${title}\n\n[${contextLabel}]\n${refContext || '없음'}\n\n위 내용을 바탕으로 각 섹션을 2~3문장으로 작성하세요.\n각 섹션 본문에 섹션 번호·제목을 포함하지 마세요. 내용만 출력하세요.\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용`
+        content: `기사 제목: ${title}
+
+[참고자료 — 아래 내용을 최우선으로 활용해 각 섹션을 채워주세요]
+${fullContext}
+
+규칙:
+- 위 참고자료에 있는 사실·내용을 중심으로 작성하세요
+- 참고자료에 없는 내용은 추가하지 마세요
+- 각 섹션을 2~3문장으로 작성하고, 섹션 번호·제목은 포함하지 마세요
+
+${sectionSpecs}
+
+출력:
+[1]
+내용
+
+[2]
+내용`
       }]
     });
 
