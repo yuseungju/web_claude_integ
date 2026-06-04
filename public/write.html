@@ -1060,7 +1060,7 @@
       if (!editMode || !issueId) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
       bar.innerHTML = `
-        <button class="btn" id="btnAutoFill" onclick="autoFillSections()" disabled title="참고링크를 먼저 추가하세요">🤖 섹션 자동채우기</button>`;
+        <button class="btn" id="btnAutoFill" onclick="autoFillSections()" disabled title="참고링크를 먼저 추가하세요">🤖 참고자료로 문단채우기</button>`;
       const note = document.getElementById('sectionNote');
       if (note) note.style.display = '';
       renderEditRefPanel();  // 참고링크 패널 자동 표시
@@ -1109,7 +1109,7 @@
       } catch (e) {
         showToast(e.message || '자동채우기 실패', 'error');
       } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🤖 섹션 자동채우기'; }
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 참고자료로 문단채우기'; }
       }
     }
 
