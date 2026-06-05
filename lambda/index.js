@@ -870,10 +870,10 @@ async function aiWriteSection(event, issueId, sectionNo) {
 
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 800,
+      max_tokens: 6000,
       messages: [{
         role: 'user',
-        content: `다음 기사의 "${sectionLabel}" 섹션을 전문 기자 스타일로 작성해주세요.\n기사 제목: ${issueTitle}${guideNote}${contentNote}${styleNote}\n\n규칙:\n- 작성자 메모를 바탕으로 완성도 높은 기사 문장으로 정리하세요.\n- 가이드가 있으면 그 방향에 맞게 작성하세요.\n- 섹션 제목·번호를 본문에 포함하지 마세요.\n- 본문 내용만 출력하세요. 제목, 설명, 머리말 없이 바로 시작.`
+        content: `다음 기사의 "${sectionLabel}" 섹션을 전문 기자 스타일로 작성해주세요.\n기사 제목: ${issueTitle}${guideNote}${contentNote}${styleNote}\n\n규칙:\n- 작성자 메모를 바탕으로 사실·내용·수치를 빠짐없이 담아 가능한 한 길고 상세하게 작성하세요.\n- 짧게 쓰지 마세요. 전문 기사 수준으로 풍부하게 작성하세요.\n- 가이드가 있으면 그 방향에 맞게 작성하세요.\n- 섹션 제목·번호를 본문에 포함하지 마세요.\n- 본문 내용만 출력하세요. 제목, 설명, 머리말 없이 바로 시작.`
       }]
     });
     const aiContent = msg.content[0].text.trim();
