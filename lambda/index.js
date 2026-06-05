@@ -487,6 +487,35 @@ function fetchUrl(url) {
   });
 }
 
+function extractPageLinks(html, baseUrl) {
+  const links = [];
+  const re = /<a[^>]+href=["']([^"'#][^"']*?)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null && links.length < 30) {
+    let href = m[1].trim();
+    const text = m[2].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    if (!href || href.startsWith('javascript:') || href.startsWith('mailto:')) continue;
+    if (!href.startsWith('http')) {
+      try { href = new URL(href, baseUrl).href; } catch { continue; }
+    }
+    if (text.length >= 5 && text.length <= 150 && /[가-힣a-zA-Z]/.test(text)) {
+      links.push({ title: text, url: href });
+    }
+  }
+  const seen = new Set();
+  return links.filter(l => { if (seen.has(l.url)) return false; seen.add(l.url); return true; });
+}
+
+function extractPageText(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 2000);
+}
+
 async function aiTopic(event) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
@@ -495,6 +524,11 @@ async function aiTopic(event) {
     const userTitle = (body.userTitle || '').trim();
     const category  = body.category || '문화';
     if (!userTitle) return resp(400, { error: '제목을 입력하세요.' });
+
+    // URL 입력 감지 → 링크 분석 흐름
+    if (/^https?:\/\//i.test(userTitle)) {
+      return await aiTopicFromUrl(event, user, userTitle, category);
+    }
 
     // 1. Haiku로 핵심 키워드 추출
     let keywords = userTitle.split(/\s+/).slice(0, 4).join(' ');
@@ -1122,4 +1156,97 @@ async function deleteLink(event, linkId) {
     await pool.query('DELETE FROM link_bookmarks WHERE id=$1', [linkId]);
     return resp(200, { ok: true });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function aiTopicFromUrl(event, user, pageUrl, category) {
+  // 1. 페이지 내용 + 링크 추출
+  let html = '';
+  try { html = await Promise.race([fetchUrl(pageUrl), new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 5000))]); } catch {}
+
+  const pageText  = html ? extractPageText(html) : '';
+  const pageLinks = html ? extractPageLinks(html, pageUrl) : [];
+
+  if (!pageText && !pageLinks.length) {
+    return resp(422, { error: '해당 URL에서 내용을 가져오지 못했습니다. 다른 URL을 시도해보세요.' });
+  }
+
+  const contextSnippet = pageText || pageLinks.slice(0, 6).map(l => l.title).join('\n');
+
+  // 2. Haiku로 분류에 맞는 기사 제목 생성
+  let finalTitle = '';
+  try {
+    const titleMsg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 100,
+      messages: [{ role: 'user', content: `아래 웹페이지 내용을 바탕으로 [${category}] 분야에 특징 있는 기사 제목을 한 줄로 작성하세요. 제목만 출력.\n\n내용:\n${contextSnippet}` }]
+    });
+    finalTitle = titleMsg.content[0].text.trim().split('\n')[0];
+    const isFail = /완전하지|부족|실패|없습니다|찾지 못|불가능|어렵습니다|모르겠/.test(finalTitle);
+    if (!finalTitle || isFail) return resp(422, { error: '제목을 생성하지 못했습니다. 다른 URL을 시도해보세요.' });
+  } catch (e) { return resp(500, { error: '제목 생성 실패' }); }
+
+  // 3. 참고링크 = 페이지 내 링크들
+  const refLinks = pageLinks.slice(0, 25).map(l => ({ title: l.title, url: l.url, pubDate: '' }));
+
+  // 4. 이슈 저장
+  let r;
+  try {
+    r = await pool.query(
+      'INSERT INTO issues (user_id,title,category,is_draft,reference_links) VALUES($1,$2,$3,TRUE,$4) RETURNING id,title,category,created_at',
+      [user.id, finalTitle, category, JSON.stringify(refLinks)]
+    );
+  } catch {
+    r = await pool.query(
+      'INSERT INTO issues (user_id,title,category,is_draft) VALUES($1,$2,$3,TRUE) RETURNING id,title,category,created_at',
+      [user.id, finalTitle, category]
+    );
+  }
+  const issueId = r.rows[0].id;
+
+  // 5. 섹션 자동채우기 (Haiku, 최대 3섹션)
+  try {
+    const [labelR, guideR] = await Promise.all([
+      pool.query('SELECT section_no, label FROM user_section_labels WHERE user_id=$1 ORDER BY section_no', [user.id]),
+      pool.query('SELECT section_no, guide FROM user_section_guides WHERE user_id=$1 ORDER BY section_no', [user.id]),
+    ]);
+    const DEFAULT_LABELS = ['배경 / 발단', '주요 내용', '인터뷰 / 현장', '관련 자료', '결론 / 전망'];
+    const userLabels = [1,2,3,4,5].map(n => {
+      const f = labelR.rows.find(row => row.section_no === n);
+      return f?.label?.trim() || '';
+    });
+    const userGuides = [1,2,3,4,5].map(n => {
+      const f = guideR.rows.find(row => row.section_no === n);
+      return f?.guide?.trim() || '';
+    });
+    const hasAnyLabel = userLabels.some(l => l);
+    const effectiveLabels = userLabels.map((l, i) => l || (hasAnyLabel ? '' : DEFAULT_LABELS[i]));
+    const toGenerate = effectiveLabels
+      .map((l, i) => ({ no: i + 1, label: l, guide: userGuides[i] }))
+      .filter(s => s.label)
+      .slice(0, 3);
+
+    if (toGenerate.length) {
+      const sectionSpecs = toGenerate.map(s => `[${s.no}]${s.guide ? ` (${s.guide})` : ''}`).join('\n');
+      const batchMsg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 1000,
+        messages: [{ role: 'user', content: `기사 제목: ${finalTitle}\n\n[참고자료 — 이 내용을 최우선으로 활용]\n${contextSnippet}\n\n규칙: 참고자료 내용 중심으로 각 섹션 2~3문장. 섹션 번호·제목 포함하지 마세요.\n\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용` }]
+      });
+      const batchText = batchMsg.content[0].text;
+      for (const s of toGenerate) {
+        const m = batchText.match(new RegExp(`\[${s.no}\]([\s\S]*?)(?=\[\d+\]|$)`));
+        const content = m ? m[1].trim() : '';
+        if (content) {
+          try {
+            await pool.query(
+              `INSERT INTO issue_sections (issue_id, section_no, content, updated_at)
+               VALUES ($1,$2,$3,NOW())
+               ON CONFLICT (issue_id, section_no) DO UPDATE SET content=$3, updated_at=NOW()`,
+              [issueId, s.no, content]
+            );
+          } catch {}
+        }
+      }
+    }
+  } catch (e) { console.error('URL 섹션 자동채우기 오류:', e.message); }
+
+  return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
 }

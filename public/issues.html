@@ -575,7 +575,7 @@
           <div style="display:flex;gap:.4rem;align-items:center;padding:.1rem 0">
             <select id="aiInlineCat" class="cat-select" style="height:30px;flex-shrink:0">${aiCatOpts}</select>
             <input type="text" id="aiInlineTitle" class="inline-input" style="flex:1;min-width:0"
-              placeholder="제목 입력 후 Enter → AI가 키워드 추출·링크 수집·제목 다듬기" maxlength="200" />
+              placeholder="제목 또는 URL 붙여넣기 → AI가 기사 제목·참고링크·섹션 자동 생성" maxlength="500" />
             <button class="btn-sm primary" id="btnAISave" onclick="saveAIIssue()" style="flex-shrink:0">AI 저장</button>
             <button class="btn-sm" onclick="cancelAIInlineRow()" style="flex-shrink:0">취소</button>
           </div>
@@ -599,7 +599,8 @@
       const title = document.getElementById('aiInlineTitle')?.value.trim();
       if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
       const btn = document.getElementById('btnAISave');
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ AI 처리 중...'; }
+      const isUrl = /^https?:\/\//i.test(title);
+      if (btn) { btn.disabled = true; btn.textContent = isUrl ? '⏳ 링크 분석 중...' : '⏳ AI 처리 중...'; }
       try {
         const category = document.getElementById('aiInlineCat')?.value || document.getElementById('catSelect')?.value || getCatCookie();
         const res = await api('/topics/ai', { method: 'POST', body: JSON.stringify({ userTitle: title, category }) });
