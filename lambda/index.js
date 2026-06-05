@@ -990,7 +990,7 @@ ${fullContext}
 - 위 참고자료에 있는 사실·내용을 중심으로 작성하세요
 - 참고자료에 없는 내용은 추가하지 마세요
 - 섹션 번호·제목은 본문에 포함하지 마세요
-- 내용을 풍부하고 충분히 작성하세요 (보통 기사 분량의 1.5배 수준으로 상세하게)
+- 내용을 풍부하고 기사 분량만큼 충분히 작성하세요
 
 ${sectionSpecs}
 
@@ -1211,12 +1211,9 @@ async function aiTopicFromUrl(event, user, pageUrl, category) {
     googleLinks.sort((a, b) => (b.pubDate ? new Date(b.pubDate) : 0) - (a.pubDate ? new Date(a.pubDate) : 0));
   } catch {}
 
-  // 4. 참고링크 = 페이지 링크 + Google News 최신글 (중복 제거, 최대 35개)
-  const seen = new Set();
-  const refLinks = [
-    ...pageLinks.map(l => ({ title: l.title, url: l.url, pubDate: '' })),
-    ...googleLinks,
-  ].filter(l => { if (seen.has(l.url)) return false; seen.add(l.url); return true; }).slice(0, 35);
+  // 4. 참고링크 = 구글뉴스 최신글만 (입력 페이지 링크와 별개 소스)
+  //    입력 페이지 내용은 섹션 자동채우기에만 사용, 참고링크에는 포함 안 함
+  const refLinks = googleLinks.slice(0, 25);
 
   // 5. 이슈 저장
   let r;
