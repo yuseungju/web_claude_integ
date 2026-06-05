@@ -1044,8 +1044,7 @@
           method: 'POST', body: JSON.stringify({ section_no: n, label }),
         });
         if (!res.ok) throw new Error();
-        userLabelDefaults[n - 1] = label;
-        labelsData[n - 1] = label;
+        if (typeof userLabelDefaults !== 'undefined') userLabelDefaults[n - 1] = label;
         showToast(`섹션 ${n} 제목이 변경됐습니다.`, 'success');
       } catch {
         showToast('저장 실패', 'error');
@@ -1085,11 +1084,7 @@
           const ta = document.getElementById(`sec${r.no}`);
           if (ta) ta.value = r.content;
           sectionsData[r.no - 1] = r.content;
-          if (r.label) {
-            labelsData[r.no - 1] = r.label;
-            const inp = document.getElementById(`secLabel${r.no}`);
-            if (inp) inp.value = r.label;
-          }
+          // labelsData 제거됨 — label 업데이트 불필요
           // 출처 링크 표시
           const srcDiv = document.getElementById(`secSrc${r.no}`);
           if (srcDiv) {
