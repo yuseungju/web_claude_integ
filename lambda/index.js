@@ -1184,10 +1184,40 @@ async function aiTopicFromUrl(event, user, pageUrl, category) {
     if (!finalTitle || isFail) return resp(422, { error: '제목을 생성하지 못했습니다. 다른 URL을 시도해보세요.' });
   } catch (e) { return resp(500, { error: '제목 생성 실패' }); }
 
-  // 3. 참고링크 = 페이지 내 링크들
-  const refLinks = pageLinks.slice(0, 25).map(l => ({ title: l.title, url: l.url, pubDate: '' }));
+  // 3. 제목 키워드로 Google News RSS 최신글 추가 검색
+  let googleLinks = [];
+  try {
+    const kwMsg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 40,
+      messages: [{ role: 'user', content: `기사 제목에서 핵심 명사 4개만 추출. 띄어쓰기로만 구분.\n제목: ${finalTitle}` }]
+    });
+    const keywords = kwMsg.content[0].text.trim().replace(/,/g, ' ').replace(/\s+/g, ' ');
+    const rss = await fetchUrl(`https://news.google.com/rss/search?q=${encodeURIComponent(keywords)}&hl=ko&gl=KR&ceid=KR:ko`);
+    const itemRe = /<item>([\s\S]*?)<\/item>/g;
+    let im;
+    while ((im = itemRe.exec(rss)) !== null && googleLinks.length < 15) {
+      const xml = im[1];
+      const tM  = xml.match(/<title>([\s\S]*?)<\/title>/);
+      const lM  = xml.match(/<link>([\s\S]*?)<\/link>/) || xml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+      const dM  = xml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
+      if (!tM) continue;
+      const t = tM[1].replace(/<!\[CDATA\[|\]\]>/g, '').replace(/\s+/g, ' ').trim();
+      const l = lM ? lM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      const d = dM ? dM[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
+      if (t && l && /^https?:\/\//i.test(l) && !t.toLowerCase().includes('google'))
+        googleLinks.push({ title: t, url: l, pubDate: d });
+    }
+    googleLinks.sort((a, b) => (b.pubDate ? new Date(b.pubDate) : 0) - (a.pubDate ? new Date(a.pubDate) : 0));
+  } catch {}
 
-  // 4. 이슈 저장
+  // 4. 참고링크 = 페이지 링크 + Google News 최신글 (중복 제거, 최대 35개)
+  const seen = new Set();
+  const refLinks = [
+    ...pageLinks.map(l => ({ title: l.title, url: l.url, pubDate: '' })),
+    ...googleLinks,
+  ].filter(l => { if (seen.has(l.url)) return false; seen.add(l.url); return true; }).slice(0, 35);
+
+  // 5. 이슈 저장
   let r;
   try {
     r = await pool.query(
@@ -1202,7 +1232,7 @@ async function aiTopicFromUrl(event, user, pageUrl, category) {
   }
   const issueId = r.rows[0].id;
 
-  // 5. 섹션 자동채우기 (Haiku, 최대 3섹션)
+  // 6. 섹션 자동채우기 (Haiku, 최대 3섹션)
   try {
     const [labelR, guideR] = await Promise.all([
       pool.query('SELECT section_no, label FROM user_section_labels WHERE user_id=$1 ORDER BY section_no', [user.id]),
