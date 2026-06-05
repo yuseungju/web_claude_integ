@@ -978,7 +978,7 @@ async function autoFillSections(event, issueId) {
     ).join('\n');
 
     const batchMsg = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001', max_tokens: 3000,
+      model: 'claude-haiku-4-5-20251001', max_tokens: 6000,
       messages: [{
         role: 'user',
         content: `기사 제목: ${title}
@@ -987,10 +987,10 @@ async function autoFillSections(event, issueId) {
 ${fullContext}
 
 규칙:
-- 위 참고자료에 있는 사실·내용을 중심으로 작성하세요
+- 위 참고자료에 있는 사실·내용·수치·인용·배경 등을 빠짐없이 최대한 담아서 작성하세요
 - 참고자료에 없는 내용은 추가하지 마세요
 - 섹션 번호·제목은 본문에 포함하지 마세요
-- 내용을 풍부하고 기사 분량만큼 충분히 작성하세요
+- 각 섹션을 가능한 한 길고 상세하게, 전문 기사 수준으로 작성하세요 (짧게 쓰지 마세요)
 
 ${sectionSpecs}
 
@@ -1255,8 +1255,8 @@ async function aiTopicFromUrl(event, user, pageUrl, category) {
     if (toGenerate.length) {
       const sectionSpecs = toGenerate.map(s => `[${s.no}]${s.guide ? ` (${s.guide})` : ''}`).join('\n');
       const batchMsg = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001', max_tokens: 2000,
-        messages: [{ role: 'user', content: `기사 제목: ${finalTitle}\n\n[참고자료 — 이 내용을 최우선으로 활용]\n${contextSnippet}\n\n규칙: 참고자료 내용 중심으로 작성. 내용을 풍부하고 충분히 작성(보통 기사 분량의 1.5배 수준). 섹션 번호·제목 포함하지 마세요.\n\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용` }]
+        model: 'claude-haiku-4-5-20251001', max_tokens: 4000,
+        messages: [{ role: 'user', content: `기사 제목: ${finalTitle}\n\n[참고자료 — 이 내용을 최우선으로 활용]\n${contextSnippet}\n\n규칙: 참고자료의 사실·내용·수치를 빠짐없이 담아 각 섹션을 가능한 한 길고 상세하게 작성. 짧게 쓰지 마세요. 섹션 번호·제목 포함하지 마세요.\n\n${sectionSpecs}\n\n출력:\n[1]\n내용\n\n[2]\n내용` }]
       });
       const batchText = batchMsg.content[0].text;
       for (const s of toGenerate) {
