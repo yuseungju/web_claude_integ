@@ -139,6 +139,22 @@ exports.handler = async (event) => {
   if (novelComIdM   && method === 'DELETE') return deleteNovelComment(event, novelComIdM[1]);
   if (novelComReactM && method === 'POST')  return reactNovelComment(event, novelComReactM[1]);
 
+  // ────────────────────────────────────────────
+  // [웹소설] 메뉴 노드 / 기준정보 / AI 다듬기
+  // ────────────────────────────────────────────
+  const novelNodesM  = path.match(/^\/novel\/novels\/(\d+)\/nodes$/);
+  const novelNodeIdM = path.match(/^\/novel\/nodes\/(\d+)$/);
+  const novelRefM    = path.match(/^\/novel\/novels\/(\d+)\/refinfo$/);
+  const novelPolishM = path.match(/^\/novel\/nodes\/(\d+)\/polish$/);
+
+  if (novelNodesM  && method === 'GET')    return getNovelNodes(event, novelNodesM[1]);
+  if (novelNodesM  && method === 'POST')   return createNovelNode(event, novelNodesM[1]);
+  if (novelNodeIdM && method === 'PUT')    return updateNovelNode(event, novelNodeIdM[1]);
+  if (novelNodeIdM && method === 'DELETE') return deleteNovelNode(event, novelNodeIdM[1]);
+  if (novelRefM    && method === 'GET')    return getRefInfo(event, novelRefM[1]);
+  if (novelRefM    && method === 'PUT')    return saveRefInfo(event, novelRefM[1]);
+  if (novelPolishM && method === 'POST')   return polishNodeContent(event, novelPolishM[1]);
+
   return resp(404, { error: 'Not found' });
 };
 
@@ -1571,5 +1587,170 @@ async function reactNovelComment(event, commentId) {
       FROM novel_comment_reactions WHERE comment_id=$2
     `, [user.id, commentId]);
     return resp(200, c.rows[0]);
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+// ────────────────────────────────────────────
+// [웹소설] 메뉴 노드 CRUD
+// ────────────────────────────────────────────
+async function getNovelNodes(event, novelId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const check = await pool.query('SELECT user_id FROM novels WHERE id=$1', [novelId]);
+    if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+    const r = await pool.query(
+      'SELECT id, novel_id, parent_id, position, title, content, updated_at FROM novel_nodes WHERE novel_id=$1 ORDER BY position, id',
+      [novelId]
+    );
+    return resp(200, { nodes: r.rows });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function createNovelNode(event, novelId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { parent_id, title } = getBody(event);
+  try {
+    const check = await pool.query('SELECT user_id FROM novels WHERE id=$1', [novelId]);
+    if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+
+    const posR = await pool.query(
+      'SELECT COALESCE(MAX(position),0)+1 AS nxt FROM novel_nodes WHERE novel_id=$1 AND parent_id IS NOT DISTINCT FROM $2',
+      [novelId, parent_id ?? null]
+    );
+    const pos = posR.rows[0].nxt;
+
+    const r = await pool.query(
+      'INSERT INTO novel_nodes (novel_id, parent_id, position, title) VALUES($1,$2,$3,$4) RETURNING *',
+      [novelId, parent_id ?? null, pos, (title || '새 메뉴').trim()]
+    );
+    return resp(201, { node: r.rows[0] });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function updateNovelNode(event, nodeId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const body = getBody(event);
+  try {
+    const cur = await pool.query(
+      'SELECT nn.*, n.user_id FROM novel_nodes nn JOIN novels n ON nn.novel_id=n.id WHERE nn.id=$1', [nodeId]
+    );
+    if (!cur.rows.length) return resp(404, { error: '노드를 찾을 수 없습니다.' });
+    if (cur.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+
+    const sets = []; const vals = []; let i = 1;
+    if (body.title    !== undefined) { sets.push(`title=$${i++}`);    vals.push(body.title); }
+    if (body.content  !== undefined) { sets.push(`content=$${i++}`);  vals.push(body.content); }
+    if (body.position !== undefined) { sets.push(`position=$${i++}`); vals.push(body.position); }
+    if (body.parent_id !== undefined) { sets.push(`parent_id=$${i++}`); vals.push(body.parent_id); }
+    sets.push('updated_at=NOW()');
+    vals.push(nodeId);
+
+    const r = await pool.query(
+      `UPDATE novel_nodes SET ${sets.join(',')} WHERE id=$${i} RETURNING *`, vals
+    );
+    return resp(200, { node: r.rows[0] });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function deleteNovelNode(event, nodeId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const cur = await pool.query(
+      'SELECT nn.id, n.user_id FROM novel_nodes nn JOIN novels n ON nn.novel_id=n.id WHERE nn.id=$1', [nodeId]
+    );
+    if (!cur.rows.length) return resp(404, { error: '노드를 찾을 수 없습니다.' });
+    if (cur.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+    await pool.query('DELETE FROM novel_nodes WHERE id=$1', [nodeId]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+// ────────────────────────────────────────────
+// [웹소설] 기준정보 / AI 다듬기
+// ────────────────────────────────────────────
+async function getRefInfo(event, novelId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const r = await pool.query(
+      'SELECT ref_info, ref_summary FROM novels WHERE id=$1 AND user_id=$2', [novelId, user.id]
+    );
+    if (!r.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+    return resp(200, { ref_info: r.rows[0].ref_info || {}, ref_summary: r.rows[0].ref_summary || '' });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function saveRefInfo(event, novelId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { characters, tech, plot, goals, style, files } = getBody(event);
+  try {
+    const check = await pool.query('SELECT id FROM novels WHERE id=$1 AND user_id=$2', [novelId, user.id]);
+    if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+
+    const refInfo = { characters, tech, plot, goals, style, files };
+    const parts = [];
+    if (characters) parts.push(`[인물 정보]\n${characters}`);
+    if (tech)       parts.push(`[기술/세계관]\n${tech}`);
+    if (plot)       parts.push(`[주요 내용]\n${plot}`);
+    if (goals)      parts.push(`[목표/방향]\n${goals}`);
+    if (style)      parts.push(`[작성 스타일]\n${style}`);
+    if (Array.isArray(files)) {
+      files.forEach(f => {
+        const preview = (f.content || '').slice(0, 1500);
+        if (preview) parts.push(`[참고 파일: ${f.name}]\n${preview}`);
+      });
+    }
+
+    let summary = '';
+    if (parts.length) {
+      const sm = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001', max_tokens: 800,
+        messages: [{ role: 'user', content: `다음 소설 기준정보를 AI가 글 작성 시 참고할 수 있게 핵심만 간결히 요약하세요. 요약만 출력.\n\n${parts.join('\n\n')}` }]
+      });
+      summary = sm.content[0].text.trim();
+    }
+
+    await pool.query(
+      'UPDATE novels SET ref_info=$1, ref_summary=$2, updated_at=NOW() WHERE id=$3',
+      [JSON.stringify(refInfo), summary, novelId]
+    );
+    return resp(200, { summary });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function polishNodeContent(event, nodeId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { guide } = getBody(event);
+  try {
+    const nr = await pool.query(
+      'SELECT nn.content, n.user_id, n.ref_summary FROM novel_nodes nn JOIN novels n ON nn.novel_id=n.id WHERE nn.id=$1',
+      [nodeId]
+    );
+    if (!nr.rows.length) return resp(404, { error: '노드를 찾을 수 없습니다.' });
+    if (nr.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+
+    const { content, ref_summary } = nr.rows[0];
+    if (!content?.trim()) return resp(400, { error: '내용이 없습니다.' });
+
+    const systemTxt = ref_summary
+      ? `당신은 전문 웹소설 작가입니다.\n\n[소설 기준정보]\n${ref_summary}`
+      : '당신은 전문 웹소설 작가입니다.';
+    const guideNote = guide ? `\n가이드: ${guide}` : '';
+    const userTxt   = `다음 글을 웹소설 작가답게 자연스럽게 다듬어주세요.${guideNote}\n다듬은 글만 출력하세요.\n\n[원문]\n${content}`;
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 4000,
+      system: systemTxt,
+      messages: [{ role: 'user', content: userTxt }]
+    });
+    return resp(200, { content: msg.content[0].text.trim() });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }

@@ -200,6 +200,8 @@ CREATE TABLE novels (
   synopsis     TEXT         DEFAULT '',
   is_published BOOLEAN      DEFAULT FALSE,
   view_count   INTEGER      DEFAULT 0,
+  ref_info     JSONB        DEFAULT '{}',
+  ref_summary  TEXT         DEFAULT '',
   created_at   TIMESTAMPTZ  DEFAULT NOW(),
   updated_at   TIMESTAMPTZ  DEFAULT NOW()
 );
@@ -216,6 +218,17 @@ CREATE TABLE novel_episodes (
   created_at TIMESTAMPTZ  DEFAULT NOW(),
   updated_at TIMESTAMPTZ  DEFAULT NOW(),
   UNIQUE (novel_id, episode_no)
+);
+
+CREATE TABLE novel_nodes (
+  id         SERIAL       PRIMARY KEY,
+  novel_id   INTEGER      NOT NULL REFERENCES novels(id) ON DELETE CASCADE,
+  parent_id  INTEGER      REFERENCES novel_nodes(id) ON DELETE CASCADE,
+  position   INTEGER      NOT NULL DEFAULT 0,
+  title      VARCHAR(200) DEFAULT '새 메뉴',
+  content    TEXT         DEFAULT '',
+  created_at TIMESTAMPTZ  DEFAULT NOW(),
+  updated_at TIMESTAMPTZ  DEFAULT NOW()
 );
 
 CREATE TABLE novel_episode_editors (
@@ -264,3 +277,5 @@ CREATE INDEX idx_comments_issue        ON comments(issue_id);
 CREATE INDEX idx_link_bookmarks_folder ON link_bookmarks(folder_id);
 CREATE INDEX idx_novels_user_id        ON novels(user_id);
 CREATE INDEX idx_novel_episodes_novel  ON novel_episodes(novel_id);
+CREATE INDEX idx_novel_nodes_novel     ON novel_nodes(novel_id);
+CREATE INDEX idx_novel_nodes_parent    ON novel_nodes(parent_id);
