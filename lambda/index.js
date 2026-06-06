@@ -49,12 +49,26 @@ exports.handler = async (event) => {
 
   if (method === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
 
-  // Auth
+  // ────────────────────────────────────────────
+  // [공통] 인증
+  // ────────────────────────────────────────────
   if (path === '/auth/register'    && method === 'POST') return register(event);
   if (path === '/auth/login'       && method === 'POST') return login(event);
   if (path === '/auth/check-email' && method === 'POST') return checkEmail(event);
 
-  // Issues (public GET)
+  // ────────────────────────────────────────────
+  // [공통] 마이페이지
+  // ────────────────────────────────────────────
+  if (path === '/mypage'                && method === 'GET')  return getMypage(event);
+  if (path === '/mypage/article-style'  && method === 'POST') return saveArticleStyle(event);
+  if (path === '/mypage/section-guides' && method === 'GET')  return getSectionGuides(event);
+  if (path === '/mypage/section-guides' && method === 'POST') return saveSectionGuide(event);
+  if (path === '/mypage/section-labels' && method === 'GET')  return getSectionLabels(event);
+  if (path === '/mypage/section-labels' && method === 'POST') return saveSectionLabelOne(event);
+
+  // ────────────────────────────────────────────
+  // [기사 작성] Issues / Sections / AI / Comments / Bookmarks
+  // ────────────────────────────────────────────
   if (path === '/issues' && method === 'GET')  return getIssues(event);
   if (path === '/issues' && method === 'POST') return createIssue(event);
 
@@ -75,7 +89,6 @@ exports.handler = async (event) => {
   if (path === '/topics/ai' && method === 'POST') return aiTopic(event);
   if (path === '/generate'  && method === 'POST') return generateArticle(event);
 
-  // Issue reactions
   const issueReactM    = path.match(/^\/issues\/(\d+)\/react$/);
   const searchRelatedM = path.match(/^\/issues\/(\d+)\/search-related$/);
   const aiWriteSecM    = path.match(/^\/issues\/(\d+)\/sections\/(\d+)\/ai-write$/);
@@ -86,7 +99,6 @@ exports.handler = async (event) => {
   const autoSectionsM = path.match(/^\/issues\/(\d+)\/auto-sections$/);
   if (autoSectionsM && method === 'POST') return autoFillSections(event, autoSectionsM[1]);
 
-  // Comments
   const commentM      = path.match(/^\/issues\/(\d+)\/comments$/);
   const commentIdM    = path.match(/^\/comments\/(\d+)$/);
   const commentReactM = path.match(/^\/comments\/(\d+)\/react$/);
@@ -95,15 +107,6 @@ exports.handler = async (event) => {
   if (commentIdM    && method === 'DELETE') return deleteComment(event, commentIdM[1]);
   if (commentReactM && method === 'POST')   return reactComment(event, commentReactM[1]);
 
-  // Mypage
-  if (path === '/mypage'                && method === 'GET')    return getMypage(event);
-  if (path === '/mypage/article-style'  && method === 'POST')   return saveArticleStyle(event);
-  if (path === '/mypage/section-guides' && method === 'GET')    return getSectionGuides(event);
-  if (path === '/mypage/section-guides' && method === 'POST')   return saveSectionGuide(event);
-  if (path === '/mypage/section-labels' && method === 'GET')    return getSectionLabels(event);
-  if (path === '/mypage/section-labels' && method === 'POST')   return saveSectionLabelOne(event);
-
-  // 링크 북마크
   const folderM      = path.match(/^\/bookmarks\/folders\/(\d+)$/);
   const folderLinksM = path.match(/^\/bookmarks\/folders\/(\d+)\/links$/);
   const linkM        = path.match(/^\/bookmarks\/links\/(\d+)$/);
@@ -112,6 +115,13 @@ exports.handler = async (event) => {
   if (folderM       && method === 'DELETE') return deleteFolder(event, folderM[1]);
   if (folderLinksM  && method === 'POST')   return addLink(event, folderLinksM[1]);
   if (linkM         && method === 'DELETE') return deleteLink(event, linkM[1]);
+
+  // ────────────────────────────────────────────
+  // [웹소설] novels / episodes (추후 구현)
+  // ────────────────────────────────────────────
+  if (path.startsWith('/novel/')) {
+    return resp(501, { error: '웹소설 기능은 준비 중입니다.' });
+  }
 
   return resp(404, { error: 'Not found' });
 };

@@ -11,7 +11,7 @@ function requireAuth() {
 function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  window.location.href = 'issues.html';
+  window.location.href = '/index.html';
 }
 
 async function api(path, options = {}) {
@@ -34,7 +34,7 @@ function renderHeader(containerSelector) {
   if (user) {
     el.innerHTML = `
       <div class="header-user">
-        <a href="mypage.html" class="header-username header-mypage-link">${user.name}</a>
+        <a href="/mypage.html" class="header-username header-mypage-link">${user.name}</a>
         <button class="btn-logout" onclick="logout()">로그아웃</button>
       </div>`;
   } else {

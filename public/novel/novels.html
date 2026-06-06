@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>웹소설 – AI 창작 플랫폼</title>
+  <link rel="stylesheet" href="../assets/css/common.css" />
+  <style>
+    main.container { max-width: 92%; width: 92%; padding: 1.25rem 1rem; }
+    .coming-soon {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 60vh; gap: 1rem; text-align: center;
+    }
+    .coming-soon .icon { font-size: 3.5rem; }
+    .coming-soon h2 { font-size: 1.4rem; font-weight: 900; color: var(--text-primary); }
+    .coming-soon p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; max-width: 400px; }
+    .badge-wip {
+      display: inline-block; padding: 0.25rem 0.8rem; background: #fce7f3;
+      color: #be185d; font-size: 0.72rem; font-weight: 700; border-radius: 100px;
+      border: 1px solid #fbcfe8;
+    }
+    .btn-back {
+      margin-top: 0.5rem; padding: 0.55rem 1.2rem;
+      background: var(--primary); color: #fff; border: none;
+      border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; font-family: var(--font-sans); text-decoration: none;
+      transition: background 0.15s; display: inline-block;
+    }
+    .btn-back:hover { background: var(--primary-dark); }
+  </style>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">📖</span>
+            <span class="logo-text">웹소설</span>
+          </a>
+        </div>
+        <div id="headerUser"></div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="coming-soon">
+        <span class="icon">📖</span>
+        <span class="badge-wip">개발 예정</span>
+        <h2>웹소설 기능 준비 중</h2>
+        <p>
+          AI와 함께 웹소설을 집필하는 기능이 곧 추가됩니다.<br>
+          장르 소설 · 에피소드 관리 · AI 집필 보조 등<br>
+          다양한 창작 도구가 준비될 예정입니다.
+        </p>
+        <a href="../index.html" class="btn-back">← 홈으로</a>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <p>AI 창작 플랫폼 · Powered by 유승주</p>
+    </footer>
+  </div>
+
+  <script src="../assets/js/auth.js"></script>
+  <script>
+    renderHeader('#headerUser');
+
+    let toastTimer;
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast') || document.createElement('div');
+      el.textContent = msg; el.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.className = `toast ${type}`, 2800);
+    }
+  </script>
+</body>
+</html>
