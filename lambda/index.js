@@ -1436,13 +1436,18 @@ async function getNovel(event, id) {
 async function updateNovel(event, id) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { title } = getBody(event);
-  if (!title?.trim()) return resp(400, { error: '제목을 입력하세요.' });
+  const { title, is_published } = getBody(event);
+  if (title !== undefined && !title?.trim()) return resp(400, { error: '제목을 입력하세요.' });
   try {
     const check = await pool.query('SELECT user_id FROM novels WHERE id=$1', [id]);
     if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
     if (check.rows[0].user_id !== user.id) return resp(403, { error: '수정 권한이 없습니다.' });
-    await pool.query('UPDATE novels SET title=$1, updated_at=NOW() WHERE id=$2', [title.trim(), id]);
+    const sets = []; const vals = []; let i = 1;
+    if (title        !== undefined) { sets.push(`title=$${i++}`);        vals.push(title.trim()); }
+    if (is_published !== undefined) { sets.push(`is_published=$${i++}`); vals.push(is_published); }
+    sets.push('updated_at=NOW()');
+    vals.push(id);
+    await pool.query(`UPDATE novels SET ${sets.join(',')} WHERE id=$${i}`, vals);
     return resp(200, { ok: true });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
@@ -1595,16 +1600,17 @@ async function reactNovelComment(event, commentId) {
 // ────────────────────────────────────────────
 async function getNovelNodes(event, novelId) {
   const user = verifyToken(event);
-  if (!user) return resp(401, { error: '인증이 필요합니다.' });
   try {
     const check = await pool.query('SELECT user_id FROM novels WHERE id=$1', [novelId]);
     if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
-    if (check.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
+    const isOwner = user && check.rows[0].user_id === user.id;
     const r = await pool.query(
-      'SELECT id, novel_id, parent_id, position, title, content, updated_at FROM novel_nodes WHERE novel_id=$1 ORDER BY position, id',
+      isOwner
+        ? 'SELECT id, novel_id, parent_id, position, title, content, is_visible, updated_at FROM novel_nodes WHERE novel_id=$1 ORDER BY position, id'
+        : 'SELECT id, novel_id, parent_id, position, title, content, is_visible, updated_at FROM novel_nodes WHERE novel_id=$1 AND is_visible=true ORDER BY position, id',
       [novelId]
     );
-    return resp(200, { nodes: r.rows });
+    return resp(200, { nodes: r.rows, is_owner: isOwner });
   } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }
 
@@ -1643,10 +1649,11 @@ async function updateNovelNode(event, nodeId) {
     if (cur.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
 
     const sets = []; const vals = []; let i = 1;
-    if (body.title    !== undefined) { sets.push(`title=$${i++}`);    vals.push(body.title); }
-    if (body.content  !== undefined) { sets.push(`content=$${i++}`);  vals.push(body.content); }
-    if (body.position !== undefined) { sets.push(`position=$${i++}`); vals.push(body.position); }
-    if (body.parent_id !== undefined) { sets.push(`parent_id=$${i++}`); vals.push(body.parent_id); }
+    if (body.title      !== undefined) { sets.push(`title=$${i++}`);      vals.push(body.title); }
+    if (body.content    !== undefined) { sets.push(`content=$${i++}`);    vals.push(body.content); }
+    if (body.position   !== undefined) { sets.push(`position=$${i++}`);   vals.push(body.position); }
+    if (body.parent_id  !== undefined) { sets.push(`parent_id=$${i++}`);  vals.push(body.parent_id); }
+    if (body.is_visible !== undefined) { sets.push(`is_visible=$${i++}`); vals.push(body.is_visible); }
     sets.push('updated_at=NOW()');
     vals.push(nodeId);
 

@@ -8,12 +8,34 @@
   <style>
     :root { --primary: #db2777; --primary-dark: #be185d; --primary-light: #fdf2f8; }
 
-    /* ── 편집 워크스페이스 ── */
+    /* ── 공통 버튼 ── */
+    .btn {
+      padding: 0.5rem 0.95rem; border-radius: var(--radius-sm); font-size: 0.83rem;
+      font-weight: 700; cursor: pointer; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--text-secondary);
+      transition: all 0.15s; font-family: var(--font-sans); white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn.success { background: var(--success); border-color: var(--success); color: #fff; }
+    .btn.success:hover:not(:disabled) { background: #059669; }
+    .btn.sm { padding: 0.35rem 0.7rem; font-size: 0.77rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── 편집 워크스페이스 (고정 높이) ── */
     body.edit-mode { overflow: hidden; }
     .edit-workspace {
       display: flex; flex-direction: column;
       height: calc(100vh - 3.4rem);
     }
+
+    /* ── 조회 워크스페이스 (자연 흐름) ── */
+    .view-workspace {
+      display: flex; flex-direction: column;
+    }
+
+    /* ── 공통: 워크스페이스 헤더 ── */
     .ws-header {
       flex-shrink: 0;
       padding: 0.5rem 1rem;
@@ -32,7 +54,12 @@
       transition: border-color 0.15s;
     }
     .ws-title-input:focus { border-color: var(--primary); }
+    .view-title-txt { font-size: 0.95rem; font-weight: 800; color: var(--text-primary); flex: 1; min-width: 0; }
+    .view-title-sub { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+
+    /* ── 공통: 워크스페이스 바디 ── */
     .ws-body { flex: 1; display: flex; overflow: hidden; }
+    .view-workspace .ws-body { overflow: visible; min-height: 420px; }
 
     /* ── 사이드바 ── */
     .ws-sidebar {
@@ -40,6 +67,7 @@
       background: var(--bg-card); border-right: 1.5px solid var(--border);
       display: flex; flex-direction: column; overflow: hidden;
     }
+    .view-workspace .ws-sidebar { overflow: visible; }
     .sidebar-top { padding: 0.55rem; border-bottom: 1px solid var(--border); }
     .btn-refinfo {
       width: 100%; padding: 0.46rem 0.75rem;
@@ -50,6 +78,7 @@
     }
     .btn-refinfo:hover, .btn-refinfo.active { background: var(--primary); color: #fff; border-color: var(--primary); }
     .menu-tree { flex: 1; overflow-y: auto; padding: 0.3rem; }
+    .view-workspace .menu-tree { overflow-y: visible; }
     .sidebar-bottom { padding: 0.5rem; border-top: 1px solid var(--border); }
     .btn-add-menu {
       width: 100%; padding: 0.4rem 0.75rem;
@@ -83,7 +112,7 @@
     .tree-row:hover .tree-btns, .tree-row.selected .tree-btns { opacity: 1; }
     .tree-btn {
       width: 1.15rem; height: 1.15rem; border: none;
-      background: rgba(0,0,0,0.06); cursor: pointer; font-size: 0.62rem;
+      background: rgba(0,0,0,0.06); cursor: pointer; font-size: 0.6rem;
       display: flex; align-items: center; justify-content: center;
       border-radius: 3px; color: var(--text-secondary); transition: all 0.1s;
       font-family: var(--font-sans);
@@ -91,10 +120,13 @@
     .tree-btn:hover { background: rgba(0,0,0,0.15); }
     .tree-row.selected .tree-btn { background: rgba(255,255,255,0.2); color: #fff; }
     .tree-row.selected .tree-btn:hover { background: rgba(255,255,255,0.35); }
+    .tree-btn.vis-on  { color: #db2777; }
+    .tree-row.selected .tree-btn.vis-on { color: #fce7f3; }
     .tree-children { margin-left: 1rem; border-left: 1px dashed #e2e8f0; padding-left: 0.15rem; }
 
     /* ── 메인 패널 ── */
     .ws-main { flex: 1; overflow-y: auto; background: var(--bg); }
+    .view-workspace .ws-main { overflow-y: visible; }
     .main-empty {
       height: 100%; display: flex; align-items: center; justify-content: center;
       color: var(--text-muted); font-size: 0.83rem; text-align: center; padding: 2rem;
@@ -102,8 +134,8 @@
     }
     .main-empty strong { color: var(--text-secondary); font-size: 0.9rem; }
 
-    /* ── 노드 편집 패널 ── */
-    .node-panel, .ref-panel {
+    /* ── 노드 편집 / 조회 패널 ── */
+    .node-panel, .ref-panel, .view-node-panel {
       padding: 1.2rem 1.5rem; max-width: 820px;
       display: flex; flex-direction: column; gap: 0.9rem;
     }
@@ -128,6 +160,17 @@
     }
     .node-content-ta:focus { border-color: var(--primary); }
     .node-content-ta::placeholder { color: var(--text-muted); }
+
+    /* 조회 전용: 내용 표시 */
+    .view-node-title {
+      font-size: 1rem; font-weight: 800; color: var(--text-primary);
+      border-bottom: 2px solid var(--primary-light); padding-bottom: 0.5rem;
+    }
+    .view-node-body {
+      font-size: 0.9rem; line-height: 2; color: var(--text-primary);
+      white-space: pre-wrap; word-break: break-word; min-height: 120px;
+    }
+    .view-node-empty { color: var(--text-muted); font-style: italic; font-size: 0.85rem; }
 
     /* 하위메뉴 가져오기 바 */
     .import-bar {
@@ -164,8 +207,6 @@
       border: 1px solid #fbcfe8; margin-bottom: 0.5rem; word-break: break-word;
     }
     .polish-acts { display: flex; gap: 0.4rem; }
-
-    /* 저장 바 */
     .node-save-bar { display: flex; justify-content: flex-end; gap: 0.4rem; }
 
     /* ── 기준정보 패널 ── */
@@ -185,7 +226,6 @@
     .ref-textarea:focus { border-color: var(--primary); }
     .ref-textarea::placeholder { color: var(--text-muted); }
     .file-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-    .file-name-label { font-size: 0.74rem; color: var(--text-muted); }
     .ref-summary-box {
       background: var(--primary-light); border: 1px solid #fbcfe8;
       border-radius: var(--radius-sm); padding: 0.8rem;
@@ -193,31 +233,8 @@
     .ref-summary-lbl { font-size: 0.7rem; font-weight: 700; color: #be185d; margin-bottom: 0.4rem; }
     .ref-summary-txt { font-size: 0.82rem; line-height: 1.7; color: var(--text-primary); white-space: pre-wrap; word-break: break-word; }
 
-    /* ── 공통 버튼 ── */
-    .btn {
-      padding: 0.5rem 0.95rem; border-radius: var(--radius-sm); font-size: 0.83rem;
-      font-weight: 700; cursor: pointer; border: 1.5px solid var(--border);
-      background: var(--bg-card); color: var(--text-secondary);
-      transition: all 0.15s; font-family: var(--font-sans); white-space: nowrap;
-    }
-    .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
-    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
-    .btn.success { background: var(--success); border-color: var(--success); color: #fff; }
-    .btn.success:hover:not(:disabled) { background: #059669; }
-    .btn.sm { padding: 0.35rem 0.7rem; font-size: 0.77rem; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* ── 조회 모드 (뷰) ── */
+    /* ── 반응 / 댓글 (조회 하단) ── */
     main.container { max-width: 92%; width: 92%; padding: 1.25rem 1rem; }
-    .novel-meta {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius-md); padding: 0.9rem 1.1rem;
-      margin-bottom: 1rem; display: flex; align-items: flex-start;
-      justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
-    }
-    .novel-title-view { font-size: 1rem; font-weight: 800; color: var(--text-primary); line-height: 1.4; flex: 1; }
-    .novel-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
     .react-btn {
       padding: 0.14rem 0.48rem; border: 1px solid var(--border); border-radius: 100px;
       font-size: 0.7rem; font-weight: 600; cursor: pointer; background: var(--bg);
@@ -227,21 +244,6 @@
     .react-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
     .react-btn.active-like    { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
     .react-btn.active-dislike { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
-
-    .novel-panel {
-      background: var(--bg-card); border: 1.5px solid #fbcfe8;
-      border-radius: var(--radius-md); overflow: hidden; margin-bottom: 1.25rem;
-    }
-    .novel-panel-header {
-      padding: 0.55rem 1rem; background: #fdf2f8; border-bottom: 1px solid #fbcfe8;
-      font-size: 0.8rem; font-weight: 700; color: #be185d;
-    }
-    .novel-view-body {
-      padding: 1.5rem 1.75rem 2rem; font-size: 1rem; line-height: 2.1;
-      color: var(--text-primary); white-space: pre-wrap; word-break: break-word;
-    }
-
-    /* ── 댓글 ── */
     .comments-section {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: var(--radius-md); padding: 1.1rem 1.25rem; margin-bottom: 1.25rem;
@@ -314,17 +316,16 @@
       <div class="ws-header">
         <a href="novels.html" class="ws-back">← 목록</a>
         <input id="wsTitleInput" class="ws-title-input" placeholder="소설 제목을 입력하세요" maxlength="200" />
-        <button class="btn sm" id="btnWsSave" onclick="saveNovelTitle(false)">📌 임시저장</button>
+        <button class="btn sm" id="btnWsSave" onclick="saveNovelTitle()">📌 임시저장</button>
         <button class="btn success sm" id="btnWsComplete" onclick="publishNovel()">✅ 소설 완성</button>
       </div>
       <div class="ws-body">
-        <!-- 사이드바 -->
         <div class="ws-sidebar">
           <div class="sidebar-top">
             <button id="btnRefInfo" class="btn-refinfo" onclick="showRefPanel()">⚙️ 기준정보 설정</button>
           </div>
           <div class="menu-tree" id="menuTree">
-            <div style="text-align:center;padding:1.5rem;font-size:0.75rem;color:var(--text-muted)">
+            <div style="text-align:center;padding:1.5rem;font-size:.75rem;color:var(--text-muted)">
               아래 버튼으로 메뉴를 추가하세요
             </div>
           </div>
@@ -332,36 +333,49 @@
             <button class="btn-add-menu" onclick="addRootNode()">+ 최상위 메뉴 추가</button>
           </div>
         </div>
-        <!-- 메인 패널 -->
         <div class="ws-main" id="wsMain">
           <div id="mainEmpty" class="main-empty">
             <strong>메뉴를 선택하거나 추가하세요</strong>
-            <span>왼쪽 사이드바에서 메뉴를 선택하면 내용을 작성할 수 있습니다.</span>
+            <span>왼쪽에서 메뉴를 선택하면 내용을 작성할 수 있습니다.</span>
           </div>
           <div id="nodePanel" style="display:none"></div>
-          <div id="refPanel" style="display:none"></div>
+          <div id="refPanel"  style="display:none"></div>
         </div>
       </div>
     </div>
 
-    <!-- ── 조회 모드 ── -->
-    <main class="container" id="viewContainer" style="display:none">
-      <div class="page-header">
-        <a href="novels.html" class="back-btn">← 목록</a>
-        <h1 class="page-title" id="viewTitle">소설</h1>
-      </div>
-      <div class="novel-meta" id="novelMeta">
+    <!-- ── 조회 워크스페이스 ── -->
+    <div id="viewWorkspace" class="view-workspace" style="display:none">
+      <div class="ws-header">
+        <a href="novels.html" class="ws-back">← 목록</a>
         <div style="flex:1;min-width:0">
-          <div id="titleArea"></div>
-          <div class="novel-sub" id="novelSub"></div>
-          <div id="novelReactBar" style="margin-top:0.45rem;display:none"></div>
+          <div id="viewNovelTitle" class="view-title-txt"></div>
         </div>
-        <div id="topActions" style="display:flex;gap:0.4rem;flex-shrink:0;flex-wrap:wrap"></div>
+        <div id="viewNovelSub" class="view-title-sub"></div>
+        <div id="viewReactBar"   style="display:flex;gap:.3rem;align-items:center"></div>
+        <div id="viewTopActions" style="display:flex;gap:.4rem;flex-shrink:0"></div>
       </div>
-      <div class="novel-panel" id="novelPanel" style="display:none">
-        <div class="novel-panel-header">📖 소설 전체 내용</div>
-        <div class="novel-view-body" id="novelViewBody"></div>
+      <div class="ws-body">
+        <div class="ws-sidebar">
+          <div class="menu-tree" id="viewMenuTree">
+            <div style="text-align:center;padding:1.5rem;font-size:.75rem;color:var(--text-muted)">
+              노출된 메뉴가 없습니다
+            </div>
+          </div>
+        </div>
+        <div class="ws-main" id="viewMain">
+          <div id="viewEmpty" class="main-empty">
+            <strong>메뉴를 선택하세요</strong>
+            <span>왼쪽에서 메뉴를 선택하면 내용을 볼 수 있습니다.</span>
+          </div>
+          <div id="viewNodePanel" style="display:none"></div>
+        </div>
       </div>
+    </div>
+
+    <!-- ── 조회 하단: 반응 + 댓글 ── -->
+    <main class="container" id="viewFooter" style="display:none">
+      <div id="novelReactSection" style="margin-bottom:.75rem;display:flex;gap:.3rem;align-items:center"></div>
       <div class="comments-section" id="commentsSection" style="display:none">
         <div class="comments-header">
           💬 댓글 <span class="comment-count-badge" id="commentCountBadge">0</span>
@@ -386,13 +400,18 @@
     const me         = getUser();
 
     let isAuthor = false;
-    let nodes    = [];           // 모든 노드 (flat)
-    let expanded = new Set();   // 펼쳐진 노드 ID
-    let selId    = null;        // 선택된 노드 ID
+    let nodes    = [];
+    let expanded = new Set();
+    let selId    = null;
     let refInfo  = {};
     let refSummary = '';
-    let refFiles = [];          // [{name, content}]
+    let refFiles = [];
     let polishedText = null;
+
+    // 조회 모드용
+    let viewNodes  = [];
+    let viewExpanded = new Set();
+    let viewSelId  = null;
 
     renderHeader('#headerUser');
 
@@ -403,7 +422,9 @@
       loadNovel();
     }
 
-    /* ── 소설 불러오기 ── */
+    /* ═══════════════════════════════════════════
+       소설 불러오기
+    ═══════════════════════════════════════════ */
     async function loadNovel() {
       try {
         const hdrs = isLoggedIn ? { Authorization: `Bearer ${getToken()}` } : {};
@@ -411,33 +432,29 @@
         if (res.status === 403) { location.href = '../index.html'; return; }
         if (!res.ok) throw new Error();
         const { novel } = await res.json();
-
         isAuthor = isLoggedIn && me && novel.user_id === me.id;
 
-        if (isEditMode && isAuthor) {
-          showEditWorkspace(novel);
-        } else {
-          showViewMode(novel);
-        }
+        if (isEditMode && isAuthor) showEditWorkspace(novel);
+        else                        showViewMode(novel);
       } catch { showToast('소설을 불러오지 못했습니다.', 'error'); }
     }
 
-    /* ── 편집 워크스페이스 초기화 ── */
+    /* ═══════════════════════════════════════════
+       편집 워크스페이스
+    ═══════════════════════════════════════════ */
     async function showEditWorkspace(novel) {
       document.getElementById('editWorkspace').style.display = 'flex';
-      document.getElementById('viewContainer').style.display = 'none';
-      document.getElementById('appFooter').style.display = 'none';
+      document.getElementById('viewWorkspace').style.display = 'none';
+      document.getElementById('viewFooter').style.display    = 'none';
+      document.getElementById('appFooter').style.display     = 'none';
       document.body.classList.add('edit-mode');
-
       document.getElementById('wsTitleInput').value = novel.title || '';
-
       if (novelId) {
         await loadNodes();
         await loadRefInfo();
       }
     }
 
-    /* ── 노드 로드 ── */
     async function loadNodes() {
       try {
         const res = await api(`/novel/novels/${novelId}/nodes`);
@@ -445,15 +462,16 @@
         if (!res.ok) throw new Error(d.error);
         nodes = d.nodes;
         renderTree();
-      } catch { showToast('메뉴를 불러오지 못했습니다.', 'error'); }
+      } catch (e) { showToast(e.message || '메뉴를 불러오지 못했습니다.', 'error'); }
     }
 
-    /* ── 트리 렌더링 ── */
+    /* ── 편집 트리 렌더링 ── */
     function renderTree() {
-      document.getElementById('menuTree').innerHTML = buildTreeHtml(null, 0);
+      document.getElementById('menuTree').innerHTML = buildEditTreeHtml(null, 0) ||
+        '<div style="text-align:center;padding:1.5rem;font-size:.75rem;color:var(--text-muted)">아래 버튼으로 메뉴를 추가하세요</div>';
     }
 
-    function buildTreeHtml(parentId, depth) {
+    function buildEditTreeHtml(parentId, depth) {
       const children = nodes
         .filter(n => (n.parent_id ?? null) === parentId)
         .sort((a, b) => a.position - b.position);
@@ -464,6 +482,9 @@
         const isExp   = expanded.has(n.id);
         const isSel   = selId === n.id;
         const pl      = 0.4 + depth * 0.9;
+        const visClass = n.is_visible ? 'tree-btn vis-on' : 'tree-btn';
+        const visTitle = n.is_visible ? '노출중 (클릭시 숨김)' : '숨김 (클릭시 노출)';
+        const visIcon  = n.is_visible ? '👁' : '🙈';
         return `
           <div class="tree-node" data-id="${n.id}">
             <div class="tree-row${isSel ? ' selected' : ''}" style="padding-left:${pl}rem"
@@ -474,30 +495,47 @@
               <span class="tree-title">${escHtml(n.title || '(제목 없음)')}</span>
               <div class="tree-btns">
                 <button class="tree-btn" onclick="event.stopPropagation();addChildNode(${n.id})" title="하위 메뉴 추가">+</button>
+                <button class="${visClass}" onclick="event.stopPropagation();toggleVisibility(${n.id})" title="${visTitle}">${visIcon}</button>
                 <button class="tree-btn" onclick="event.stopPropagation();confirmDeleteNode(${n.id})" title="삭제">×</button>
               </div>
             </div>
             <div id="tc-${n.id}" style="display:${isExp ? 'block' : 'none'}">
-              <div class="tree-children">${buildTreeHtml(n.id, depth + 1)}</div>
+              <div class="tree-children">${buildEditTreeHtml(n.id, depth + 1)}</div>
             </div>
           </div>`;
       }).join('');
     }
 
     function toggleExpand(id) {
-      if (expanded.has(id)) expanded.delete(id);
-      else expanded.add(id);
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
       renderTree();
     }
 
-    /* ── 노드 선택 ── */
+    /* ── 노출 토글 ── */
+    async function toggleVisibility(nodeId) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      const newVal = !node.is_visible;
+      try {
+        const res = await api(`/novel/nodes/${nodeId}`, {
+          method: 'PUT', body: JSON.stringify({ is_visible: newVal })
+        });
+        const d = await res.json();
+        if (!res.ok) throw new Error(d.error);
+        const idx = nodes.findIndex(n => n.id === nodeId);
+        if (idx !== -1) nodes[idx].is_visible = newVal;
+        renderTree();
+        showToast(newVal ? '조회 모드에 노출됩니다.' : '조회 모드에서 숨겨집니다.', 'success');
+      } catch (e) { showToast(e.message || '처리 실패', 'error'); }
+    }
+
+    /* ── 노드 선택 (편집) ── */
     function selectNode(id) {
       selId = id;
       document.getElementById('btnRefInfo').classList.remove('active');
-      const node = nodes.find(n => n.id === id);
-      if (!node) return;
       renderTree();
-      showNodePanel(node);
+      const node = nodes.find(n => n.id === id);
+      if (node) showNodePanel(node);
     }
 
     function showNodePanel(node) {
@@ -509,21 +547,17 @@
 
       panel.innerHTML = `
         <div class="node-panel">
-          <div class="panel-heading">📝 메뉴 편집 — <span id="panelPath">${escHtml(node.title || '')}</span></div>
-
+          <div class="panel-heading">📝 메뉴 편집</div>
           <input id="nodeTitle" class="node-title-input"
                  value="${escHtml(node.title || '')}"
                  placeholder="메뉴 제목을 입력하세요" maxlength="200" />
-
           <textarea id="nodeContent" class="node-content-ta" rows="12"
                     placeholder="내용을 입력하세요...">${escHtml(node.content || '')}</textarea>
-
           ${hasKids ? `
           <div class="import-bar">
             <button class="btn sm" onclick="importChildren(${node.id})">📥 하위메뉴 글 가져오기</button>
             <span class="import-hint">하위 메뉴 내용을 순서대로 이 칸에 붙여옵니다</span>
           </div>` : ''}
-
           <div class="ai-section">
             <div class="ai-sec-head">✨ AI 다듬기</div>
             <div class="ai-bar">
@@ -541,14 +575,12 @@
               </div>
             </div>
           </div>
-
           <div class="node-save-bar">
             <button class="btn primary" onclick="saveNode(${node.id})">💾 저장</button>
           </div>
         </div>`;
     }
 
-    /* ── 하위메뉴 글 가져오기 ── */
     function importChildren(parentId) {
       const kids = nodes
         .filter(n => (n.parent_id ?? null) === parentId)
@@ -559,7 +591,6 @@
       showToast('하위 메뉴 내용을 가져왔습니다.', 'success');
     }
 
-    /* ── AI 다듬기 ── */
     async function polishContent(nodeId) {
       const content = document.getElementById('nodeContent')?.value;
       if (!content?.trim()) { showToast('내용을 먼저 입력하세요.', 'error'); return; }
@@ -568,16 +599,15 @@
       btn.disabled = true; btn.textContent = '처리 중...';
       try {
         const res = await api(`/novel/nodes/${nodeId}/polish`, {
-          method: 'POST',
-          body: JSON.stringify({ guide, content })
+          method: 'POST', body: JSON.stringify({ guide, content })
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
         polishedText = d.content;
-        const resultEl = document.getElementById('polishResult');
         document.getElementById('polishText').textContent = d.content;
-        resultEl.style.display = 'block';
-        resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const r = document.getElementById('polishResult');
+        r.style.display = 'block';
+        r.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (e) { showToast(e.message || 'AI 다듬기 실패', 'error'); }
       finally { btn.disabled = false; btn.textContent = 'AI 다듬기'; }
     }
@@ -590,15 +620,13 @@
       showToast('적용됐습니다.', 'success');
     }
 
-    /* ── 노드 저장 ── */
     async function saveNode(nodeId) {
       const title   = document.getElementById('nodeTitle')?.value.trim();
       const content = document.getElementById('nodeContent')?.value;
       if (!title) { showToast('메뉴 제목을 입력하세요.', 'error'); return; }
       try {
         const res = await api(`/novel/nodes/${nodeId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ title, content })
+          method: 'PUT', body: JSON.stringify({ title, content })
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
@@ -609,11 +637,8 @@
       } catch (e) { showToast(e.message || '저장 실패', 'error'); }
     }
 
-    /* ── 메뉴 추가 ── */
-    async function addRootNode() {
-      await addNodeWithParent(null);
-    }
-
+    /* ── 메뉴 추가 / 삭제 ── */
+    async function addRootNode() { await addNodeWithParent(null); }
     async function addChildNode(parentId) {
       expanded.add(parentId);
       await addNodeWithParent(parentId);
@@ -623,13 +648,11 @@
       if (!novelId) {
         const title = document.getElementById('wsTitleInput')?.value.trim();
         if (!title) { showToast('소설 제목을 먼저 입력하고 저장하세요.', 'error'); return; }
-        await saveNovelTitle(true);
-        return;
+        await saveNovelTitle(); return;
       }
       try {
         const res = await api(`/novel/novels/${novelId}/nodes`, {
-          method: 'POST',
-          body: JSON.stringify({ parent_id: parentId, title: '새 메뉴' })
+          method: 'POST', body: JSON.stringify({ parent_id: parentId, title: '새 메뉴' })
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
@@ -640,7 +663,6 @@
       } catch (e) { showToast(e.message || '메뉴 추가 실패', 'error'); }
     }
 
-    /* ── 메뉴 삭제 ── */
     function confirmDeleteNode(id) {
       const node = nodes.find(n => n.id === id);
       const hasKids = nodes.some(n => (n.parent_id ?? null) === id);
@@ -672,7 +694,7 @@
       nodes = nodes.filter(n => n.id !== id);
     }
 
-    /* ── 기준정보 패널 ── */
+    /* ── 기준정보 ── */
     async function loadRefInfo() {
       try {
         const res = await api(`/novel/novels/${novelId}/refinfo`);
@@ -685,13 +707,11 @@
     }
 
     function showRefPanel() {
-      selId = null;
-      renderTree();
-      document.getElementById('mainEmpty').style.display  = 'none';
-      document.getElementById('nodePanel').style.display  = 'none';
+      selId = null; renderTree();
+      document.getElementById('mainEmpty').style.display = 'none';
+      document.getElementById('nodePanel').style.display = 'none';
       document.getElementById('btnRefInfo').classList.add('active');
-      const panel = document.getElementById('refPanel');
-      panel.style.display = 'block';
+      document.getElementById('refPanel').style.display = 'block';
       renderRefPanel();
     }
 
@@ -705,57 +725,35 @@
       document.getElementById('refPanel').innerHTML = `
         <div class="ref-panel">
           <div class="ref-panel-title">⚙️ 기준정보 설정</div>
-
-          <div class="ref-group">
-            <label class="ref-label">인물 정보</label>
-            <textarea id="refChars" class="ref-textarea" rows="4"
-                      placeholder="등장인물, 성격, 관계, 배경 등...">${escHtml(refInfo.characters || '')}</textarea>
-          </div>
-          <div class="ref-group">
-            <label class="ref-label">기술 / 세계관</label>
-            <textarea id="refTech" class="ref-textarea" rows="3"
-                      placeholder="마법, 기술 체계, 세계관 설정...">${escHtml(refInfo.tech || '')}</textarea>
-          </div>
-          <div class="ref-group">
-            <label class="ref-label">주요 내용 / 줄거리</label>
-            <textarea id="refPlot" class="ref-textarea" rows="3"
-                      placeholder="핵심 줄거리, 중요 사건 흐름...">${escHtml(refInfo.plot || '')}</textarea>
-          </div>
-          <div class="ref-group">
-            <label class="ref-label">목표 / 방향</label>
-            <textarea id="refGoals" class="ref-textarea" rows="2"
-                      placeholder="소설의 목표, 결말 방향...">${escHtml(refInfo.goals || '')}</textarea>
-          </div>
-          <div class="ref-group">
-            <label class="ref-label">참고 글씨체 파일 <span style="font-size:.68rem;color:var(--text-muted)">(.txt, .md)</span></label>
+          <div class="ref-group"><label class="ref-label">인물 정보</label>
+            <textarea id="refChars" class="ref-textarea" rows="4" placeholder="등장인물, 성격, 관계...">${escHtml(refInfo.characters || '')}</textarea></div>
+          <div class="ref-group"><label class="ref-label">기술 / 세계관</label>
+            <textarea id="refTech" class="ref-textarea" rows="3" placeholder="마법, 기술 체계, 세계관...">${escHtml(refInfo.tech || '')}</textarea></div>
+          <div class="ref-group"><label class="ref-label">주요 내용 / 줄거리</label>
+            <textarea id="refPlot" class="ref-textarea" rows="3" placeholder="핵심 줄거리, 중요 사건...">${escHtml(refInfo.plot || '')}</textarea></div>
+          <div class="ref-group"><label class="ref-label">목표 / 방향</label>
+            <textarea id="refGoals" class="ref-textarea" rows="2" placeholder="소설의 목표, 결말 방향...">${escHtml(refInfo.goals || '')}</textarea></div>
+          <div class="ref-group"><label class="ref-label">참고 글씨체 파일 <span style="font-size:.68rem;color:var(--text-muted)">(.txt, .md)</span></label>
             <div class="file-row">
-              <input type="file" id="refFileInput" accept=".txt,.md" multiple
-                     onchange="handleRefFile(event)" style="display:none">
+              <input type="file" id="refFileInput" accept=".txt,.md" multiple onchange="handleRefFile(event)" style="display:none">
               <button class="btn sm" onclick="document.getElementById('refFileInput').click()">📁 파일 선택</button>
               <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">${filesHtml || '<span style="font-size:.72rem;color:var(--text-muted)">선택된 파일 없음</span>'}</div>
-            </div>
-          </div>
-          <div class="ref-group">
-            <label class="ref-label">작성 스타일</label>
-            <textarea id="refStyle" class="ref-textarea" rows="3"
-                      placeholder="문체, 시점(1인칭/3인칭), 분위기, 톤...">${escHtml(refInfo.style || '')}</textarea>
-          </div>
-
+            </div></div>
+          <div class="ref-group"><label class="ref-label">작성 스타일</label>
+            <textarea id="refStyle" class="ref-textarea" rows="3" placeholder="문체, 시점, 분위기, 톤...">${escHtml(refInfo.style || '')}</textarea></div>
           <div style="display:flex;justify-content:flex-end">
             <button class="btn primary" id="btnSaveRef" onclick="saveRefInfoData()">💾 저장 &amp; AI 요약</button>
           </div>
-
           ${refSummary ? `
           <div class="ref-summary-box">
-            <div class="ref-summary-lbl">📋 AI 요약 (글 작성 시 이 내용이 참고됩니다)</div>
+            <div class="ref-summary-lbl">📋 AI 요약</div>
             <div class="ref-summary-txt">${escHtml(refSummary)}</div>
           </div>` : ''}
         </div>`;
     }
 
     function handleRefFile(e) {
-      const files = Array.from(e.target.files);
-      files.forEach(f => {
+      Array.from(e.target.files).forEach(f => {
         const reader = new FileReader();
         reader.onload = ev => {
           refFiles = refFiles.filter(x => x.name !== f.name);
@@ -767,42 +765,34 @@
       e.target.value = '';
     }
 
-    function removeRefFile(idx) {
-      refFiles.splice(idx, 1);
-      renderRefPanel();
-    }
+    function removeRefFile(idx) { refFiles.splice(idx, 1); renderRefPanel(); }
 
     async function saveRefInfoData() {
       const btn = document.getElementById('btnSaveRef');
       btn.disabled = true; btn.textContent = '요약 중...';
       const data = {
-        characters: document.getElementById('refChars')?.value || '',
-        tech:       document.getElementById('refTech')?.value  || '',
-        plot:       document.getElementById('refPlot')?.value  || '',
-        goals:      document.getElementById('refGoals')?.value || '',
-        style:      document.getElementById('refStyle')?.value || '',
+        characters: document.getElementById('refChars')?.value  || '',
+        tech:       document.getElementById('refTech')?.value   || '',
+        plot:       document.getElementById('refPlot')?.value   || '',
+        goals:      document.getElementById('refGoals')?.value  || '',
+        style:      document.getElementById('refStyle')?.value  || '',
         files: refFiles,
       };
       try {
         const res = await api(`/novel/novels/${novelId}/refinfo`, {
-          method: 'PUT',
-          body: JSON.stringify(data)
+          method: 'PUT', body: JSON.stringify(data)
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);
-        refInfo    = data;
-        refSummary = d.summary;
+        refInfo = data; refSummary = d.summary;
         renderRefPanel();
         showToast('기준정보가 저장됐습니다.', 'success');
       } catch (e) { showToast(e.message || '저장 실패', 'error'); }
-      finally {
-        const b = document.getElementById('btnSaveRef');
-        if (b) { b.disabled = false; b.textContent = '💾 저장 & AI 요약'; }
-      }
+      finally { const b = document.getElementById('btnSaveRef'); if (b) { b.disabled = false; b.textContent = '💾 저장 & AI 요약'; } }
     }
 
-    /* ── 소설 제목 저장 (임시저장) ── */
-    async function saveNovelTitle(redirectToEdit = false) {
+    /* ── 임시저장 (작성중으로 복귀) ── */
+    async function saveNovelTitle() {
       const title = document.getElementById('wsTitleInput')?.value.trim();
       if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
       const btn = document.getElementById('btnWsSave');
@@ -815,10 +805,13 @@
           location.href = `write.html?id=${d.novel.id}&mode=edit`;
           return;
         }
-        const r = await api(`/novel/novels/${novelId}`, { method: 'PUT', body: JSON.stringify({ title }) });
+        // 제목 저장 + is_published = false (작성중으로 복귀)
+        const r = await api(`/novel/novels/${novelId}`, {
+          method: 'PUT', body: JSON.stringify({ title, is_published: false })
+        });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
-        if (!redirectToEdit) showToast('저장됐습니다.', 'success');
+        showToast('저장됐습니다. (작성중 상태)', 'success');
       } catch (e) { showToast(e.message || '저장 실패', 'error'); }
       finally { btn.disabled = false; btn.textContent = '📌 임시저장'; }
     }
@@ -827,11 +820,7 @@
     async function publishNovel() {
       if (!novelId) { showToast('먼저 제목을 저장하세요.', 'error'); return; }
       const synopsis = assembleContent(null);
-      if (!synopsis.trim()) {
-        if (!confirm('작성된 내용이 없습니다. 소설을 완성으로 표시하시겠습니까?')) return;
-      } else {
-        if (!confirm('소설을 완성하면 조회 모드로 전환됩니다. 계속하시겠습니까?')) return;
-      }
+      if (!confirm('소설을 완성하면 조회 모드로 전환됩니다. 계속하시겠습니까?')) return;
       const btn = document.getElementById('btnWsComplete');
       btn.disabled = true; btn.textContent = '처리 중...';
       try {
@@ -851,53 +840,113 @@
       return nodes
         .filter(n => (n.parent_id ?? null) === parentId)
         .sort((a, b) => a.position - b.position)
-        .map(n => {
-          if (n.content?.trim()) return n.content.trim();
-          return assembleContent(n.id);
-        })
-        .filter(Boolean)
-        .join('\n\n');
+        .map(n => n.content?.trim() ? n.content.trim() : assembleContent(n.id))
+        .filter(Boolean).join('\n\n');
     }
 
-    /* ── 조회 모드 ── */
-    function showViewMode(novel) {
+    /* ═══════════════════════════════════════════
+       조회 모드
+    ═══════════════════════════════════════════ */
+    async function showViewMode(novel) {
       document.getElementById('editWorkspace').style.display = 'none';
-      document.getElementById('viewContainer').style.display = 'block';
-      document.getElementById('viewTitle').textContent = novel.title || '소설';
-      document.getElementById('titleArea').innerHTML = `<div class="novel-title-view">${escHtml(novel.title)}</div>`;
-      const date = new Date(novel.created_at).toLocaleString('ko-KR', {
-        year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
-      });
-      document.getElementById('novelSub').textContent = `작성자: ${novel.author} · ${date} · 조회 ${novel.view_count ?? 0}`;
+      document.getElementById('viewWorkspace').style.display = 'flex';
+      document.getElementById('viewFooter').style.display    = 'block';
 
-      const topActs = document.getElementById('topActions');
+      // 헤더
+      document.getElementById('viewNovelTitle').textContent = novel.title || '소설';
+      const date = new Date(novel.created_at).toLocaleString('ko-KR', {
+        year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false
+      });
+      document.getElementById('viewNovelSub').textContent = `${novel.author} · ${date} · 조회 ${novel.view_count ?? 0}`;
+
+      // 상단 버튼 (편집/삭제)
       if (isAuthor) {
-        topActs.innerHTML = `
-          <a href="write.html?id=${novelId}&mode=edit" class="btn primary" style="text-decoration:none">✏️ 편집</a>
-          <button class="btn" style="border-color:#fca5a5;color:#dc2626" onclick="confirmDelete()">🗑 삭제</button>`;
+        document.getElementById('viewTopActions').innerHTML = `
+          <a href="write.html?id=${novelId}&mode=edit" class="btn sm primary" style="text-decoration:none">✏️ 편집</a>
+          <button class="btn sm" style="border-color:#fca5a5;color:#dc2626" onclick="confirmDelete()">🗑 삭제</button>`;
       }
 
+      // 반응 버튼
       renderNovelReactBar(novel);
 
-      const content = novel.synopsis?.trim();
-      if (content) {
-        document.getElementById('novelPanel').style.display = '';
-        document.getElementById('novelViewBody').textContent = content;
-      }
+      // 노출 노드 트리 로드
+      try {
+        const hdrs = isLoggedIn ? { Authorization: `Bearer ${getToken()}` } : {};
+        const res = await fetch(API + `/novel/novels/${novelId}/nodes`, { headers: hdrs });
+        if (res.ok) {
+          const d = await res.json();
+          viewNodes = d.nodes || [];
+          renderViewTree();
+        }
+      } catch {}
 
       loadComments();
     }
 
+    function renderViewTree() {
+      document.getElementById('viewMenuTree').innerHTML =
+        buildViewTreeHtml(null, 0) ||
+        '<div style="text-align:center;padding:1.5rem;font-size:.75rem;color:var(--text-muted)">노출된 메뉴가 없습니다</div>';
+    }
+
+    function buildViewTreeHtml(parentId, depth) {
+      const children = viewNodes
+        .filter(n => (n.parent_id ?? null) === parentId)
+        .sort((a, b) => a.position - b.position);
+      if (!children.length) return '';
+
+      return children.map(n => {
+        const hasKids = viewNodes.some(c => (c.parent_id ?? null) === n.id);
+        const isExp   = viewExpanded.has(n.id);
+        const isSel   = viewSelId === n.id;
+        const pl      = 0.4 + depth * 0.9;
+        return `
+          <div class="tree-node">
+            <div class="tree-row${isSel ? ' selected' : ''}" style="padding-left:${pl}rem"
+                 onclick="selectViewNode(${n.id})">
+              <span class="tree-expand" onclick="event.stopPropagation();toggleViewExpand(${n.id})">
+                ${hasKids ? (isExp ? '▼' : '▶') : '·'}
+              </span>
+              <span class="tree-title">${escHtml(n.title || '(제목 없음)')}</span>
+            </div>
+            <div style="display:${isExp ? 'block' : 'none'}">
+              <div class="tree-children">${buildViewTreeHtml(n.id, depth + 1)}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function toggleViewExpand(id) {
+      if (viewExpanded.has(id)) viewExpanded.delete(id); else viewExpanded.add(id);
+      renderViewTree();
+    }
+
+    function selectViewNode(id) {
+      viewSelId = id;
+      renderViewTree();
+      const node = viewNodes.find(n => n.id === id);
+      if (!node) return;
+      document.getElementById('viewEmpty').style.display = 'none';
+      const panel = document.getElementById('viewNodePanel');
+      panel.style.display = 'block';
+      panel.innerHTML = `
+        <div class="view-node-panel">
+          <div class="view-node-title">${escHtml(node.title || '(제목 없음)')}</div>
+          ${node.content?.trim()
+            ? `<div class="view-node-body">${escHtml(node.content)}</div>`
+            : `<div class="view-node-empty">내용이 없습니다.</div>`}
+        </div>`;
+    }
+
+    /* ── 반응 ── */
     function renderNovelReactBar(novel) {
-      const bar = document.getElementById('novelReactBar');
+      const bar = document.getElementById('novelReactSection');
       if (!bar) return;
-      bar.style.display = 'flex';
-      bar.style.gap = '0.3rem'; bar.style.alignItems = 'center';
       const lc = novel.my_reaction === 'like'    ? ' active-like'    : '';
       const dc = novel.my_reaction === 'dislike' ? ' active-dislike' : '';
       bar.innerHTML = `
-        <button class="react-btn${lc}"  id="novLikeBtn"    onclick="reactNovel('like')">👍 <span id="novLikes">${novel.likes||0}</span></button>
-        <button class="react-btn${dc}"  id="novDislikeBtn" onclick="reactNovel('dislike')">👎 <span id="novDislikes">${novel.dislikes||0}</span></button>`;
+        <button class="react-btn${lc}" id="novLikeBtn"    onclick="reactNovel('like')">👍 <span id="novLikes">${novel.likes||0}</span></button>
+        <button class="react-btn${dc}" id="novDislikeBtn" onclick="reactNovel('dislike')">👎 <span id="novDislikes">${novel.dislikes||0}</span></button>`;
     }
 
     async function reactNovel(reaction) {
@@ -923,7 +972,9 @@
       } catch (e) { showToast(e.message||'삭제 실패','error'); }
     }
 
-    /* ── 댓글 ── */
+    /* ═══════════════════════════════════════════
+       댓글
+    ═══════════════════════════════════════════ */
     async function loadComments() {
       const sec = document.getElementById('commentsSection');
       if (!sec || !novelId) return;

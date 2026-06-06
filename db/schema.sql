@@ -227,6 +227,7 @@ CREATE TABLE novel_nodes (
   position   INTEGER      NOT NULL DEFAULT 0,
   title      VARCHAR(200) DEFAULT '새 메뉴',
   content    TEXT         DEFAULT '',
+  is_visible BOOLEAN      DEFAULT FALSE,
   created_at TIMESTAMPTZ  DEFAULT NOW(),
   updated_at TIMESTAMPTZ  DEFAULT NOW()
 );
