@@ -117,11 +117,27 @@ exports.handler = async (event) => {
   if (linkM         && method === 'DELETE') return deleteLink(event, linkM[1]);
 
   // ────────────────────────────────────────────
-  // [웹소설] novels / episodes (추후 구현)
+  // [웹소설] Novels / Episodes / Comments
   // ────────────────────────────────────────────
-  if (path.startsWith('/novel/')) {
-    return resp(501, { error: '웹소설 기능은 준비 중입니다.' });
-  }
+  if (path === '/novel/novels' && method === 'GET')  return getNovels(event);
+  if (path === '/novel/novels' && method === 'POST') return createNovel(event);
+
+  const novelM         = path.match(/^\/novel\/novels\/(\d+)$/);
+  const novelEpsM      = path.match(/^\/novel\/novels\/(\d+)\/episodes$/);
+  const novelReactM    = path.match(/^\/novel\/novels\/(\d+)\/react$/);
+  const novelComM      = path.match(/^\/novel\/novels\/(\d+)\/comments$/);
+  const novelComIdM    = path.match(/^\/novel\/comments\/(\d+)$/);
+  const novelComReactM = path.match(/^\/novel\/comments\/(\d+)\/react$/);
+
+  if (novelM        && method === 'GET')    return getNovel(event, novelM[1]);
+  if (novelM        && method === 'PUT')    return updateNovel(event, novelM[1]);
+  if (novelM        && method === 'DELETE') return deleteNovel(event, novelM[1]);
+  if (novelEpsM     && method === 'POST')   return saveEpisodes(event, novelEpsM[1]);
+  if (novelReactM   && method === 'POST')   return reactNovel(event, novelReactM[1]);
+  if (novelComM     && method === 'GET')    return getNovelComments(event, novelComM[1]);
+  if (novelComM     && method === 'POST')   return createNovelComment(event, novelComM[1]);
+  if (novelComIdM   && method === 'DELETE') return deleteNovelComment(event, novelComIdM[1]);
+  if (novelComReactM && method === 'POST')  return reactNovelComment(event, novelComReactM[1]);
 
   return resp(404, { error: 'Not found' });
 };
@@ -1287,4 +1303,273 @@ async function aiTopicFromUrl(event, user, pageUrl, category) {
   } catch (e) { console.error('URL 섹션 자동채우기 오류:', e.message); }
 
   return resp(201, { issue: { ...r.rows[0], author: user.name, user_id: user.id } });
+}
+
+// ============================================================
+// [웹소설] 함수들
+// ============================================================
+
+async function getNovels(event) {
+  const user  = verifyToken(event);
+  const qs    = event.queryStringParameters || {};
+  const q     = (qs.q      || '').trim();
+  const author = (qs.author || '').trim();
+  const date  = (qs.date   || '').trim();
+  const mine  = qs.mine  === '1' && !!user;
+  const draft = qs.draft === '1' && !!user;
+  const page  = Math.max(1, parseInt(qs.page) || 1);
+  const limit = 30;
+  const offset = (page - 1) * limit;
+
+  try {
+    const conds = [];
+    const params = [];
+    let idx = 1;
+
+    if (mine) {
+      conds.push(`n.user_id = $${idx}`); params.push(user.id); idx++;
+    } else if (user) {
+      conds.push(`(n.is_published = true OR n.user_id = $${idx})`);
+      params.push(user.id); idx++;
+    } else {
+      conds.push('n.is_published = true');
+    }
+
+    if (draft && user) conds.push('n.is_published = false');
+    if (q)      { conds.push(`n.title ILIKE $${idx++}`); params.push(`%${q}%`); }
+    if (author) { conds.push(`u.name  ILIKE $${idx++}`); params.push(`%${author}%`); }
+    if (date)   { conds.push(`DATE(n.created_at) = $${idx++}`); params.push(date); }
+
+    const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+    const base  = `FROM novels n JOIN users u ON n.user_id = u.id ${where}`;
+
+    const countR = await pool.query(`SELECT COUNT(*) ${base}`, params);
+    const total  = parseInt(countR.rows[0].count);
+
+    const dataR = await pool.query(
+      `SELECT n.id, n.title, n.is_published, n.view_count, n.created_at, u.name AS author, n.user_id,
+        COALESCE((SELECT SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END) FROM novel_reactions WHERE novel_id=n.id),0)::int AS likes,
+        COALESCE((SELECT SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END) FROM novel_reactions WHERE novel_id=n.id),0)::int AS dislikes,
+        COALESCE((SELECT COUNT(*) FROM novel_comments WHERE novel_id=n.id),0)::int AS comment_count
+       ${base} ORDER BY n.created_at DESC LIMIT $${idx} OFFSET $${idx+1}`,
+      [...params, limit, offset]
+    );
+
+    return resp(200, { novels: dataR.rows, total, page, limit, pages: Math.ceil(total / limit) });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function createNovel(event) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { title } = getBody(event);
+  if (!title?.trim()) return resp(400, { error: '제목을 입력하세요.' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO novels (user_id,title,is_published) VALUES($1,$2,FALSE) RETURNING id,title,created_at',
+      [user.id, title.trim()]
+    );
+    return resp(201, { novel: { ...r.rows[0], author: user.name, user_id: user.id } });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function getNovel(event, id) {
+  const user = verifyToken(event);
+  try {
+    const nr = await pool.query(
+      'SELECT n.*, u.name AS author FROM novels n JOIN users u ON n.user_id=u.id WHERE n.id=$1', [id]
+    );
+    if (!nr.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+    const novel = nr.rows[0];
+
+    if (!novel.is_published) {
+      if (!user) return resp(403, { error: '로그인이 필요합니다.' });
+      if (novel.user_id !== user.id) return resp(403, { error: '조회 권한이 없습니다.' });
+    }
+
+    if (user) {
+      const dup = await pool.query(
+        'INSERT INTO novel_views (novel_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+        [id, user.id]
+      );
+      if (dup.rowCount > 0) {
+        await pool.query('UPDATE novels SET view_count = view_count + 1 WHERE id=$1', [id]);
+      }
+    }
+
+    const er = await pool.query(
+      'SELECT episode_no, content FROM novel_episodes WHERE novel_id=$1 ORDER BY episode_no', [id]
+    );
+
+    let reactions = { likes: 0, dislikes: 0, my_reaction: null };
+    try {
+      const rr = await pool.query(`
+        SELECT
+          COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+          COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+          MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
+        FROM novel_reactions WHERE novel_id=$2
+      `, [user?.id || -1, id]);
+      reactions = rr.rows[0];
+    } catch {}
+
+    return resp(200, { novel: { ...novel, ...reactions }, episodes: er.rows });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function updateNovel(event, id) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { title } = getBody(event);
+  if (!title?.trim()) return resp(400, { error: '제목을 입력하세요.' });
+  try {
+    const check = await pool.query('SELECT user_id FROM novels WHERE id=$1', [id]);
+    if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '수정 권한이 없습니다.' });
+    await pool.query('UPDATE novels SET title=$1, updated_at=NOW() WHERE id=$2', [title.trim(), id]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function deleteNovel(event, id) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const check = await pool.query('SELECT user_id FROM novels WHERE id=$1', [id]);
+    if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '삭제 권한이 없습니다.' });
+    await pool.query('DELETE FROM novels WHERE id=$1', [id]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function saveEpisodes(event, novelId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  const { episodes, is_published, novel_content } = getBody(event);
+  if (!Array.isArray(episodes)) return resp(400, { error: '문단 데이터가 올바르지 않습니다.' });
+  try {
+    const check = await pool.query('SELECT user_id FROM novels WHERE id=$1', [novelId]);
+    if (!check.rows.length) return resp(404, { error: '소설을 찾을 수 없습니다.' });
+    if (check.rows[0].user_id !== user.id) return resp(403, { error: '수정 권한이 없습니다.' });
+
+    await pool.query('DELETE FROM novel_episodes WHERE novel_id=$1', [novelId]);
+    for (const ep of episodes) {
+      await pool.query(
+        'INSERT INTO novel_episodes (novel_id, episode_no, content, is_draft) VALUES ($1,$2,$3,$4)',
+        [novelId, ep.no, ep.content || '', !is_published]
+      );
+    }
+
+    const pub = is_published !== undefined ? is_published : false;
+    await pool.query(
+      'UPDATE novels SET is_published=$1, synopsis=$2, updated_at=NOW() WHERE id=$3',
+      [pub, novel_content ?? '', novelId]
+    );
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function reactNovel(event, novelId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '로그인이 필요합니다.' });
+  const { reaction } = getBody(event);
+  if (!['like', 'dislike'].includes(reaction)) return resp(400, { error: '잘못된 요청' });
+  try {
+    const cur = await pool.query(
+      'SELECT reaction FROM novel_reactions WHERE novel_id=$1 AND user_id=$2', [novelId, user.id]
+    );
+    if (cur.rows.length && cur.rows[0].reaction === reaction) {
+      await pool.query('DELETE FROM novel_reactions WHERE novel_id=$1 AND user_id=$2', [novelId, user.id]);
+    } else {
+      await pool.query(
+        `INSERT INTO novel_reactions (novel_id, user_id, reaction) VALUES($1,$2,$3)
+         ON CONFLICT (novel_id, user_id) DO UPDATE SET reaction=$3`,
+        [novelId, user.id, reaction]
+      );
+    }
+    const c = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+        MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
+      FROM novel_reactions WHERE novel_id=$2
+    `, [user.id, novelId]);
+    return resp(200, c.rows[0]);
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function getNovelComments(event, novelId) {
+  const user = verifyToken(event);
+  const uid  = user?.id || -1;
+  try {
+    const r = await pool.query(`
+      SELECT c.id, c.content, c.created_at, u.name AS author, c.user_id,
+        COALESCE(SUM(CASE WHEN cr.reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN cr.reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+        MAX(CASE WHEN cr.user_id=$1 THEN cr.reaction END) AS my_reaction
+      FROM novel_comments c
+      JOIN users u ON c.user_id = u.id
+      LEFT JOIN novel_comment_reactions cr ON cr.comment_id = c.id
+      WHERE c.novel_id = $2
+      GROUP BY c.id, u.name, c.user_id
+      ORDER BY c.created_at ASC
+    `, [uid, novelId]);
+    return resp(200, { comments: r.rows });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function createNovelComment(event, novelId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '로그인이 필요합니다.' });
+  const { content } = getBody(event);
+  if (!content?.trim()) return resp(400, { error: '내용을 입력하세요.' });
+  try {
+    const r = await pool.query(
+      'INSERT INTO novel_comments (novel_id, user_id, content) VALUES($1,$2,$3) RETURNING id, content, created_at',
+      [novelId, user.id, content.trim()]
+    );
+    return resp(201, { comment: { ...r.rows[0], author: user.name, user_id: user.id, likes: 0, dislikes: 0, my_reaction: null } });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function deleteNovelComment(event, commentId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '인증이 필요합니다.' });
+  try {
+    const r = await pool.query('SELECT user_id FROM novel_comments WHERE id=$1', [commentId]);
+    if (!r.rows.length) return resp(404, { error: '댓글을 찾을 수 없습니다.' });
+    if (r.rows[0].user_id !== user.id) return resp(403, { error: '삭제 권한이 없습니다.' });
+    await pool.query('DELETE FROM novel_comments WHERE id=$1', [commentId]);
+    return resp(200, { ok: true });
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
+}
+
+async function reactNovelComment(event, commentId) {
+  const user = verifyToken(event);
+  if (!user) return resp(401, { error: '로그인이 필요합니다.' });
+  const { reaction } = getBody(event);
+  if (!['like', 'dislike'].includes(reaction)) return resp(400, { error: '잘못된 요청' });
+  try {
+    const cur = await pool.query(
+      'SELECT reaction FROM novel_comment_reactions WHERE comment_id=$1 AND user_id=$2', [commentId, user.id]
+    );
+    if (cur.rows.length && cur.rows[0].reaction === reaction) {
+      await pool.query('DELETE FROM novel_comment_reactions WHERE comment_id=$1 AND user_id=$2', [commentId, user.id]);
+    } else {
+      await pool.query(
+        `INSERT INTO novel_comment_reactions (comment_id, user_id, reaction) VALUES($1,$2,$3)
+         ON CONFLICT (comment_id, user_id) DO UPDATE SET reaction=$3`,
+        [commentId, user.id, reaction]
+      );
+    }
+    const c = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN reaction='like'    THEN 1 ELSE 0 END),0)::int AS likes,
+        COALESCE(SUM(CASE WHEN reaction='dislike' THEN 1 ELSE 0 END),0)::int AS dislikes,
+        MAX(CASE WHEN user_id=$1 THEN reaction END) AS my_reaction
+      FROM novel_comment_reactions WHERE comment_id=$2
+    `, [user.id, commentId]);
+    return resp(200, c.rows[0]);
+  } catch (e) { console.error(e); return resp(500, { error: '서버 오류' }); }
 }

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>소설 – AI 창작 플랫폼</title>
+  <link rel="stylesheet" href="../assets/css/common.css" />
+  <style>
+    :root {
+      --primary:       #db2777;
+      --primary-dark:  #be185d;
+      --primary-light: #fdf2f8;
+    }
+
+    main.container { max-width: 92%; width: 92%; padding: 1.25rem 1rem; }
+
+    /* ── 공통 버튼 ── */
+    .btn {
+      padding: 0.55rem 1rem; border-radius: var(--radius-sm); font-size: 0.84rem;
+      font-weight: 700; cursor: pointer; border: 1.5px solid var(--border);
+      background: var(--bg-card); color: var(--text-secondary);
+      transition: all 0.15s; font-family: var(--font-sans); white-space: nowrap;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn.success { background: var(--success); border-color: var(--success); color: #fff; }
+    .btn.success:hover:not(:disabled) { background: #059669; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── 소설 헤더 ── */
+    .novel-meta {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 0.9rem 1.1rem;
+      margin-bottom: 1rem; display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+    }
+    .novel-title-view {
+      font-size: 0.98rem; font-weight: 800; color: var(--text-primary); line-height: 1.4; flex: 1;
+    }
+    .novel-title-input {
+      flex: 1; padding: 0.5rem 0.8rem; border: 1.5px solid var(--primary);
+      border-radius: var(--radius-sm); font-size: 1rem; font-weight: 700;
+      font-family: var(--font-sans); outline: none; background: #fff;
+      color: var(--text-primary); width: 100%;
+    }
+    .novel-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+    /* ── 문단 카드 ── */
+    .sections-wrap { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.1rem; }
+    .section-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: visible; }
+    .section-label {
+      padding: 0.5rem 0.9rem; background: #f8fafc; border-bottom: 1px solid var(--border);
+      font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; min-height: 2.2rem;
+    }
+    .sec-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.2rem; height: 1.2rem; background: var(--primary); color: #fff;
+      border-radius: 50%; font-size: 0.65rem; font-weight: 800; flex-shrink: 0;
+    }
+    .sec-name { flex: 1; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); }
+
+    .section-textarea {
+      width: 100%; padding: 0.8rem 1rem; border: none; outline: none;
+      font-size: 0.88rem; font-family: var(--font-sans);
+      color: var(--text-primary); background: var(--bg-card);
+      resize: vertical; min-height: 195px; line-height: 1.75;
+    }
+    .section-textarea::placeholder { color: var(--text-muted); }
+
+    /* 조회 모드 문단 */
+    .section-body-view {
+      padding: 0.9rem 1rem; font-size: 0.88rem; line-height: 1.8;
+      color: var(--text-primary); white-space: pre-wrap; min-height: 60px;
+    }
+    .section-body-view.empty { color: var(--text-muted); font-style: italic; }
+
+    .btn-hide-sec {
+      padding: .1rem .4rem; border: 1px solid #fca5a5; border-radius: 3px;
+      font-size: .63rem; color: #dc2626; cursor: pointer; background: none;
+      font-family: var(--font-sans); transition: all .12s;
+    }
+    .btn-hide-sec:hover { background: #dc2626; color: #fff; }
+
+    /* ── 문단 추가 버튼 ── */
+    .sec-add-row {
+      display: flex; align-items: center; gap: .5rem; padding: .5rem .9rem;
+      border: 1.5px dashed var(--border); border-radius: var(--radius-sm);
+      background: var(--bg); cursor: pointer; transition: all .15s; margin-top: .4rem;
+    }
+    .sec-add-row:hover { border-color: var(--primary); background: var(--primary-light); }
+    .btn-add-sec { background: none; border: none; color: var(--primary); font-size: .8rem; font-weight: 800; cursor: pointer; font-family: var(--font-sans); }
+
+    /* ── 액션바 ── */
+    .action-bar { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 1.25rem; align-items: center; }
+    .btn-spacer { flex: 1; }
+
+    /* ── 소설 본문 패널 ── */
+    .novel-panel {
+      background: var(--bg-card); border: 1.5px solid #fbcfe8;
+      border-radius: var(--radius-md); overflow: hidden; margin-bottom: 1.25rem;
+    }
+    .novel-panel-header {
+      padding: 0.55rem 1rem; background: #fdf2f8; border-bottom: 1px solid #fbcfe8;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.8rem; font-weight: 700; color: #be185d; gap: 0.4rem; flex-wrap: wrap;
+    }
+    .novel-panel-acts { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+    .novel-panel-body {
+      width: 100%; padding: 1.1rem; font-size: 0.88rem; line-height: 1.9;
+      color: var(--text-primary); min-height: 480px; border: none; outline: none;
+      font-family: var(--font-sans); resize: vertical; background: var(--bg-card);
+      display: block;
+    }
+    .novel-panel-body::placeholder { color: var(--text-muted); font-style: italic; }
+    .novel-panel-body[readonly] { background: #fafafa; cursor: default; }
+    .btn-panel-sm {
+      padding: 0.2rem 0.6rem; border: 1px solid #fbcfe8; background: #fff;
+      border-radius: var(--radius-sm); font-size: 0.7rem; font-weight: 600;
+      cursor: pointer; color: #be185d; transition: all 0.15s; font-family: var(--font-sans);
+    }
+    .btn-panel-sm:hover:not(:disabled) { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-panel-sm:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-panel-sm.import { border-color: #a7f3d0; color: #065f46; background: #fff; }
+    .btn-panel-sm.import:hover { background: #10b981; color: #fff; border-color: #10b981; }
+
+    /* 글자수 */
+    .body-counter { font-size: .72rem; color: var(--text-muted); }
+
+    /* 조회 모드 소설 본문 */
+    .novel-panel.view-mode { border-color: var(--border); border-width: 1px; }
+    .novel-panel.view-mode .novel-panel-header {
+      background: var(--bg-card); border-bottom-color: var(--border);
+      color: var(--text-secondary); font-size: 0.75rem; font-weight: 600;
+    }
+    .novel-view-body {
+      padding: 1.5rem 1.75rem 2rem; font-size: 1rem; line-height: 2.1;
+      color: var(--text-primary); white-space: pre-wrap; word-break: break-word;
+    }
+
+    /* ── 반응 버튼 ── */
+    .react-btn {
+      padding: 0.15rem 0.5rem; border: 1px solid var(--border); border-radius: 100px;
+      font-size: 0.7rem; font-weight: 600; cursor: pointer; background: var(--bg);
+      color: var(--text-secondary); font-family: var(--font-sans);
+      transition: all 0.12s; display: inline-flex; align-items: center; gap: 0.18rem;
+    }
+    .react-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .react-btn.active-like    { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+    .react-btn.active-dislike { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+
+    /* ── 댓글 섹션 ── */
+    .comments-section {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 1.1rem 1.25rem;
+      margin-bottom: 1.25rem; box-shadow: var(--shadow-sm);
+    }
+    .comments-header {
+      font-size: 0.88rem; font-weight: 800; color: var(--text-primary);
+      margin-bottom: 1rem; display: flex; align-items: center; gap: 0.4rem;
+      padding-bottom: 0.65rem; border-bottom: 1px solid var(--border);
+    }
+    .comment-count-badge {
+      font-size: 0.7rem; padding: 0.06rem 0.4rem; border-radius: 100px;
+      background: var(--primary-light); color: var(--primary); font-weight: 700;
+    }
+    .comment-item { padding: 0.78rem 0; border-bottom: 1px solid #f1f5f9; }
+    .comment-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .comment-meta { display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.3rem; }
+    .comment-author { font-size: 0.72rem; font-weight: 700; color: var(--text-primary); }
+    .comment-date   { font-size: 0.64rem; color: var(--text-muted); }
+    .comment-body {
+      font-size: 0.76rem; line-height: 1.65; color: var(--text-primary);
+      white-space: pre-wrap; word-break: break-word; margin-bottom: 0.38rem;
+    }
+    .comment-actions { display: flex; align-items: center; gap: 0.28rem; }
+    .comment-del-btn {
+      margin-left: auto; padding: 0.15rem 0.45rem; border: 1px solid #fca5a5;
+      border-radius: var(--radius-sm); font-size: 0.66rem; color: #dc2626;
+      cursor: pointer; background: none; font-family: var(--font-sans); transition: all 0.12s;
+    }
+    .comment-del-btn:hover { background: #dc2626; color: #fff; }
+    .empty-comments { text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.8rem; }
+    .comment-form { margin-top: 0.9rem; display: flex; flex-direction: column; gap: 0.42rem; }
+    .comment-textarea {
+      width: 100%; padding: 0.65rem 0.85rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.85rem; font-family: var(--font-sans);
+      resize: vertical; min-height: 70px; outline: none; background: var(--bg);
+      color: var(--text-primary); line-height: 1.6; transition: border-color 0.15s;
+    }
+    .comment-textarea:focus { border-color: var(--primary); }
+    .comment-submit-row { display: flex; justify-content: flex-end; }
+    .btn-comment-submit {
+      padding: 0.42rem 1.05rem; background: var(--primary); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: 0.82rem;
+      font-weight: 700; cursor: pointer; font-family: var(--font-sans); transition: background 0.15s;
+    }
+    .btn-comment-submit:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-comment-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .comment-login-notice {
+      margin-top: 0.85rem; text-align: center; padding: 0.72rem; font-size: 0.78rem;
+      color: var(--text-muted); border: 1px dashed var(--border);
+      border-radius: var(--radius-sm); cursor: pointer; transition: all 0.12s;
+    }
+    .comment-login-notice:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── 반응형 ── */
+    @media (max-width: 768px) {
+      .novel-meta { padding: 0.75rem 1rem; }
+      .section-label { padding: 0.45rem 0.85rem; }
+      .section-textarea { padding: 0.75rem 0.85rem; }
+      .novel-panel-body { padding: 0.85rem; }
+    }
+    @media (max-width: 600px) {
+      .novel-view-body { padding: 1rem 1rem 1.5rem; font-size: 0.95rem; }
+      .novel-meta { flex-direction: column; gap: 0.5rem; }
+      .btn { padding: 0.5rem 0.85rem; font-size: 0.82rem; min-height: 40px; }
+      .novel-title-view { font-size: 0.98rem; }
+      .novel-title-input { font-size: 16px; }
+      .section-textarea { font-size: 16px; min-height: 90px; }
+      .action-bar { gap: 0.4rem; }
+      .btn-spacer { display: none; }
+      .action-bar .btn.success { order: -1; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <div class="header-logo">
+            <a href="../index.html" class="back-link">
+              <span class="logo-icon">✍️</span>
+              <span class="logo-text">창작플랫폼</span>
+            </a>
+          </div>
+        </div>
+        <div id="headerUser"></div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="novels.html" class="back-btn">← 목록</a>
+        <h1 class="page-title" id="pageTitle">소설</h1>
+      </div>
+
+      <!-- 소설 헤더 -->
+      <div class="novel-meta" id="novelMeta">
+        <div style="flex:1;min-width:0">
+          <div id="titleArea"></div>
+          <div class="novel-sub" id="novelSub"></div>
+          <div id="novelReactBar" style="display:none;margin-top:0.45rem;display:flex;gap:0.3rem;align-items:center"></div>
+        </div>
+        <div id="topActions" style="display:flex;gap:0.4rem;flex-shrink:0;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- 문단 목록 -->
+      <div class="sections-wrap" id="sectionsWrap"></div>
+
+      <!-- 하단 액션바 -->
+      <div class="action-bar" id="actionBar" style="display:none"></div>
+
+      <!-- 소설 본문 패널 -->
+      <div class="novel-panel" id="novelPanel">
+        <div class="novel-panel-header">
+          <span>📖 소설 전체 내용</span>
+          <div id="novelBodyCounter" class="body-counter">0자</div>
+          <div class="novel-panel-acts" id="novelPanelActs"></div>
+        </div>
+        <textarea id="novelBody" class="novel-panel-body" rows="20"
+          placeholder="문단 내용을 가져오거나 직접 작성하세요."
+          oninput="updateBodyCounter()"></textarea>
+      </div>
+
+      <!-- 댓글 -->
+      <div class="comments-section" id="commentsSection" style="display:none">
+        <div class="comments-header">
+          💬 댓글
+          <span class="comment-count-badge" id="commentCountBadge">0</span>
+        </div>
+        <div id="commentList"></div>
+        <div id="commentFormWrap"></div>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <p>웹소설 창작 · Powered by 유승주</p>
+    </footer>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="../assets/js/auth.js"></script>
+  <script>
+    const params     = new URLSearchParams(location.search);
+    const novelId    = params.get('id');
+    const isEditMode = params.get('mode') === 'edit';
+    const isLoggedIn = !!getToken();
+    const me         = getUser();
+
+    let isAuthor         = false;
+    let paragraphContents = ['']; // 문단 내용 배열
+
+    renderHeader('#headerUser');
+
+    if (!novelId) {
+      if (!isLoggedIn) { location.href = '../index.html'; }
+      else { isAuthor = true; renderNewPage(); }
+    } else {
+      loadNovel();
+    }
+
+    /* ── 신규 ── */
+    function renderNewPage() {
+      document.getElementById('pageTitle').textContent = '새 소설';
+      document.getElementById('titleArea').innerHTML =
+        `<input id="titleInput" class="novel-title-input" placeholder="소설 제목을 입력하세요" maxlength="200" />`;
+      document.getElementById('novelSub').textContent = '';
+      renderParagraphs();
+      renderActionBar();
+      renderNovelPanelActs();
+    }
+
+    /* ── 불러오기 ── */
+    async function loadNovel() {
+      try {
+        const headers = isLoggedIn ? { Authorization: `Bearer ${getToken()}` } : {};
+        const res = await fetch(API + '/novel/novels/' + novelId, { headers });
+        if (res.status === 403) { location.href = '../index.html'; return; }
+        if (!res.ok) throw new Error();
+        const { novel, episodes } = await res.json();
+
+        paragraphContents = episodes.length ? episodes.map(e => e.content) : [''];
+
+        isAuthor = isLoggedIn && me && novel.user_id === me.id;
+
+        if (isEditMode && isAuthor) {
+          document.getElementById('pageTitle').textContent = '소설 편집';
+          document.getElementById('titleArea').innerHTML =
+            `<input id="titleInput" class="novel-title-input" value="${escHtml(novel.title)}" maxlength="200" />`;
+        } else {
+          document.getElementById('pageTitle').textContent = '소설 조회';
+          document.getElementById('titleArea').innerHTML =
+            `<div class="novel-title-view">${escHtml(novel.title)}</div>`;
+        }
+
+        const dateStr = new Date(novel.created_at).toLocaleString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12: false });
+        document.getElementById('novelSub').textContent =
+          `작성자: ${novel.author} · ${dateStr} · 조회 ${novel.view_count ?? 0}`;
+
+        renderTopActions(novel);
+        if (!isEditMode) renderNovelReactBar(novel);
+        renderParagraphs();
+        renderActionBar();
+
+        const novelContent = novel.synopsis || '';
+        document.getElementById('novelBody').value = novelContent;
+        renderNovelPanelActs();
+
+        if (!isEditMode) loadComments();
+      } catch {
+        showToast('소설을 불러오지 못했습니다.', 'error');
+      }
+    }
+
+    /* ── 상단 버튼 ── */
+    function renderTopActions(novel) {
+      const div = document.getElementById('topActions');
+      const btns = [];
+      if (!isEditMode && novelId) {
+        if (isAuthor) {
+          btns.push(`<a href="write.html?id=${novelId}&mode=edit" class="btn primary" style="text-decoration:none">✏️ 편집</a>`);
+          btns.push(`<button class="btn" style="border-color:#fca5a5;color:#dc2626" onclick="confirmDelete()">🗑 삭제</button>`);
+        }
+      }
+      div.innerHTML = btns.join('');
+    }
+
+    function renderNovelReactBar(novel) {
+      const bar = document.getElementById('novelReactBar');
+      if (!bar) return;
+      bar.style.display = 'flex';
+      const likeClass    = novel.my_reaction === 'like'    ? ' active-like'    : '';
+      const dislikeClass = novel.my_reaction === 'dislike' ? ' active-dislike' : '';
+      bar.innerHTML = `
+        <button class="react-btn${likeClass}"    id="novLikeBtn"    onclick="reactNovel('like')">👍 <span id="novLikes">${novel.likes || 0}</span></button>
+        <button class="react-btn${dislikeClass}" id="novDislikeBtn" onclick="reactNovel('dislike')">👎 <span id="novDislikes">${novel.dislikes || 0}</span></button>`;
+    }
+
+    async function reactNovel(reaction) {
+      if (!isLoggedIn) { openLoginModal(); return; }
+      try {
+        const res = await api(`/novel/novels/${novelId}/react`, { method: 'POST', body: JSON.stringify({ reaction }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        document.getElementById('novLikes').textContent    = data.likes;
+        document.getElementById('novDislikes').textContent = data.dislikes;
+        document.getElementById('novLikeBtn').className    = `react-btn${data.my_reaction === 'like'    ? ' active-like'    : ''}`;
+        document.getElementById('novDislikeBtn').className = `react-btn${data.my_reaction === 'dislike' ? ' active-dislike' : ''}`;
+      } catch (e) { showToast(e.message || '처리 실패', 'error'); }
+    }
+
+    /* ── 문단 렌더링 ── */
+    function renderParagraphs() {
+      const editMode = isEditMode || !novelId;
+      const wrap = document.getElementById('sectionsWrap');
+
+      if (!editMode) {
+        wrap.style.display = 'none';
+        return;
+      }
+      wrap.style.display = '';
+
+      let html = paragraphContents.map((content, i) => {
+        const n = i + 1;
+        const canDelete = paragraphContents.length > 1;
+        const delBtn = canDelete
+          ? `<button class="btn-hide-sec" onclick="deleteParagraph(${i})" title="문단 삭제">🗑 삭제</button>`
+          : '';
+        return `
+          <div class="section-card">
+            <div class="section-label">
+              <span class="sec-num">${n}</span>
+              <span class="sec-name">문단 ${n}</span>
+              ${delBtn}
+            </div>
+            <textarea id="para${n}" class="section-textarea"
+              placeholder="이 문단의 내용을 작성하세요..." rows="8">${escHtml(content)}</textarea>
+          </div>`;
+      }).join('');
+
+      html += `
+        <div class="sec-add-row" onclick="addParagraph()">
+          <button class="btn-add-sec" style="pointer-events:none">+ 문단 추가</button>
+          <span style="font-size:.68rem;color:var(--text-muted);margin-left:auto">${paragraphContents.length}개</span>
+        </div>`;
+
+      wrap.innerHTML = html;
+    }
+
+    function syncContents() {
+      paragraphContents = paragraphContents.map((_, i) =>
+        document.getElementById(`para${i + 1}`)?.value ?? ''
+      );
+    }
+
+    function addParagraph() {
+      syncContents();
+      paragraphContents.push('');
+      renderParagraphs();
+      const lastIdx = paragraphContents.length;
+      document.getElementById(`para${lastIdx}`)?.focus();
+    }
+
+    function deleteParagraph(idx) {
+      if (paragraphContents.length <= 1) return;
+      syncContents();
+      paragraphContents.splice(idx, 1);
+      renderParagraphs();
+      showToast(`문단 ${idx + 1}이 삭제됐습니다.`, 'info');
+    }
+
+    function getParagraphContents() {
+      return paragraphContents.map((_, i) => document.getElementById(`para${i + 1}`)?.value ?? '');
+    }
+
+    /* ── 하단 액션바 ── */
+    function renderActionBar() {
+      const bar      = document.getElementById('actionBar');
+      const editMode = isEditMode || !novelId;
+      if (!editMode || !isAuthor) { bar.style.display = 'none'; return; }
+      bar.style.display = 'flex';
+      let html = `<div class="btn-spacer"></div>`;
+      html += `<button class="btn primary" id="btnSave" onclick="saveNovel(false)">📌 임시저장</button>`;
+      if (novelId) {
+        html += `<button class="btn success" id="btnComplete" onclick="saveNovel(true)">✅ 소설 완성</button>`;
+      }
+      bar.innerHTML = html;
+    }
+
+    /* ── 소설 본문 패널 버튼 ── */
+    function renderNovelPanelActs() {
+      const editMode = isEditMode || !novelId;
+      const acts     = document.getElementById('novelPanelActs');
+      const panel    = document.getElementById('novelPanel');
+      const textarea = document.getElementById('novelBody');
+      if (!acts || !panel || !textarea) return;
+
+      textarea.readOnly = !editMode;
+
+      if (!editMode) {
+        const content = textarea.value.trim();
+        if (!content) { panel.style.display = 'none'; return; }
+        panel.style.display = '';
+        panel.classList.add('view-mode');
+        textarea.style.display = 'none';
+
+        const oldView = panel.querySelector('.novel-view-body');
+        if (oldView) oldView.remove();
+        const viewDiv = document.createElement('div');
+        viewDiv.className = 'novel-view-body';
+        viewDiv.textContent = content;
+        panel.appendChild(viewDiv);
+
+        acts.innerHTML = `<button class="btn-panel-sm" onclick="copyNovelBody()">복사</button>`;
+        return;
+      }
+
+      panel.style.display = '';
+      acts.innerHTML = `
+        <button class="btn-panel-sm import" onclick="importParagraphs()">📥 가져오기</button>
+        <button class="btn-panel-sm" onclick="copyNovelBody()">복사</button>`;
+    }
+
+    /* ── 가져오기: 문단 → 소설 본문 ── */
+    function importParagraphs() {
+      const parts = getParagraphContents().filter(s => s.trim());
+      if (!parts.length) { showToast('문단 내용을 먼저 입력하세요.', 'error'); return; }
+      document.getElementById('novelBody').value = parts.join('\n\n');
+      updateBodyCounter();
+      showToast('문단 내용을 가져왔습니다.', 'success');
+    }
+
+    /* ── 글자수 ── */
+    function updateBodyCounter() {
+      const len = document.getElementById('novelBody')?.value.length || 0;
+      const el  = document.getElementById('novelBodyCounter');
+      if (el) el.textContent = `${len.toLocaleString()}자`;
+    }
+
+    async function copyNovelBody() {
+      const text = document.getElementById('novelBody')?.value || '';
+      if (!text) { showToast('복사할 내용이 없습니다.', 'error'); return; }
+      try { await navigator.clipboard.writeText(text); showToast('복사됐습니다.', 'success'); }
+      catch { showToast('복사 실패', 'error'); }
+    }
+
+    /* ── 삭제 ── */
+    async function confirmDelete() {
+      if (!confirm('이 소설을 삭제하시겠습니까?')) return;
+      try {
+        const res = await api(`/novel/novels/${novelId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        location.href = 'novels.html';
+      } catch (e) { showToast(e.message || '삭제 실패', 'error'); }
+    }
+
+    /* ── 저장 ── */
+    async function saveNovel(isPublished = false) {
+      const saveBtn     = document.getElementById('btnSave');
+      const completeBtn = document.getElementById('btnComplete');
+      const activeBtn   = isPublished ? completeBtn : saveBtn;
+      if (activeBtn) { activeBtn.disabled = true; activeBtn.textContent = isPublished ? '처리 중...' : '저장 중...'; }
+
+      try {
+        const title = document.getElementById('titleInput')?.value.trim();
+        if (!title) { showToast('제목을 입력하세요.', 'error'); return; }
+
+        // 신규 소설 생성 후 리로드
+        if (!novelId) {
+          const r = await api('/novel/novels', { method: 'POST', body: JSON.stringify({ title }) });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error);
+          history.replaceState({}, '', `write.html?id=${d.novel.id}&mode=edit`);
+          location.reload();
+          return;
+        }
+
+        // 제목 업데이트
+        await api(`/novel/novels/${novelId}`, { method: 'PUT', body: JSON.stringify({ title }) });
+
+        // 문단 저장
+        const contents = getParagraphContents();
+        const episodes = contents.map((content, i) => ({ no: i + 1, content }));
+        const novelContent = document.getElementById('novelBody')?.value || '';
+
+        const r2 = await api(`/novel/novels/${novelId}/episodes`, {
+          method: 'POST',
+          body: JSON.stringify({ episodes, is_published: isPublished, novel_content: novelContent }),
+        });
+        if (!r2.ok) { const d2 = await r2.json(); throw new Error(d2.error); }
+
+        const msg = isPublished ? '소설이 완성됐습니다.' : '저장됐습니다.';
+        showToast(msg, 'success');
+        setTimeout(() => location.href = `write.html?id=${novelId}`, 800);
+      } catch (e) {
+        showToast(e.message || '저장 실패', 'error');
+      } finally {
+        if (activeBtn) {
+          activeBtn.disabled = false;
+          activeBtn.textContent = isPublished ? '✅ 소설 완성' : '📌 임시저장';
+        }
+      }
+    }
+
+    /* ── 댓글 ── */
+    async function loadComments() {
+      const sec = document.getElementById('commentsSection');
+      if (!sec || !novelId) return;
+      sec.style.display = '';
+      try {
+        const headers = isLoggedIn ? { Authorization: `Bearer ${getToken()}` } : {};
+        const res = await fetch(API + `/novel/novels/${novelId}/comments`, { headers });
+        if (!res.ok) throw new Error();
+        const { comments } = await res.json();
+        renderCommentList(comments);
+        renderCommentForm();
+      } catch {
+        document.getElementById('commentList').innerHTML = '<div class="empty-comments">댓글을 불러오지 못했습니다.</div>';
+      }
+    }
+
+    function renderCommentList(comments) {
+      document.getElementById('commentCountBadge').textContent = comments.length;
+      document.getElementById('commentList').innerHTML = comments.length
+        ? comments.map(renderCommentItem).join('')
+        : '<div class="empty-comments">첫 댓글을 작성해보세요.</div>';
+    }
+
+    function renderCommentItem(c) {
+      const date = new Date(c.created_at).toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+      const isMyComment  = isLoggedIn && me && c.user_id === me.id;
+      const likeClass    = c.my_reaction === 'like'    ? ' active-like'    : '';
+      const dislikeClass = c.my_reaction === 'dislike' ? ' active-dislike' : '';
+      const delBtn = isMyComment
+        ? `<button class="comment-del-btn" onclick="removeComment(${c.id})">삭제</button>` : '';
+      return `
+        <div class="comment-item" id="comment-${c.id}">
+          <div class="comment-meta">
+            <span class="comment-author">${escHtml(c.author)}</span>
+            <span class="comment-date">${date}</span>
+            ${delBtn}
+          </div>
+          <div class="comment-body">${escHtml(c.content)}</div>
+          <div class="comment-actions">
+            <button class="react-btn${likeClass}"    onclick="reactComment(${c.id},'like')">👍 <span id="clike-${c.id}">${c.likes}</span></button>
+            <button class="react-btn${dislikeClass}" onclick="reactComment(${c.id},'dislike')">👎 <span id="cdislike-${c.id}">${c.dislikes}</span></button>
+          </div>
+        </div>`;
+    }
+
+    function renderCommentForm() {
+      const wrap = document.getElementById('commentFormWrap');
+      if (!wrap) return;
+      if (!isLoggedIn) {
+        wrap.innerHTML = `<div class="comment-login-notice" onclick="openLoginModal()">🔒 로그인하면 댓글을 작성할 수 있습니다</div>`;
+        return;
+      }
+      wrap.innerHTML = `
+        <div class="comment-form">
+          <textarea id="commentInput" class="comment-textarea" placeholder="댓글을 입력하세요..." rows="3"></textarea>
+          <div class="comment-submit-row">
+            <button class="btn-comment-submit" id="btnCommentSubmit" onclick="submitComment()">댓글 등록</button>
+          </div>
+        </div>`;
+    }
+
+    async function submitComment() {
+      const input   = document.getElementById('commentInput');
+      const content = input?.value.trim();
+      if (!content) { showToast('댓글 내용을 입력하세요.', 'error'); return; }
+      const btn = document.getElementById('btnCommentSubmit');
+      btn.disabled = true; btn.textContent = '등록 중...';
+      try {
+        const res = await api(`/novel/novels/${novelId}/comments`, { method: 'POST', body: JSON.stringify({ content }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        input.value = '';
+        const list = document.getElementById('commentList');
+        list.querySelector('.empty-comments')?.remove();
+        list.insertAdjacentHTML('beforeend', renderCommentItem(data.comment));
+        const badge = document.getElementById('commentCountBadge');
+        badge.textContent = parseInt(badge.textContent || '0') + 1;
+        showToast('댓글이 등록됐습니다.', 'success');
+      } catch (e) { showToast(e.message || '등록 실패', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '댓글 등록'; }
+    }
+
+    async function reactComment(commentId, reaction) {
+      if (!isLoggedIn) { openLoginModal(); return; }
+      try {
+        const res = await api(`/novel/comments/${commentId}/react`, { method: 'POST', body: JSON.stringify({ reaction }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        document.getElementById(`clike-${commentId}`).textContent    = data.likes;
+        document.getElementById(`cdislike-${commentId}`).textContent = data.dislikes;
+        const item = document.getElementById(`comment-${commentId}`);
+        const [likeBtn, dislikeBtn] = item.querySelectorAll('.react-btn');
+        likeBtn.className    = `react-btn${data.my_reaction === 'like'    ? ' active-like'    : ''}`;
+        dislikeBtn.className = `react-btn${data.my_reaction === 'dislike' ? ' active-dislike' : ''}`;
+      } catch (e) { showToast(e.message || '처리 실패', 'error'); }
+    }
+
+    async function removeComment(commentId) {
+      if (!confirm('댓글을 삭제하시겠습니까?')) return;
+      try {
+        const res = await api(`/novel/comments/${commentId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        document.getElementById(`comment-${commentId}`)?.remove();
+        const badge = document.getElementById('commentCountBadge');
+        badge.textContent = Math.max(0, parseInt(badge.textContent || '1') - 1);
+        if (!document.querySelector('.comment-item')) {
+          document.getElementById('commentList').innerHTML = '<div class="empty-comments">첫 댓글을 작성해보세요.</div>';
+        }
+        showToast('댓글이 삭제됐습니다.', 'success');
+      } catch (e) { showToast(e.message || '삭제 실패', 'error'); }
+    }
+
+    function escHtml(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    let toastTimer;
+    function showToast(msg, type = 'info') {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.className = `toast ${type}`, 2800);
+    }
+  </script>
+</body>
+</html>
