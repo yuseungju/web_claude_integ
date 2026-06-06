@@ -569,7 +569,7 @@
       try {
         const res = await api(`/novel/nodes/${nodeId}/polish`, {
           method: 'POST',
-          body: JSON.stringify({ guide })
+          body: JSON.stringify({ guide, content })
         });
         const d = await res.json();
         if (!res.ok) throw new Error(d.error);

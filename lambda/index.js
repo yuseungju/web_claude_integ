@@ -1728,7 +1728,7 @@ async function saveRefInfo(event, novelId) {
 async function polishNodeContent(event, nodeId) {
   const user = verifyToken(event);
   if (!user) return resp(401, { error: '인증이 필요합니다.' });
-  const { guide } = getBody(event);
+  const { guide, content: reqContent } = getBody(event);
   try {
     const nr = await pool.query(
       'SELECT nn.content, n.user_id, n.ref_summary FROM novel_nodes nn JOIN novels n ON nn.novel_id=n.id WHERE nn.id=$1',
@@ -1737,8 +1737,9 @@ async function polishNodeContent(event, nodeId) {
     if (!nr.rows.length) return resp(404, { error: '노드를 찾을 수 없습니다.' });
     if (nr.rows[0].user_id !== user.id) return resp(403, { error: '권한이 없습니다.' });
 
-    const { content, ref_summary } = nr.rows[0];
-    if (!content?.trim()) return resp(400, { error: '내용이 없습니다.' });
+    const content = reqContent?.trim() || nr.rows[0].content?.trim();
+    const { ref_summary } = nr.rows[0];
+    if (!content) return resp(400, { error: '내용이 없습니다.' });
 
     const systemTxt = ref_summary
       ? `당신은 전문 웹소설 작가입니다.\n\n[소설 기준정보]\n${ref_summary}`
