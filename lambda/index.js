@@ -1606,7 +1606,7 @@ async function getNovelNodes(event, novelId) {
     const isOwner = user && check.rows[0].user_id === user.id;
     const r = await pool.query(
       isOwner
-        ? 'SELECT id, novel_id, parent_id, position, title, content, is_visible, updated_at FROM novel_nodes WHERE novel_id=$1 ORDER BY position, id'
+        ? 'SELECT id, novel_id, parent_id, position, title, content, ai_content, is_visible, updated_at FROM novel_nodes WHERE novel_id=$1 ORDER BY position, id'
         : 'SELECT id, novel_id, parent_id, position, title, content, is_visible, updated_at FROM novel_nodes WHERE novel_id=$1 AND is_visible=true ORDER BY position, id',
       [novelId]
     );
