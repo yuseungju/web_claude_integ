@@ -48,7 +48,7 @@
 
     /* ── 사이드바 ── */
     .ws-sidebar {
-      width: 220px; flex-shrink: 0;
+      width: 286px; flex-shrink: 0;
       background: var(--bg-card); border-right: 1.5px solid var(--border);
       display: flex; flex-direction: column; overflow: hidden;
     }
@@ -103,8 +103,20 @@
     .tree-title {
       flex: 1; font-size: 0.72rem; font-weight: 600; color: var(--text-primary);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      cursor: pointer; border-radius: 2px; padding: 0 1px;
     }
+    .tree-row:not(.selected):hover .tree-title { text-decoration: underline; text-decoration-style: dotted; }
     .tree-row.selected .tree-title { color: #fff; }
+
+    /* ── 인라인 제목 편집 ── */
+    .tree-title-edit {
+      flex: 1; min-width: 0; height: 1.3rem;
+      font-size: 0.72rem; font-weight: 600;
+      border: 1.5px solid var(--primary); border-radius: 3px;
+      padding: 0 4px; outline: none;
+      background: #fff; color: #111;
+      font-family: var(--font-sans);
+    }
     .tree-btns { display: flex; gap: 0.1rem; flex-shrink: 0; opacity: 0; transition: opacity 0.1s; }
     .tree-row:hover .tree-btns, .tree-row.selected .tree-btns { opacity: 1; }
     .tree-btn {
@@ -429,7 +441,7 @@
       handle.addEventListener('mousedown', e => {
         resizing = true;
         startX   = e.clientX;
-        startW   = sidebar.offsetWidth || 220;
+        startW   = sidebar.offsetWidth || 286;
         handle.classList.add('resizing');
         document.body.style.cursor     = 'col-resize';
         document.body.style.userSelect = 'none';
@@ -525,7 +537,7 @@
               <span class="tree-expand" onclick="event.stopPropagation();toggleExpand(${n.id})">
                 ${hasKids ? (isExp ? '▼' : '▶') : '·'}
               </span>
-              <span class="tree-title">${titleEsc}</span>
+              <span class="tree-title" onclick="event.stopPropagation();inlineEditTitle(${n.id},event)">${titleEsc}</span>
               <div class="tree-btns">
                 <button class="tree-btn" onclick="event.stopPropagation();addChildNode(${n.id})" title="하위 추가">+</button>
                 <button class="${visClass}" onclick="event.stopPropagation();toggleVisibility(${n.id})" title="${n.is_visible ? '조회 노출 중 — 클릭하면 숨김' : '숨김 — 클릭하면 조회 노출'}">${visIcon}</button>
@@ -645,6 +657,60 @@
         if (c.id === targetId || hasDescendant(c.id, targetId)) return true;
       }
       return false;
+    }
+
+    /* ── 인라인 제목 편집 ── */
+    function inlineEditTitle(nodeId, e) {
+      e.stopPropagation();
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      // 선택 처리 (우측 패널 표시)
+      selId = nodeId;
+      document.getElementById('btnRefInfo').classList.remove('active');
+      showNodePanel(node);
+      renderTree();
+      // DOM 업데이트 후 인라인 입력창 설치
+      requestAnimationFrame(() => {
+        const titleEl = document.querySelector(`.tree-node[data-id="${nodeId}"] > .tree-row .tree-title`);
+        if (titleEl) startInlineEdit(nodeId, titleEl, node.title || '');
+      });
+    }
+
+    function startInlineEdit(nodeId, titleEl, currentTitle) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = currentTitle;
+      input.className = 'tree-title-edit';
+      titleEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      let done = false;
+      const finish = async (save) => {
+        if (done) return;
+        done = true;
+        const newTitle = input.value.trim();
+        if (!save || !newTitle || newTitle === currentTitle) { renderTree(); return; }
+        try {
+          const res = await api(`/novel/nodes/${nodeId}`, { method: 'PUT', body: JSON.stringify({ title: newTitle }) });
+          const d = await res.json();
+          if (!res.ok) throw new Error(d.error);
+          const idx = nodes.findIndex(n => n.id === nodeId);
+          if (idx !== -1) nodes[idx].title = newTitle;
+          // 우측 패널 제목 입력칸도 갱신
+          const nodeTitleInput = document.getElementById('nodeTitle');
+          if (nodeTitleInput) nodeTitleInput.value = newTitle;
+          renderTree();
+          showToast('메뉴명 저장됐습니다.', 'success');
+        } catch (err) { showToast(err.message || '저장 실패', 'error'); renderTree(); }
+      };
+
+      input.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Enter')  { e.preventDefault(); finish(true); }
+        if (e.key === 'Escape') { finish(false); }
+      });
+      input.addEventListener('blur', () => finish(true));
     }
 
     function toggleExpand(id) {
