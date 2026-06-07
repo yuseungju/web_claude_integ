@@ -304,27 +304,47 @@
       padding: 0.05rem 0.42rem; border-radius: 100px; font-weight: 700;
     }
     .node-ref-body { padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; }
-    .char-table { width: 100%; border-collapse: collapse; }
-    .char-table th {
-      background: #f8fafc; padding: 0.28rem 0.35rem; text-align: left;
-      font-size: 0.68rem; font-weight: 700; color: var(--text-secondary);
-      border-bottom: 1px solid var(--border); white-space: nowrap;
+
+    /* 기준정보 항목 */
+    .ref-entry-list { display: flex; flex-direction: column; gap: 0.38rem; }
+    .ref-entry-row  { display: flex; align-items: flex-start; gap: 0.3rem; }
+    /* 유형 버튼 */
+    .ref-type-btn {
+      flex-shrink: 0; padding: 0.22rem 0.52rem; font-size: 0.69rem; font-weight: 700;
+      border: 1.5px solid; border-radius: 100px; cursor: pointer;
+      font-family: var(--font-sans); white-space: nowrap; transition: opacity .1s;
     }
-    .char-table td { padding: 0.18rem 0.18rem; vertical-align: middle; }
-    .char-input {
-      width: 100%; padding: 0.22rem 0.4rem; font-size: 0.73rem;
+    .ref-type-btn:hover { opacity: .75; }
+    .ref-type-인물   { color:#db2777; border-color:#db2777; background:#fdf2f8; }
+    .ref-type-장소   { color:#059669; border-color:#059669; background:#f0fdf4; }
+    .ref-type-상황   { color:#d97706; border-color:#d97706; background:#fffbeb; }
+    .ref-type-아이템 { color:#7c3aed; border-color:#7c3aed; background:#f5f3ff; }
+    .ref-type-기타   { color:#6b7280; border-color:#9ca3af; background:#f9fafb; }
+    /* 이름 / 내용 입력 */
+    .ref-entry-name {
+      width: 7.5rem; flex-shrink: 0; padding: 0.24rem 0.45rem; font-size: 0.73rem;
       border: 1px solid var(--border); border-radius: 3px;
       font-family: var(--font-sans); outline: none;
-      background: var(--bg-card); color: var(--text-primary); transition: border-color 0.1s;
+      background: var(--bg-card); color: var(--text-primary); transition: border-color .1s;
     }
-    .char-input:focus { border-color: var(--primary); }
-    .char-del-btn {
-      width: 1.1rem; height: 1.1rem; border: none; background: #fee2e2;
+    .ref-entry-name:focus { border-color: var(--primary); }
+    .ref-entry-note {
+      flex: 1; padding: 0.24rem 0.45rem; font-size: 0.73rem;
+      border: 1px solid var(--border); border-radius: 3px;
+      font-family: var(--font-sans); outline: none; resize: none;
+      background: var(--bg-card); color: var(--text-primary); transition: border-color .1s;
+      line-height: 1.55;
+    }
+    .ref-entry-note:focus { border-color: var(--primary); }
+    .ref-entry-note::placeholder { color: var(--text-muted); font-style: italic; }
+    .ref-del-btn {
+      flex-shrink: 0; width: 1.1rem; height: 1.1rem; border: none; background: #fee2e2;
       cursor: pointer; color: #dc2626; font-size: 0.6rem; border-radius: 3px;
       display: flex; align-items: center; justify-content: center; font-family: var(--font-sans);
+      margin-top: 0.22rem;
     }
-    .char-del-btn:hover { background: #dc2626; color: #fff; }
-    .char-empty { text-align: center; padding: 0.6rem; color: var(--text-muted); font-size: 0.72rem; }
+    .ref-del-btn:hover { background: #dc2626; color: #fff; }
+    .ref-empty { text-align: center; padding: 0.55rem; color: var(--text-muted); font-size: 0.72rem; }
 
     /* ── 기준정보 팝업 ── */
     .ref-popup-overlay {
@@ -846,16 +866,16 @@
           <div class="node-ref-section">
             <div class="node-ref-toggle" onclick="toggleNodeRef()">
               <span>📋 기준정보</span>
-              ${(node.node_ref?.characters?.length) ? `<span class="node-ref-badge">${node.node_ref.characters.length}명</span>` : ''}
+              ${(node.node_ref?.entries?.length) ? `<span class="node-ref-badge">${node.node_ref.entries.length}개</span>` : ''}
               <span style="flex:1"></span>
               <button class="btn sm" style="font-size:.7rem;padding:.22rem .6rem"
                       onclick="event.stopPropagation();openRefPopup()">📚 전체 조회</button>
             </div>
             <div id="nodeRefBody" style="display:${nodeRefOpen ? 'block' : 'none'}">
               <div class="node-ref-body">
-                ${renderCharTableHtml(node.node_ref?.characters || [])}
+                ${renderRefEntriesHtml(node.node_ref?.entries || [])}
                 <div style="display:flex;justify-content:space-between;align-items:center">
-                  <button class="btn sm" onclick="addCharRow()">+ 인물 추가</button>
+                  <button class="btn sm" onclick="addRefEntry()">+ 항목 추가</button>
                   <button class="btn primary sm" onclick="saveNodeRef(${node.id})">💾 기준정보 저장</button>
                 </div>
               </div>
@@ -876,26 +896,24 @@
       const withContent = allKids.filter(k => k.content?.trim());
       if (!withContent.length) { showToast('하위 메뉴에 내용이 없습니다.', 'error'); return; }
 
-      // 내용: [제목]\n글 형식으로 이어붙임
       document.getElementById('nodeContent').value = withContent
         .map(k => `[${k.title || '(제목 없음)'}]\n${k.content.trim()}`)
         .join('\n\n');
 
-      // 기준정보 병합: 메뉴 순서대로, 같은 이름은 나중 것으로 덮어씀
-      const merged = new Map();
+      // 기준정보 병합: 메뉴 순서대로 entries 누적 (type+name 같으면 나중 것으로 덮어씀)
+      const mergedMap = new Map();
       for (const kid of allKids) {
-        for (const c of (kid.node_ref?.characters || [])) {
-          if (c.name) merged.set(c.name, c);
+        for (const e of (kid.node_ref?.entries || [])) {
+          if (e.name) mergedMap.set(`${e.type}|${e.name}`, e);
         }
       }
-      if (merged.size > 0) {
-        const tbody = document.getElementById('charTableBody');
-        if (tbody) {
-          tbody.innerHTML = Array.from(merged.values()).map(c => charRowHtml(c)).join('');
-          // 섹션 펼치기
+      if (mergedMap.size > 0) {
+        const list = document.getElementById('refEntryList');
+        if (list) {
+          list.innerHTML = Array.from(mergedMap.values()).map(e => refEntryRowHtml(e)).join('');
           const body = document.getElementById('nodeRefBody');
           if (body) { body.style.display = 'block'; nodeRefOpen = true; }
-          showToast(`내용 가져오기 완료. 기준정보 ${merged.size}명 병합됨.`, 'success');
+          showToast(`내용 가져오기 완료. 기준정보 ${mergedMap.size}개 병합됨.`, 'success');
           return;
         }
       }
@@ -910,60 +928,60 @@
       body.style.display = nodeRefOpen ? 'block' : 'none';
     }
 
-    function renderCharTableHtml(chars) {
-      const rows = chars.length
-        ? chars.map(c => charRowHtml(c)).join('')
-        : `<tr><td colspan="6" class="char-empty">인물을 추가하세요</td></tr>`;
-      return `
-        <table class="char-table">
-          <thead><tr>
-            <th>이름</th><th>역할</th><th>위치</th><th>성장 수준</th><th>상태</th><th></th>
-          </tr></thead>
-          <tbody id="charTableBody">${rows}</tbody>
-        </table>`;
+    const REF_TYPES = ['인물', '장소', '상황', '아이템', '기타'];
+    const REF_TYPE_NEXT = t => REF_TYPES[(REF_TYPES.indexOf(t) + 1) % REF_TYPES.length];
+
+    function renderRefEntriesHtml(entries) {
+      const rows = entries.length
+        ? entries.map(e => refEntryRowHtml(e)).join('')
+        : `<div class="ref-empty">항목을 추가하세요</div>`;
+      return `<div class="ref-entry-list" id="refEntryList">${rows}</div>`;
     }
 
-    function charRowHtml(c) {
-      return `<tr>
-        <td><input class="char-input" data-f="name"     value="${escHtml(c.name||'')}"     placeholder="이름"></td>
-        <td><input class="char-input" data-f="role"     value="${escHtml(c.role||'')}"     placeholder="주인공/조연"></td>
-        <td><input class="char-input" data-f="location" value="${escHtml(c.location||'')}" placeholder="위치"></td>
-        <td><input class="char-input" data-f="growth"   value="${escHtml(c.growth||'')}"   placeholder="성장 수준"></td>
-        <td><input class="char-input" data-f="status"   value="${escHtml(c.status||'')}"   placeholder="상태"></td>
-        <td><button class="char-del-btn" onclick="delCharRow(this)">×</button></td>
-      </tr>`;
+    function refEntryRowHtml(e) {
+      const t = REF_TYPES.includes(e.type) ? e.type : '기타';
+      return `<div class="ref-entry-row">
+        <button class="ref-type-btn ref-type-${t}" onclick="cycleRefType(this)">${escHtml(t)}</button>
+        <input  class="ref-entry-name" placeholder="이름/제목" value="${escHtml(e.name||'')}">
+        <textarea class="ref-entry-note" rows="1" placeholder="내용 메모...">${escHtml(e.note||'')}</textarea>
+        <button class="ref-del-btn" onclick="delRefEntry(this)">×</button>
+      </div>`;
     }
 
-    function addCharRow() {
-      const tbody = document.getElementById('charTableBody');
-      if (!tbody) return;
-      const empty = tbody.querySelector('.char-empty');
-      if (empty) empty.closest('tr').remove();
-      tbody.insertAdjacentHTML('beforeend', charRowHtml({ name:'', role:'', location:'', growth:'', status:'' }));
-      tbody.querySelector('tr:last-child input')?.focus();
+    function cycleRefType(btn) {
+      const next = REF_TYPE_NEXT(btn.textContent.trim());
+      btn.textContent = next;
+      btn.className = `ref-type-btn ref-type-${next}`;
     }
 
-    function delCharRow(btn) {
-      const row = btn.closest('tr');
+    function addRefEntry() {
+      let list = document.getElementById('refEntryList');
+      if (!list) return;
+      const empty = list.querySelector('.ref-empty');
+      if (empty) { list.innerHTML = ''; }
+      list.insertAdjacentHTML('beforeend', refEntryRowHtml({ type: '인물', name: '', note: '' }));
+      list.querySelector('.ref-entry-row:last-child .ref-entry-name')?.focus();
+    }
+
+    function delRefEntry(btn) {
+      const row = btn.closest('.ref-entry-row');
       row.remove();
-      const tbody = document.getElementById('charTableBody');
-      if (tbody && !tbody.querySelector('tr'))
-        tbody.innerHTML = `<tr><td colspan="6" class="char-empty">인물을 추가하세요</td></tr>`;
+      const list = document.getElementById('refEntryList');
+      if (list && !list.querySelector('.ref-entry-row'))
+        list.innerHTML = `<div class="ref-empty">항목을 추가하세요</div>`;
     }
 
-    function collectChars() {
-      const rows = document.querySelectorAll('#charTableBody tr:not(:has(.char-empty))');
+    function collectEntries() {
+      const rows = document.querySelectorAll('#refEntryList .ref-entry-row');
       return Array.from(rows).map(row => ({
-        name:     row.querySelector('[data-f="name"]')?.value.trim()     || '',
-        role:     row.querySelector('[data-f="role"]')?.value.trim()     || '',
-        location: row.querySelector('[data-f="location"]')?.value.trim() || '',
-        growth:   row.querySelector('[data-f="growth"]')?.value.trim()   || '',
-        status:   row.querySelector('[data-f="status"]')?.value.trim()   || '',
-      })).filter(c => c.name);
+        type: row.querySelector('.ref-type-btn')?.textContent.trim() || '기타',
+        name: row.querySelector('.ref-entry-name')?.value.trim() || '',
+        note: row.querySelector('.ref-entry-note')?.value.trim() || '',
+      })).filter(e => e.name || e.note);
     }
 
     async function saveNodeRef(nodeId) {
-      const node_ref = { characters: collectChars() };
+      const node_ref = { entries: collectEntries() };
       try {
         const res = await api(`/novel/nodes/${nodeId}`, { method: 'PUT', body: JSON.stringify({ node_ref }) });
         const d = await res.json();
@@ -976,33 +994,33 @@
     }
 
     /* ── 전체 기준정보 팝업 ── */
+    const REF_TYPE_COLORS = { 인물:'#db2777', 장소:'#059669', 상황:'#d97706', 아이템:'#7c3aed', 기타:'#6b7280' };
+
     function openRefPopup() {
       const ordered = getNodesInOrder(null);
       let html = '';
       for (const n of ordered) {
-        const chars = n.node_ref?.characters || [];
-        if (!chars.length) continue;
+        const entries = n.node_ref?.entries || [];
+        if (!entries.length) continue;
         const depth = getNodeDepth(n.id);
         const indent = '　'.repeat(depth);
         html += `
           <div>
             <div class="ref-popup-node-title">${indent}📄 ${escHtml(n.title || '(제목 없음)')}</div>
-            <table class="char-table">
-              <thead><tr><th>이름</th><th>역할</th><th>위치</th><th>성장 수준</th><th>상태</th></tr></thead>
-              <tbody>${chars.map(c => `
-                <tr>
-                  <td style="padding:.28rem .4rem">${escHtml(c.name)}</td>
-                  <td style="padding:.28rem .4rem">${escHtml(c.role)}</td>
-                  <td style="padding:.28rem .4rem">${escHtml(c.location)}</td>
-                  <td style="padding:.28rem .4rem">${escHtml(c.growth)}</td>
-                  <td style="padding:.28rem .4rem">${escHtml(c.status)}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;padding:0.3rem 0 0.5rem">
+              ${entries.map(e => {
+                const color = REF_TYPE_COLORS[e.type] || '#6b7280';
+                return `<div style="display:flex;gap:0.4rem;align-items:baseline;font-size:0.75rem">
+                  <span style="flex-shrink:0;padding:.1rem .5rem;border-radius:100px;border:1.5px solid ${color};color:${color};font-weight:700;font-size:.68rem">${escHtml(e.type||'기타')}</span>
+                  <span style="font-weight:600;color:var(--text-primary)">${escHtml(e.name)}</span>
+                  ${e.note ? `<span style="color:var(--text-secondary)">${escHtml(e.note)}</span>` : ''}
+                </div>`;
+              }).join('')}
+            </div>
           </div>`;
       }
       document.getElementById('refPopupBody').innerHTML = html ||
-        '<div class="ref-popup-empty">기준정보가 없습니다.<br>각 메뉴에서 인물을 추가해주세요.</div>';
+        '<div class="ref-popup-empty">기준정보가 없습니다.<br>각 메뉴에서 항목을 추가해주세요.</div>';
       document.getElementById('refPopupOverlay').style.display = 'flex';
     }
 
