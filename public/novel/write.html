@@ -105,7 +105,7 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       cursor: pointer; border-radius: 2px; padding: 0 1px;
     }
-    .tree-row:not(.selected):hover .tree-title { text-decoration: underline; text-decoration-style: dotted; }
+    .tree-row:not(.selected):hover .tree-title { text-decoration: underline; text-decoration-style: dotted; cursor: default; }
     .tree-row.selected .tree-title { color: #fff; }
 
     /* ── 인라인 제목 편집 ── */
@@ -527,7 +527,7 @@
             <div class="tree-row${isSel ? ' selected' : ''}"
                  style="padding-left:${pl}rem"
                  draggable="true"
-                 title="${titleEsc}"
+                 title="${titleEsc} (더블클릭: 제목 편집)"
                  onclick="selectNode(${n.id})"
                  ondragstart="onDragStart(event,${n.id})"
                  ondragover="onDragOver(event,${n.id})"
@@ -537,7 +537,7 @@
               <span class="tree-expand" onclick="event.stopPropagation();toggleExpand(${n.id})">
                 ${hasKids ? (isExp ? '▼' : '▶') : '·'}
               </span>
-              <span class="tree-title" onclick="event.stopPropagation();inlineEditTitle(${n.id},event)">${titleEsc}</span>
+              <span class="tree-title" ondblclick="event.stopPropagation();inlineEditTitle(${n.id},event)">${titleEsc}</span>
               <div class="tree-btns">
                 <button class="tree-btn" onclick="event.stopPropagation();addChildNode(${n.id})" title="하위 추가">+</button>
                 <button class="${visClass}" onclick="event.stopPropagation();toggleVisibility(${n.id})" title="${n.is_visible ? '조회 노출 중 — 클릭하면 숨김' : '숨김 — 클릭하면 조회 노출'}">${visIcon}</button>
