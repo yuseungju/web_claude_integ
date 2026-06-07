@@ -43,7 +43,21 @@ function verifyToken(e) {
   try { return jwt.verify(token, JWT_SECRET); } catch { return null; }
 }
 
+// Lambda 재시작 시 누락 컬럼 자동 추가 (idempotent)
+let _migrated = false;
+async function ensureColumns() {
+  if (_migrated) return;
+  try {
+    await pool.query(`
+      ALTER TABLE novel_nodes ADD COLUMN IF NOT EXISTS is_visible BOOLEAN DEFAULT FALSE;
+      ALTER TABLE novel_nodes ADD COLUMN IF NOT EXISTS ai_content TEXT    DEFAULT '';
+    `);
+    _migrated = true;
+  } catch (e) { console.error('migration error:', e.message); }
+}
+
 exports.handler = async (event) => {
+  await ensureColumns();
   const method = getMethod(event);
   const path   = getPath(event);
 
