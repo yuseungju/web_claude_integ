@@ -117,8 +117,16 @@
     .tree-btn:hover { background: rgba(0,0,0,0.15); }
     .tree-row.selected .tree-btn { background: rgba(255,255,255,0.2); color: #fff; }
     .tree-row.selected .tree-btn:hover { background: rgba(255,255,255,0.35); }
-    .tree-btn.vis-on  { color: #db2777; }
-    .tree-row.selected .tree-btn.vis-on { color: #fce7f3; }
+    /* 노출 버튼: 상태를 항상 표시 */
+    .tree-btn.vis-on {
+      opacity: 1 !important;
+      background: #d1fae5; color: #059669;
+      border-radius: 4px; font-size: 0.62rem; font-weight: 900;
+    }
+    .tree-btn.vis-on:hover { background: #a7f3d0; }
+    .tree-btn.vis-off { color: #9ca3af; }
+    .tree-row.selected .tree-btn.vis-on  { background: rgba(16,185,129,0.35); color: #d1fae5; }
+    .tree-row.selected .tree-btn.vis-off { color: rgba(255,255,255,0.4); }
     .tree-children { margin-left: 0.9rem; border-left: 1px dashed #e2e8f0; padding-left: 0.15rem; }
 
     /* ── 메인 패널 ── */
@@ -499,8 +507,8 @@
         const isExp    = expanded.has(n.id);
         const isSel    = selId === n.id;
         const pl       = 0.35 + depth * 0.85;
-        const visClass = n.is_visible ? 'tree-btn vis-on' : 'tree-btn';
-        const visIcon  = n.is_visible ? '👁' : '🙈';
+        const visClass = n.is_visible ? 'tree-btn vis-on' : 'tree-btn vis-off';
+        const visIcon  = n.is_visible ? '●' : '○';
         const titleEsc = escHtml(n.title || '(제목 없음)');
         return `
           <div class="tree-node" data-id="${n.id}">
@@ -520,7 +528,7 @@
               <span class="tree-title">${titleEsc}</span>
               <div class="tree-btns">
                 <button class="tree-btn" onclick="event.stopPropagation();addChildNode(${n.id})" title="하위 추가">+</button>
-                <button class="${visClass}" onclick="event.stopPropagation();toggleVisibility(${n.id})" title="${n.is_visible ? '노출중' : '숨김'}">${visIcon}</button>
+                <button class="${visClass}" onclick="event.stopPropagation();toggleVisibility(${n.id})" title="${n.is_visible ? '조회 노출 중 — 클릭하면 숨김' : '숨김 — 클릭하면 조회 노출'}">${visIcon}</button>
                 <button class="tree-btn" onclick="event.stopPropagation();confirmDeleteNode(${n.id})" title="삭제">×</button>
               </div>
             </div>
