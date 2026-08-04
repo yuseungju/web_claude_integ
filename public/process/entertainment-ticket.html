@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>엔터 공연/콘서트 티켓 — SAP 업무 활용 정리</title>
+  <link rel="stylesheet" href="/assets/css/common.css" />
+  <style>
+    .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .option-card { padding: 1.25rem; }
+    .option-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+    .option-badge {
+      font-size: 0.72rem; font-weight: 700; color: #fff; background: var(--primary);
+      padding: 0.2rem 0.55rem; border-radius: var(--radius-sm); white-space: nowrap;
+    }
+    .option-head h2 { font-size: 0.95rem; font-weight: 800; }
+    .adopted-badge {
+      font-size: 0.68rem; font-weight: 800; color: #065f46; background: var(--success-light);
+      border: 1px solid #6ee7b7; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm); white-space: nowrap;
+    }
+
+    .subsection-label { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); margin: 0 0 0.4rem; }
+
+    /* 등급 칸: 같은 등급 좌석을 하나의 칸에 묶어서 표시 */
+    .grade-box {
+      border: 1px dashed var(--border); border-radius: var(--radius-md);
+      background: var(--bg); padding: 0.7rem 0.8rem 0.55rem; margin-bottom: 0.9rem;
+    }
+    .grade-box-label { font-size: 0.66rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; }
+
+    .seat-row { display: flex; gap: 0.5rem; }
+    .seat-col { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; width: 50px; }
+    .seat-num {
+      width: 42px; height: 42px; border: 1.5px solid var(--border); border-radius: 7px 7px 3px 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.8rem; background: var(--bg-card); color: var(--text-primary);
+    }
+    .seat-tag { font-size: 0.6rem; font-weight: 700; text-align: center; line-height: 1.2; }
+    .seat-num.buy   { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); }
+    .seat-num.sell  { border-color: var(--warning); background: var(--warning-light); color: #92400e; }
+    .seat-num.loss  { border-color: var(--danger);  background: var(--danger-light);  color: #991b1b; }
+    .seat-num.gray  { border-color: var(--border);  background: #eef1f5; color: var(--text-secondary); }
+    .seat-tag.buy   { color: var(--primary-dark); }
+    .seat-tag.sell  { color: #92400e; }
+    .seat-tag.loss  { color: #991b1b; }
+    .seat-tag.gray  { color: var(--text-secondary); }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 0.9rem 1.5rem; font-size: 0.78rem; color: var(--text-secondary);
+      margin-bottom: 1.25rem; padding: 0.7rem 0.9rem; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .legend-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .legend-dot.blue { background: var(--primary); }
+    .legend-dot.gray { background: var(--text-muted); }
+    .legend-dot.red  { background: var(--danger); }
+
+    .grade-box.gray-bg { background: #eef1f5; }
+
+    .rate-col { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+    .rate-chip {
+      height: 42px; padding: 0 0.9rem; border: 1.5px solid var(--border); border-radius: 7px 7px 3px 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.8rem; background: var(--bg-card); color: var(--text-primary);
+    }
+    .rate-tag { font-size: 0.6rem; font-weight: 700; color: var(--text-muted); }
+
+    .journal-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; margin-bottom: 0.4rem; }
+    .journal-table th, .journal-table td {
+      border: 1px solid var(--border); padding: 0.3rem 0.5rem; text-align: left; color: var(--text-secondary);
+    }
+    .journal-table th { background: var(--bg); font-weight: 700; color: var(--text-muted); font-size: 0.64rem; }
+    .journal-table td:first-child { white-space: nowrap; }
+    .journal-table .jdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 0.3rem; }
+    .journal-table .jdot.blue  { background: var(--primary); }
+    .journal-table .jdot.gray  { background: var(--text-muted); }
+    .journal-table .jdot.red   { background: var(--danger); }
+    .journal-table .jdot.green { background: var(--success); }
+    .journal-note { font-size: 0.62rem; color: var(--text-muted); margin: 0 0 0.9rem; }
+
+    .verdict-row {
+      display: flex; gap: 0.45rem; align-items: flex-start; font-size: 0.76rem;
+      padding: 0.5rem 0.65rem; border-radius: var(--radius-sm); line-height: 1.45; margin-bottom: 0.5rem;
+    }
+    .verdict-row:last-child { margin-bottom: 0; }
+    .verdict-row .verdict-icon { font-weight: 800; flex-shrink: 0; }
+    .verdict-row.good { background: var(--success-light); color: #065f46; }
+    .verdict-row.bad  { background: var(--danger-light);  color: #991b1b; }
+
+    .adjust-card { margin-top: 1.25rem; padding: 1.25rem; }
+    .adjust-title { font-size: 0.95rem; font-weight: 800; margin-bottom: 0.3rem; }
+    .adjust-desc { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.55; }
+    .adjust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .adjust-case { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; }
+    .adjust-case-title { font-size: 0.82rem; font-weight: 800; margin-bottom: 0.7rem; }
+    .delta-note {
+      font-size: 0.78rem; font-weight: 700; padding: 0.5rem 0.65rem;
+      border-radius: var(--radius-sm); margin: 0.7rem 0;
+    }
+    .delta-note.minus { background: var(--danger-light);  color: #991b1b; }
+    .delta-note.plus  { background: var(--success-light); color: #065f46; }
+
+    .seat-num.changed { border: 2px solid var(--danger); background: #fff5f5; }
+    .change-info { font-size: 0.6rem; line-height: 1.35; text-align: center; }
+    .change-old { color: var(--danger); font-weight: 700; text-decoration: line-through; }
+    .change-new { color: var(--primary); font-weight: 700; }
+
+    @media (max-width: 640px) {
+      .option-grid { grid-template-columns: 1fr; }
+      .adjust-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-title">SAP 업무 활용 정리</div>
+      <ul class="menu-list" id="menuList"></ul>
+    </nav>
+
+    <main class="main-content">
+      <header class="app-header">
+        <div class="header-inner">
+          <div class="header-left">
+            <div class="header-logo">
+              <span class="logo-icon">🗂️</span>
+              <span class="logo-text">SAP 업무 활용 정리</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="container">
+        <div class="page-header">
+          <h1 class="page-title">엔터 공연/콘서트 티켓 — 사입 관리 방식 비교</h1>
+        </div>
+
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot blue"></span>매입(재고자산) → 판매 시 총액매출 + 매출원가</span>
+          <span class="legend-item"><span class="legend-dot gray"></span>재고자산 없이 판매 → 판매대행수수료 매출</span>
+          <span class="legend-item"><span class="legend-dot red"></span>매입했지만 미판매 → 재고자산 손실</span>
+        </div>
+
+        <section class="option-grid">
+          <div class="card option-card">
+            <div class="option-head">
+              <span class="option-badge">방안 1</span>
+              <h2>좌석별 관리</h2>
+            </div>
+
+            <div class="subsection-label">매입 — 1,2번 좌석</div>
+            <div class="grade-box">
+              <div class="grade-box-label">등급 S</div>
+              <div class="seat-row">
+                <div class="seat-col"><div class="seat-num buy">1</div><div class="seat-tag buy">매입</div></div>
+                <div class="seat-col"><div class="seat-num buy">2</div><div class="seat-tag buy">매입</div></div>
+                <div class="seat-col"><div class="seat-num">3</div></div>
+                <div class="seat-col"><div class="seat-num">4</div></div>
+                <div class="seat-col"><div class="seat-num">5</div></div>
+              </div>
+            </div>
+            <table class="journal-table">
+              <thead><tr><th>차변</th><th>대변</th></tr></thead>
+              <tbody><tr><td><span class="jdot blue"></span>재고자산_티켓</td><td>미지급금</td></tr></tbody>
+            </table>
+            <p class="journal-note">※ 선급번호 입력 시 대변은 선급금(차감)</p>
+
+            <div class="subsection-label">매출 — 2,3,4번 좌석 (3건)</div>
+            <div class="grade-box">
+              <div class="grade-box-label">등급 S</div>
+              <div class="seat-row">
+                <div class="seat-col"><div class="seat-num">1</div></div>
+                <div class="seat-col"><div class="seat-num sell">2</div><div class="seat-tag sell">매출</div></div>
+                <div class="seat-col"><div class="seat-num sell">3</div><div class="seat-tag sell">매출</div></div>
+                <div class="seat-col"><div class="seat-num sell">4</div><div class="seat-tag sell">매출</div></div>
+                <div class="seat-col"><div class="seat-num">5</div></div>
+              </div>
+            </div>
+
+            <div class="subsection-label">결과 — 좌석번호로 매칭</div>
+            <div class="grade-box">
+              <div class="grade-box-label">등급 S</div>
+              <div class="seat-row">
+                <div class="seat-col"><div class="seat-num loss">1</div><div class="seat-tag loss">미판매(재고손실)</div></div>
+                <div class="seat-col"><div class="seat-num buy">2</div><div class="seat-tag buy">정상매칭(총액매출)</div></div>
+                <div class="seat-col"><div class="seat-num gray">3</div><div class="seat-tag gray">수수료매출</div></div>
+                <div class="seat-col"><div class="seat-num gray">4</div><div class="seat-tag gray">수수료매출</div></div>
+                <div class="seat-col"><div class="seat-num">5</div></div>
+              </div>
+            </div>
+            <table class="journal-table">
+              <thead><tr><th>구분</th><th>차변</th><th>대변</th></tr></thead>
+              <tbody>
+                <tr><td><span class="jdot red"></span>1번</td><td>미판매손실원가</td><td>재고자산_티켓</td></tr>
+                <tr><td><span class="jdot blue"></span>2번</td><td>미수금</td><td>매출</td></tr>
+                <tr><td></td><td>매출원가</td><td>재고자산_티켓</td></tr>
+                <tr><td><span class="jdot gray"></span>3번</td><td>미수금</td><td>수수료매출</td></tr>
+                <tr><td><span class="jdot gray"></span>4번</td><td>미수금</td><td>수수료매출</td></tr>
+              </tbody>
+            </table>
+            <div class="verdict-row good"><span class="verdict-icon">✓</span><span><b>좌석별 계약</b>이면 정확 — 1번은 진짜 미판매, 3·4번은 진짜 수수료매출. 단, 사업부가 좌석마다 사입 단가를 입력해야 하는 부담이 큼</span></div>
+            <div class="verdict-row bad"><span class="verdict-icon">✕</span><span><b>등급별 계약</b>이면 이슈 — 등급 S 매입 2건은 판매 3건 중 2건만 사입매출이어야 하는데, 좌석번호가 정확히 안 맞으면 엉뚱한 좌석(3·4번)이 수수료매출로 잘못 잡힘</span></div>
+          </div>
+
+          <div class="card option-card">
+            <div class="option-head">
+              <span class="option-badge">방안 2</span>
+              <h2>등급별 관리</h2>
+              <span class="adopted-badge">✓ 채택</span>
+            </div>
+
+            <div class="subsection-label">매입 — 등급 단가만 입력</div>
+            <div class="grade-box gray-bg">
+              <div class="grade-box-label">등급 S</div>
+              <div class="seat-row">
+                <div class="rate-col"><div class="rate-chip">100,000원</div><div class="rate-tag">단가</div></div>
+                <div class="rate-col"><div class="rate-chip">2건</div><div class="rate-tag">수량</div></div>
+              </div>
+            </div>
+            <table class="journal-table">
+              <thead><tr><th>차변</th><th>대변</th></tr></thead>
+              <tbody><tr><td><span class="jdot blue"></span>재고자산_티켓</td><td>미지급금</td></tr></tbody>
+            </table>
+            <p class="journal-note">※ 선급번호 입력 시 대변은 선급금(차감)</p>
+
+            <div class="subsection-label">매출 — 2,3,4번 좌석 (3건)</div>
+            <div class="grade-box">
+              <div class="grade-box-label">등급 S</div>
+              <div class="seat-row">
+                <div class="seat-col"><div class="seat-num">1</div></div>
+                <div class="seat-col"><div class="seat-num sell">2</div><div class="seat-tag sell">매출</div></div>
+                <div class="seat-col"><div class="seat-num sell">3</div><div class="seat-tag sell">매출</div></div>
+                <div class="seat-col"><div class="seat-num sell">4</div><div class="seat-tag sell">매출</div></div>
+                <div class="seat-col"><div class="seat-num">5</div></div>
+              </div>
+            </div>
+
+            <div class="subsection-label">결과 — 등급 내 선입선출 매칭</div>
+            <div class="grade-box">
+              <div class="grade-box-label">등급 S</div>
+              <div class="seat-row">
+                <div class="seat-col"><div class="seat-num">1</div></div>
+                <div class="seat-col"><div class="seat-num buy">2</div><div class="seat-tag buy">선입1번째(총액매출)</div></div>
+                <div class="seat-col"><div class="seat-num buy">3</div><div class="seat-tag buy">선입2번째(총액매출)</div></div>
+                <div class="seat-col"><div class="seat-num gray">4</div><div class="seat-tag gray">수수료매출</div></div>
+                <div class="seat-col"><div class="seat-num">5</div></div>
+              </div>
+            </div>
+            <table class="journal-table">
+              <thead><tr><th>구분</th><th>차변</th><th>대변</th></tr></thead>
+              <tbody>
+                <tr><td><span class="jdot blue"></span>2,3번</td><td>미수금</td><td>매출</td></tr>
+                <tr><td></td><td>매출원가</td><td>재고자산_티켓</td></tr>
+                <tr><td><span class="jdot gray"></span>4번</td><td>미수금</td><td>수수료매출</td></tr>
+              </tbody>
+            </table>
+            <div class="verdict-row good"><span class="verdict-icon">✓</span><span><b>등급별 계약</b>이면 정확 — 매입 2건은 먼저 팔린 2,3번에 선입선출로 매칭돼 사입매출, 남는 4번은 수수료매출로 정확히 처리됨. 사업부는 등급 단가만 입력하면 됨</span></div>
+            <div class="verdict-row bad"><span class="verdict-icon">✕</span><span><b>좌석별 계약(1,2번 매입)</b>이면 이슈 — 1번은 못 팔았으니 미판매손실원가가 발생해야 하는데, 등급 풀에서는 구분 없이 2,3번 모두 사입매출로 잡혀 손실이 숨겨짐</span></div>
+          </div>
+        </section>
+
+        <div class="card adjust-card">
+          <div class="adjust-title">공통 — 입고 수량 조정 시 매출 자동 재분류</div>
+          <p class="adjust-desc">채택된 방안2(등급별)는 입고(매입) 수량이 정정되면 선입선출로 매칭됐던 매출 건이 달라집니다. 이미 발생(연동)된 매출전표는 조정된 만큼 마이너스로 취소되고, 새 매출유형으로 플러스 전표가 발생하면서 사입매출 ↔ 수수료매출이 자동 재분류됩니다. (매입 2건 · 매출 2,3,4번 예시 기준)</p>
+          <div class="adjust-grid">
+            <div class="adjust-case">
+              <div class="adjust-case-title">📉 입고 1건 감소 (2건 → 1건)</div>
+              <div class="seat-row">
+                <div class="seat-col"><div class="seat-num">1</div></div>
+                <div class="seat-col"><div class="seat-num buy">2</div><div class="seat-tag buy">사입매출</div></div>
+                <div class="seat-col">
+                  <div class="seat-num changed">3</div>
+                  <div class="change-info"><div class="change-old">사입매출</div><div class="change-new">+수수료매출</div></div>
+                </div>
+                <div class="seat-col"><div class="seat-num gray">4</div><div class="seat-tag gray">수수료매출</div></div>
+                <div class="seat-col"><div class="seat-num">5</div></div>
+              </div>
+            </div>
+
+            <div class="adjust-case">
+              <div class="adjust-case-title">📈 입고 1건 증가 (2건 → 3건)</div>
+              <div class="seat-row">
+                <div class="seat-col"><div class="seat-num">1</div></div>
+                <div class="seat-col"><div class="seat-num buy">2</div><div class="seat-tag buy">사입매출</div></div>
+                <div class="seat-col"><div class="seat-num buy">3</div><div class="seat-tag buy">사입매출</div></div>
+                <div class="seat-col">
+                  <div class="seat-num changed">4</div>
+                  <div class="change-info"><div class="change-old">수수료매출</div><div class="change-new">+사입매출</div></div>
+                </div>
+                <div class="seat-col"><div class="seat-num">5</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/assets/js/sidebar.js"></script>
+</body>
+</html>

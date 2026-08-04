@@ -4,59 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SAP 업무 활용 정리</title>
-  <link rel="stylesheet" href="assets/css/common.css" />
+  <link rel="stylesheet" href="/assets/css/common.css" />
   <style>
-    .app-wrap { flex-direction: row; }
-
-    .sidebar {
-      width: 260px; flex-shrink: 0;
-      background: var(--bg-card); border-right: 1px solid var(--border);
-      min-height: 100vh; padding: 1.5rem 0;
-    }
-    .sidebar-title {
-      font-size: 1.1rem; font-weight: 800; color: var(--primary);
-      padding: 0 1.25rem 1.25rem; letter-spacing: -0.3px;
-    }
-    .menu-list { display: flex; flex-direction: column; }
-    .menu-item { border-top: 1px solid var(--border); }
-    .menu-item:last-child { border-bottom: 1px solid var(--border); }
-
-    .menu-btn {
-      width: 100%; display: flex; align-items: center; justify-content: space-between;
-      padding: 0.9rem 1.25rem; background: none; border: none; cursor: pointer;
-      font-family: var(--font-sans); font-size: 0.92rem; font-weight: 700;
-      color: var(--text-primary); text-align: left; transition: background 0.15s;
-    }
-    .menu-btn:hover { background: var(--primary-light); color: var(--primary-dark); }
-    .menu-btn .chevron { font-size: 0.7rem; color: var(--text-muted); transition: transform 0.15s; }
-    .menu-item.open .menu-btn .chevron { transform: rotate(90deg); }
-
-    .submenu {
-      list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.18s ease;
-    }
-    .menu-item.open .submenu { max-height: 200px; }
-    .submenu li a {
-      display: block; padding: 0.6rem 1.25rem 0.6rem 2.1rem;
-      font-size: 0.85rem; color: var(--text-secondary); text-decoration: none;
-    }
-    .submenu li a:hover { color: var(--primary); background: var(--primary-light); }
-    .submenu-empty {
-      padding: 0.6rem 1.25rem 0.6rem 2.1rem; font-size: 0.8rem; color: var(--text-muted);
-    }
-
-    .main-content { flex: 1; }
     .welcome-card { padding: 2.5rem 2rem; text-align: center; }
     .welcome-card h2 { font-size: 1.15rem; font-weight: 800; margin-bottom: 0.5rem; }
     .welcome-card p { font-size: 0.85rem; color: var(--text-muted); }
-
-    @media (max-width: 640px) {
-      .app-wrap { flex-direction: column; }
-      .sidebar { width: 100%; min-height: auto; }
-    }
   </style>
 </head>
 <body>
-  <div class="app-wrap">
+  <div class="layout">
     <nav class="sidebar">
       <div class="sidebar-title">SAP 업무 활용 정리</div>
       <ul class="menu-list" id="menuList"></ul>
@@ -77,48 +33,12 @@
       <div class="container">
         <div class="card welcome-card">
           <h2>왼쪽 메뉴에서 항목을 선택하세요</h2>
-          <p>운영 · IMF 신규 세팅 · 프로젝트 · 프로세스 고도화 관련 자료를 정리합니다.</p>
+          <p>운영 · IMG Config 신규 세팅 · 프로젝트 · 프로세스 고도화 관련 자료를 정리합니다.</p>
         </div>
       </div>
     </main>
   </div>
 
-  <script>
-    const MENU = [
-      { id: 'ops',     title: '운영',           children: [] },
-      { id: 'imf',     title: 'IMF 신규 세팅',   children: [] },
-      { id: 'project', title: '프로젝트',        children: [] },
-      { id: 'process', title: '프로세스 고도화', children: [] },
-    ];
-
-    const listEl = document.getElementById('menuList');
-
-    MENU.forEach(menu => {
-      const li = document.createElement('li');
-      li.className = 'menu-item';
-      li.id = `menu-${menu.id}`;
-
-      const btn = document.createElement('button');
-      btn.className = 'menu-btn';
-      btn.innerHTML = `<span>${menu.title}</span><span class="chevron">▶</span>`;
-      btn.addEventListener('click', () => li.classList.toggle('open'));
-
-      const submenu = document.createElement('ul');
-      submenu.className = 'submenu';
-      if (menu.children.length) {
-        menu.children.forEach(child => {
-          const item = document.createElement('li');
-          item.innerHTML = `<a href="${child.href}">${child.title}</a>`;
-          submenu.appendChild(item);
-        });
-      } else {
-        submenu.innerHTML = '<li class="submenu-empty">준비 중</li>';
-      }
-
-      li.appendChild(btn);
-      li.appendChild(submenu);
-      listEl.appendChild(li);
-    });
-  </script>
+  <script src="/assets/js/sidebar.js"></script>
 </body>
 </html>

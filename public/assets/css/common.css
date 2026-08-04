@@ -141,3 +141,65 @@ body {
   .header-username { display: none; }
   .page-title { font-size: 1rem; }
 }
+
+/* ── Layout: 고정 사이드바 + 본문 ─────────────────────────── */
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 280px; flex-shrink: 0;
+  background: var(--bg-card); border-right: 1px solid var(--border);
+  padding: 1.5rem 0;
+  position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 50;
+}
+.sidebar-title {
+  font-size: 1.05rem; font-weight: 800; color: var(--primary);
+  padding: 0 1.1rem 1.1rem; letter-spacing: -0.3px;
+}
+
+.main-content { flex: 1; margin-left: 280px; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Sidebar 메뉴(계층형 드롭다운) ─────────────────────────── */
+.menu-list, .submenu { list-style: none; }
+.menu-item { border-top: 1px solid var(--border); }
+.menu-item:last-child { border-bottom: 1px solid var(--border); }
+
+.menu-btn {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 1.1rem; background: none; border: none; cursor: pointer;
+  font-family: var(--font-sans); font-size: 0.82rem; font-weight: 700;
+  color: var(--text-primary); text-align: left; transition: background 0.15s;
+}
+.menu-btn:hover { background: var(--primary-light); color: var(--primary-dark); }
+.menu-btn .chevron { font-size: 0.6rem; color: var(--text-muted); transition: transform 0.15s; flex-shrink: 0; margin-left: 0.4rem; }
+.menu-item.open > .menu-btn .chevron { transform: rotate(90deg); }
+
+.leaf-link {
+  display: block; padding: 0.5rem 1.1rem;
+  font-size: 0.78rem; color: var(--text-secondary); text-decoration: none;
+}
+.leaf-link:hover { color: var(--primary); background: var(--primary-light); }
+
+/* 최상위(대분류) 항목은 하위메뉴 유무와 상관없이 동일하게 강조 */
+.menu-list > .menu-item > .leaf-link {
+  font-weight: 700; font-size: 0.82rem; color: var(--text-primary);
+  padding: 0.6rem 1.1rem;
+}
+.menu-list > .menu-item > .leaf-link:hover { color: var(--primary-dark); }
+
+.submenu {
+  display: none;
+  margin-left: 1rem; padding-left: 0.6rem;
+  border-left: 1px dashed var(--border);
+}
+.menu-item.open > .submenu { display: block; }
+
+.submenu .menu-btn  { font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); padding: 0.5rem 0.9rem; }
+.submenu .leaf-link { font-size: 0.73rem; padding: 0.42rem 0.9rem; }
+.submenu .submenu .menu-btn  { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
+.submenu .submenu .leaf-link { font-size: 0.7rem; }
+
+@media (max-width: 640px) {
+  .layout { flex-direction: column; }
+  .sidebar { position: static; width: 100%; height: auto; }
+  .main-content { margin-left: 0; }
+}
