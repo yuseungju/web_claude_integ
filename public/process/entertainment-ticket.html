@@ -78,6 +78,12 @@
     .journal-table .jdot.red   { background: var(--danger); }
     .journal-table .jdot.green { background: var(--success); }
     .journal-note { font-size: 0.62rem; color: var(--text-muted); margin: 0 0 0.9rem; }
+    /* 계정코드는 금액 숫자와 헷갈리지 않도록 작고 흐리게, 별도 처리 표기(선급번호 유무 등)도 톤 다운 */
+    .acct-code { color: var(--text-muted); font-weight: 400; font-size: 0.9em; }
+    .acct-cond { color: var(--text-muted); font-weight: 400; font-style: italic; }
+    .stage-status { font-weight: 400; font-size: 0.85em; }
+    .stage-status.done { color: #065f46; }
+    .stage-status.todo { color: #92400e; }
 
     .verdict-row {
       display: flex; gap: 0.45rem; align-items: flex-start; font-size: 0.76rem;
@@ -192,7 +198,7 @@
             <div class="detail-divider">분개 &amp; 설명 (예시: 좌석단가 100,000원)</div>
             <table class="journal-table">
               <thead><tr><th>차변</th><th>금액</th><th>대변</th><th>금액</th></tr></thead>
-              <tbody><tr><td><span class="jdot blue"></span>재고자산_티켓</td><td>100,000 ×2건</td><td>미지급금_정산_엔터(0021203200)</td><td>100,000 ×2건</td></tr></tbody>
+              <tbody><tr><td><span class="jdot blue"></span>재고자산_티켓</td><td>100,000 ×2건</td><td>미지급금_정산_엔터<span class="acct-code">(0021203200)</span></td><td>100,000 ×2건</td></tr></tbody>
             </table>
             <p class="journal-note">※ 선급번호 입력 시 대변은 선급금(차감)</p>
             <table class="journal-table">
@@ -200,7 +206,7 @@
               <tbody>
                 <tr><td><span class="jdot red"></span>1번</td><td>미판매손실원가</td><td>100,000</td><td>재고자산_티켓</td><td>100,000</td></tr>
                 <tr><td><span class="jdot blue"></span>2번</td><td>판매수탁금_엔터</td><td>150,000</td><td>상품매출_티켓</td><td>150,000</td></tr>
-                <tr><td></td><td>상품매출원가_티켓</td><td>100,000</td><td>상품_티켓(0011501045)</td><td>100,000</td></tr>
+                <tr><td></td><td>상품매출원가_티켓</td><td>100,000</td><td>상품_티켓<span class="acct-code">(0011501045)</span></td><td>100,000</td></tr>
                 <tr><td><span class="jdot gray"></span>3번</td><td>미수금</td><td>15,000</td><td>수수료매출</td><td>15,000</td></tr>
                 <tr><td><span class="jdot gray"></span>4번</td><td>미수금</td><td>15,000</td><td>수수료매출</td><td>15,000</td></tr>
               </tbody>
@@ -252,14 +258,14 @@
             <div class="detail-divider">분개 &amp; 설명 (예시: 등급단가 100,000원 ×2건)</div>
             <table class="journal-table">
               <thead><tr><th>차변</th><th>금액</th><th>대변</th><th>금액</th></tr></thead>
-              <tbody><tr><td><span class="jdot blue"></span>재고자산_티켓</td><td>200,000</td><td>미지급금_정산_엔터(0021203200)</td><td>200,000</td></tr></tbody>
+              <tbody><tr><td><span class="jdot blue"></span>재고자산_티켓</td><td>200,000</td><td>미지급금_정산_엔터<span class="acct-code">(0021203200)</span></td><td>200,000</td></tr></tbody>
             </table>
             <p class="journal-note">※ 선급번호 입력 시 대변은 선급금(차감)</p>
             <table class="journal-table">
               <thead><tr><th>구분</th><th>차변</th><th>금액</th><th>대변</th><th>금액</th></tr></thead>
               <tbody>
                 <tr><td><span class="jdot blue"></span>2,3번</td><td>판매수탁금_엔터</td><td>300,000 (150,000×2)</td><td>상품매출_티켓</td><td>300,000 (150,000×2)</td></tr>
-                <tr><td></td><td>상품매출원가_티켓</td><td>200,000 (100,000×2)</td><td>상품_티켓(0011501045)</td><td>200,000 (100,000×2)</td></tr>
+                <tr><td></td><td>상품매출원가_티켓</td><td>200,000 (100,000×2)</td><td>상품_티켓<span class="acct-code">(0011501045)</span></td><td>200,000 (100,000×2)</td></tr>
                 <tr><td><span class="jdot gray"></span>4번</td><td>미수금</td><td>15,000</td><td>수수료매출</td><td>15,000</td></tr>
               </tbody>
             </table>
@@ -300,6 +306,38 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div class="card adjust-card">
+          <div class="adjust-title">부록 — 분개 흐름 정리 (입고 → 지출결의 → 매출)</div>
+          <p class="adjust-desc">엔터(TIMS) 티켓 사입 1건의 전체 회계처리를 단계별로 정리합니다. (예시: 좌석단가 10만원 · 판매가 15만원)</p>
+
+          <div class="subsection-label">1단계 — 입고(매입) <span class="stage-status done">● 확정 (ZFINR0210/0220, 실전표 검증)</span></div>
+          <table class="journal-table">
+            <thead><tr><th>차변</th><th>금액</th><th>대변</th><th>금액</th></tr></thead>
+            <tbody>
+              <tr><td>상품_티켓<span class="acct-code">(0011501045)</span></td><td>100,000</td><td>미지급금_정산_엔터<span class="acct-code">(0021203200)</span> <span class="acct-cond">[선급번호 없음]</span></td><td>100,000</td></tr>
+              <tr><td>상품_티켓<span class="acct-code">(0011501045)</span></td><td>100,000</td><td>선급금_재고매입<span class="acct-code">(0011401150)</span> <span class="acct-cond">[선급번호 있음]</span></td><td>100,000</td></tr>
+            </tbody>
+          </table>
+
+          <div class="subsection-label">2단계 — 지출결의(EACC) 처리, 실제 지급 시 <span class="stage-status todo">● TO-BE 논의 중 (미확정)</span></div>
+          <table class="journal-table">
+            <thead><tr><th>차변</th><th>금액</th><th>대변</th><th>금액</th></tr></thead>
+            <tbody>
+              <tr><td>외상매입금 <span class="acct-cond">(또는 미지급금_정산_엔터)</span></td><td>100,000</td><td>선급금기타 / 미지급금 <span class="acct-cond">(지출결의서 → 실지급 시 현금성 계정)</span></td><td>100,000</td></tr>
+            </tbody>
+          </table>
+          <p class="journal-note">※ 글로벌은 EACC로 "선급금_재고매입" 상신 시 대변이 외상매입금으로 설정되고, 티켓 사입은 EACC를 거치지 않아 입고 시 바로 대변이 외상매입금이 됩니다. 실제 지급 시에는 지출결의서(선급금기타 또는 미지급금 계정으로 작성) 처리 후 외상매입금과 선급금을 상계합니다 — 아직 방향성 논의 단계라 정확한 계정코드·전기로직은 확정 전입니다.</p>
+
+          <div class="subsection-label">3단계 — 매출(판매) <span class="stage-status done">● 확정 (실전표 검증)</span></div>
+          <table class="journal-table">
+            <thead><tr><th>차변</th><th>금액</th><th>대변</th><th>금액</th></tr></thead>
+            <tbody>
+              <tr><td>판매수탁금_엔터</td><td>150,000</td><td>상품매출_티켓</td><td>150,000</td></tr>
+              <tr><td>상품매출원가_티켓</td><td>100,000</td><td>상품_티켓<span class="acct-code">(0011501045)</span></td><td>100,000</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <div class="card adjust-card">
