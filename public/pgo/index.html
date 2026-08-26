@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>포켓몬 도감 · PGO 분석기</title>
+  <meta name="description" content="포켓몬GO 종족값·최대 CP·타입 상성 분석" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>PGO 분석기
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/" aria-current="page">도감</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>포켓몬 도감</h1>
+      <p>1,157종의 포켓몬GO 환산 종족값 · 최대 CP · 타입 상성을 한 번에 비교합니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-controls">
+        <div class="pgo-field">
+          <label for="q">검색 (한글명 · 영문명 · 도감번호)</label>
+          <input class="pgo-input" id="q" type="search" placeholder="예: 괴력몬, machamp, 68" autocomplete="off" />
+        </div>
+        <div class="pgo-field">
+          <label for="type1">타입</label>
+          <select class="pgo-select" id="type1"></select>
+        </div>
+        <div class="pgo-field">
+          <label for="gen">세대</label>
+          <select class="pgo-select" id="gen">
+            <option value="">전체 세대</option>
+          </select>
+        </div>
+        <div class="pgo-field">
+          <label for="form">폼</label>
+          <select class="pgo-select" id="form">
+            <option value="all">전체 포함</option>
+            <option value="base">기본 폼만</option>
+            <option value="only">특수 폼만</option>
+          </select>
+        </div>
+        <div class="pgo-field">
+          <label for="sort">정렬</label>
+          <select class="pgo-select" id="sort">
+            <option value="dex">도감 번호</option>
+            <option value="maxCp">최대 CP</option>
+            <option value="atk">공격</option>
+            <option value="def">방어</option>
+            <option value="sta">체력</option>
+            <option value="bulk">내구지수</option>
+            <option value="name">이름</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:.75rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+        <span class="pgo-chip" id="count">—</span>
+        <button class="pgo-btn ghost" id="reset" type="button">필터 초기화</button>
+      </div>
+    </div>
+
+    <div class="pgo-grid" id="grid"></div>
+    <div style="text-align:center;margin-top:1.25rem">
+      <button class="pgo-btn ghost" id="more" type="button" hidden>더 보기</button>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    포켓몬 데이터 · 스프라이트 출처: <a href="https://pokeapi.co" style="color:var(--pgo-text-dim)">PokeAPI</a> (CC BY-NC-SA 3.0). 데이터는 저장소에 번들되어 외부 API를 호출하지 않습니다.
+    포켓몬GO 종족값은 메인시리즈 종족값 환산치이며 일부 종은 실제 게임 수치와 다를 수 있습니다.
+    Pokémon © Nintendo / Creatures Inc. / GAME FREAK Inc. · 본 페이지는 비공식 팬 도구입니다.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-dex.js"></script>
+</body>
+</html>

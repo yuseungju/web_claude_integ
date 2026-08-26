@@ -1,0 +1,277 @@
+/* ══════════════════════════════════════════════════════════════
+   PGO — 포켓몬GO 분석기 전용 스타일시트
+   이 파일은 /pgo/ 아래에서만 로드된다. /assets/css/common.css(SAP 사이트)와
+   토큰명·클래스명이 겹치지 않도록 전부 pgo- 접두어를 쓴다.
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --pgo-bg:        #0f1420;
+  --pgo-bg-soft:   #171d2c;
+  --pgo-surface:   #1e2536;
+  --pgo-surface-2: #273047;
+  --pgo-border:    #2f3a54;
+  --pgo-text:      #e8ecf5;
+  --pgo-text-dim:  #97a3bd;
+  --pgo-text-mute: #6b7897;
+  --pgo-accent:    #ffcb05;   /* 포켓볼 옐로 */
+  --pgo-accent-2:  #3b7dd8;   /* 포켓볼 블루 */
+  --pgo-red:       #ee4b4b;
+  --pgo-green:     #3fcf8e;
+  --pgo-radius:    12px;
+  --pgo-radius-sm: 8px;
+  --pgo-font: 'Pretendard', -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+  --pgo-mono: 'Consolas', 'D2Coding', ui-monospace, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body.pgo {
+  font-family: var(--pgo-font);
+  background: var(--pgo-bg);
+  color: var(--pgo-text);
+  min-height: 100vh;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+}
+
+/* ── 헤더 / 네비 ─────────────────────────────────────────── */
+.pgo-header {
+  position: sticky; top: 0; z-index: 50;
+  background: linear-gradient(180deg, #141a29 0%, #121826 100%);
+  border-bottom: 1px solid var(--pgo-border);
+}
+.pgo-header-inner {
+  max-width: 1240px; margin: 0 auto; padding: 0.7rem 1.25rem;
+  display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+}
+.pgo-brand {
+  display: flex; align-items: center; gap: 0.55rem;
+  font-weight: 800; font-size: 1.02rem; letter-spacing: -0.3px;
+  color: var(--pgo-text); text-decoration: none; white-space: nowrap;
+}
+.pgo-brand-mark {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  background: linear-gradient(180deg, var(--pgo-red) 0 48%, #fff 48% 52%, #f3f4f8 52% 100%);
+  border: 2px solid #10141f;
+  box-shadow: 0 0 0 1px var(--pgo-border);
+}
+.pgo-nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.pgo-nav a {
+  padding: 0.38rem 0.75rem; border-radius: 999px;
+  color: var(--pgo-text-dim); text-decoration: none;
+  font-size: 0.84rem; font-weight: 600; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.pgo-nav a:hover { background: var(--pgo-surface-2); color: var(--pgo-text); }
+.pgo-nav a[aria-current='page'] { background: var(--pgo-accent); color: #1a1200; }
+
+.pgo-main { max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+
+.pgo-page-head { margin-bottom: 1.1rem; }
+.pgo-page-head h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.4px; }
+.pgo-page-head p { color: var(--pgo-text-dim); font-size: 0.86rem; margin-top: 0.2rem; }
+
+/* ── 카드 / 패널 ─────────────────────────────────────────── */
+.pgo-panel {
+  background: var(--pgo-surface);
+  border: 1px solid var(--pgo-border);
+  border-radius: var(--pgo-radius);
+  padding: 1rem 1.1rem;
+}
+.pgo-panel + .pgo-panel { margin-top: 1rem; }
+.pgo-panel h2 {
+  font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem;
+  display: flex; align-items: center; gap: 0.45rem;
+}
+
+/* ── 폼 컨트롤 ───────────────────────────────────────────── */
+.pgo-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.pgo-field label { font-size: 0.76rem; font-weight: 600; color: var(--pgo-text-dim); }
+.pgo-input, .pgo-select {
+  background: var(--pgo-bg-soft);
+  border: 1px solid var(--pgo-border);
+  color: var(--pgo-text);
+  border-radius: var(--pgo-radius-sm);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.88rem; font-family: inherit;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+.pgo-input:focus, .pgo-select:focus {
+  outline: none; border-color: var(--pgo-accent-2);
+  box-shadow: 0 0 0 3px rgba(59,125,216,.22);
+}
+.pgo-input::placeholder { color: var(--pgo-text-mute); }
+.pgo-select {
+  appearance: none; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, #97a3bd 50%),
+                    linear-gradient(135deg, #97a3bd 50%, transparent 50%);
+  background-position: right 0.85rem center, right 0.6rem center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 1.8rem;
+}
+.pgo-btn {
+  background: var(--pgo-accent-2); color: #fff; border: none;
+  border-radius: var(--pgo-radius-sm); padding: 0.5rem 0.9rem;
+  font-size: 0.85rem; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: filter .15s;
+}
+.pgo-btn:hover { filter: brightness(1.12); }
+.pgo-btn.ghost { background: var(--pgo-surface-2); color: var(--pgo-text-dim); }
+.pgo-btn.ghost:hover { color: var(--pgo-text); }
+
+.pgo-controls {
+  display: grid; gap: 0.7rem;
+  grid-template-columns: minmax(200px, 1.6fr) repeat(auto-fit, minmax(120px, 1fr));
+  align-items: end;
+}
+
+/* ── 타입 배지 ───────────────────────────────────────────── */
+.pgo-type {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.14rem 0.5rem; border-radius: 999px;
+  font-size: 0.7rem; font-weight: 700; color: #fff;
+  text-shadow: 0 1px 1px rgba(0,0,0,.35); white-space: nowrap;
+}
+
+/* ── 포켓몬 그리드 ───────────────────────────────────────── */
+.pgo-grid {
+  display: grid; gap: 0.7rem; margin-top: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+}
+.pgo-card {
+  background: var(--pgo-surface); border: 1px solid var(--pgo-border);
+  border-radius: var(--pgo-radius); padding: 0.7rem;
+  cursor: pointer; text-align: left;
+  font: inherit; color: inherit; width: 100%;
+  transition: border-color .15s, transform .1s, background .15s;
+}
+.pgo-card:hover { border-color: var(--pgo-accent-2); background: var(--pgo-surface-2); }
+.pgo-card:active { transform: scale(.985); }
+.pgo-card-top { display: flex; align-items: center; gap: 0.6rem; }
+.pgo-card-img {
+  width: 52px; height: 52px; flex: none; object-fit: contain;
+  background: var(--pgo-bg-soft); border-radius: var(--pgo-radius-sm);
+  image-rendering: pixelated;
+}
+.pgo-card-dex { font-family: var(--pgo-mono); font-size: 0.68rem; color: var(--pgo-text-mute); }
+.pgo-card-name { font-weight: 700; font-size: 0.88rem; line-height: 1.25; }
+.pgo-card-form { font-size: 0.72rem; color: var(--pgo-accent); font-weight: 600; }
+.pgo-card-types { display: flex; gap: 0.25rem; margin-top: 0.3rem; flex-wrap: wrap; }
+.pgo-card-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem;
+  margin-top: 0.6rem; padding-top: 0.55rem; border-top: 1px solid var(--pgo-border);
+  text-align: center;
+}
+.pgo-stat-k { font-size: 0.62rem; color: var(--pgo-text-mute); display: block; }
+.pgo-stat-v { font-family: var(--pgo-mono); font-size: 0.82rem; font-weight: 700; }
+
+/* ── 표 ──────────────────────────────────────────────────── */
+.pgo-table-wrap { overflow-x: auto; }
+.pgo-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.pgo-table th, .pgo-table td {
+  padding: 0.42rem 0.6rem; text-align: left;
+  border-bottom: 1px solid var(--pgo-border); white-space: nowrap;
+}
+.pgo-table th {
+  color: var(--pgo-text-dim); font-weight: 600; font-size: 0.74rem;
+  background: var(--pgo-bg-soft);
+}
+.pgo-table tbody tr:hover { background: var(--pgo-surface-2); }
+.pgo-table .num { font-family: var(--pgo-mono); text-align: right; }
+
+/* ── 배율 색상 ───────────────────────────────────────────── */
+.pgo-mult { font-family: var(--pgo-mono); font-weight: 700; }
+.pgo-mult.x256 { color: #ff5f5f; }   /* 2.56배 */
+.pgo-mult.x160 { color: #ff9a5f; }   /* 1.6배  */
+.pgo-mult.x100 { color: var(--pgo-text-mute); }
+.pgo-mult.x063 { color: #6fc9ff; }   /* 0.625배 */
+.pgo-mult.x039 { color: #4a8fd8; }   /* 0.39배  */
+.pgo-mult.x015 { color: #3a6fae; }   /* 0.15배  */
+
+.pgo-chip {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: var(--pgo-surface-2); border: 1px solid var(--pgo-border);
+  border-radius: 999px; padding: 0.2rem 0.6rem; font-size: 0.74rem;
+}
+
+/* ── 상세 모달 ───────────────────────────────────────────── */
+.pgo-modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(6,9,16,.72);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 2.5rem 1rem; overflow-y: auto;
+}
+.pgo-modal-backdrop[hidden] { display: none; }
+.pgo-modal {
+  background: var(--pgo-surface); border: 1px solid var(--pgo-border);
+  border-radius: var(--pgo-radius); width: 100%; max-width: 720px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.55);
+}
+.pgo-modal-head {
+  display: flex; align-items: center; gap: 0.9rem;
+  padding: 1rem 1.1rem; border-bottom: 1px solid var(--pgo-border);
+}
+.pgo-modal-head img { width: 88px; height: 88px; object-fit: contain; flex: none; image-rendering: pixelated; }
+.pgo-modal-title { font-size: 1.1rem; font-weight: 800; }
+.pgo-modal-close {
+  margin-left: auto; align-self: flex-start;
+  background: none; border: none; color: var(--pgo-text-dim);
+  font-size: 1.35rem; line-height: 1; cursor: pointer; padding: 0.2rem 0.4rem;
+}
+.pgo-modal-close:hover { color: var(--pgo-text); }
+.pgo-modal-body { padding: 1.1rem; display: grid; gap: 1.1rem; }
+.pgo-section-title {
+  font-size: 0.78rem; font-weight: 700; color: var(--pgo-text-dim);
+  letter-spacing: .5px; margin-bottom: 0.5rem;
+}
+
+.pgo-statbars { display: grid; gap: 0.45rem; }
+.pgo-statbar { display: grid; grid-template-columns: 52px 1fr 46px; align-items: center; gap: 0.6rem; }
+.pgo-statbar-k { font-size: 0.76rem; color: var(--pgo-text-dim); }
+.pgo-statbar-track { height: 7px; background: var(--pgo-bg-soft); border-radius: 999px; overflow: hidden; }
+.pgo-statbar-fill { height: 100%; border-radius: 999px; }
+.pgo-statbar-v { font-family: var(--pgo-mono); font-size: 0.82rem; font-weight: 700; text-align: right; }
+
+.pgo-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 0.55rem; }
+.pgo-kv-item {
+  background: var(--pgo-bg-soft); border-radius: var(--pgo-radius-sm);
+  padding: 0.55rem 0.65rem;
+}
+.pgo-kv-k { font-size: 0.68rem; color: var(--pgo-text-mute); display: block; }
+.pgo-kv-v { font-family: var(--pgo-mono); font-size: 1rem; font-weight: 700; }
+
+.pgo-eff-list { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.pgo-eff-item {
+  display: flex; align-items: center; gap: 0.35rem;
+  background: var(--pgo-bg-soft); border-radius: 999px; padding: 0.2rem 0.55rem 0.2rem 0.25rem;
+  font-size: 0.74rem;
+}
+
+/* ── 상태 표시 ───────────────────────────────────────────── */
+.pgo-note {
+  font-size: 0.75rem; color: var(--pgo-text-mute);
+  background: var(--pgo-bg-soft); border-left: 2px solid var(--pgo-accent);
+  border-radius: 0 var(--pgo-radius-sm) var(--pgo-radius-sm) 0;
+  padding: 0.5rem 0.7rem; line-height: 1.5;
+}
+.pgo-empty { text-align: center; color: var(--pgo-text-mute); padding: 2.5rem 1rem; font-size: 0.88rem; }
+.pgo-badge {
+  font-size: 0.64rem; font-weight: 700; padding: 0.1rem 0.4rem;
+  border-radius: 4px; background: var(--pgo-surface-2); color: var(--pgo-text-dim);
+}
+.pgo-badge.measured { background: rgba(63,207,142,.18); color: var(--pgo-green); }
+
+.pgo-footer {
+  max-width: 1240px; margin: 0 auto; padding: 1.5rem 1.25rem 2.5rem;
+  color: var(--pgo-text-mute); font-size: 0.72rem; line-height: 1.7;
+  border-top: 1px solid var(--pgo-border);
+}
+
+@media (max-width: 640px) {
+  .pgo-header-inner { gap: 0.6rem; }
+  .pgo-controls { grid-template-columns: 1fr 1fr; }
+  .pgo-modal-head img { width: 56px; height: 56px; }
+}

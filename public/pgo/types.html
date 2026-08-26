@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>타입 상성 · PGO 분석기</title>
+  <meta name="description" content="포켓몬GO 타입 상성표와 복합 타입 계산기" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+  <style>
+    .pgo-matrix { border-collapse: collapse; font-size: 0.7rem; }
+    .pgo-matrix th, .pgo-matrix td {
+      border: 1px solid var(--pgo-border); padding: 0.22rem 0.3rem;
+      text-align: center; white-space: nowrap;
+    }
+    .pgo-matrix thead th { background: var(--pgo-bg-soft); font-weight: 600; }
+    .pgo-matrix .rowhead { text-align: right; padding-right: 0.45rem; }
+    .pgo-matrix td.c { font-family: var(--pgo-mono); font-weight: 700; }
+    .pgo-matrix td.c[data-m="1"] { color: var(--pgo-text-mute); opacity: .45; }
+    .pgo-vert { writing-mode: vertical-rl; transform: rotate(180deg); padding: 0.35rem 0.2rem !important; }
+  </style>
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>PGO 분석기
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html" aria-current="page">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>타입 상성</h1>
+      <p>포켓몬GO 기준 배율입니다. 효과 굉장 1.6배, 효과 별로 0.625배, 2중 반감 0.390625배.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>복합 타입 계산기</h2>
+      <div class="pgo-controls">
+        <div class="pgo-field">
+          <label for="t1">방어 타입 1</label>
+          <select class="pgo-select" id="t1"></select>
+        </div>
+        <div class="pgo-field">
+          <label for="t2">방어 타입 2 (선택)</label>
+          <select class="pgo-select" id="t2"></select>
+        </div>
+      </div>
+      <div id="calcOut" style="margin-top:1rem;display:grid;gap:.9rem"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>전체 상성표</h2>
+      <p style="font-size:.76rem;color:var(--pgo-text-mute);margin-bottom:.7rem">
+        가로: 공격 타입 → 세로: 방어 타입. 셀 값은 배율입니다.
+      </p>
+      <div class="pgo-table-wrap">
+        <table class="pgo-matrix" id="matrix"></table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="pgo-footer">
+    메인시리즈 상성 데이터(PokeAPI)를 포켓몬GO 배율 체계로 변환했습니다.
+    메인시리즈에서 무효(0배)인 조합은 GO에서 2중 반감(0.390625배)으로 처리됩니다.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-types.js"></script>
+</body>
+</html>

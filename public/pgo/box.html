@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>내 보관함 · PGO 분석기</title>
+  <meta name="description" content="저장해 둔 내 포켓몬의 개체값과 성능 비교" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>PGO 분석기
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html" aria-current="page">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>내 보관함</h1>
+      <p>CP · IV 계산기에서 저장한 포켓몬을 모아 성능을 비교합니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <span class="pgo-chip" id="mode">—</span>
+        <span class="pgo-chip" id="boxCount">—</span>
+        <div style="margin-left:auto;display:flex;gap:.4rem">
+          <select class="pgo-select" id="sort" style="width:auto">
+            <option value="new">최근 저장순</option>
+            <option value="iv">IV 높은순</option>
+            <option value="cp">CP 높은순</option>
+            <option value="name">이름순</option>
+          </select>
+          <button class="pgo-btn ghost" id="clearAll" type="button">전체 삭제</button>
+        </div>
+      </div>
+      <div class="pgo-note" style="margin-top:.8rem" id="modeNote"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-table-wrap">
+        <table class="pgo-table">
+          <thead>
+            <tr>
+              <th>포켓몬</th><th>타입</th><th>CP</th><th>HP</th><th>레벨</th>
+              <th>IV (공/방/체)</th><th>IV %</th><th>50레벨 CP</th><th>메모</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="boxRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    저장 위치는 상단 배지로 표시됩니다. <b>브라우저 저장</b>이면 이 브라우저에만 남고,
+    <b>서버 저장</b>이면 RDS의 <code>pgo_box</code> 테이블에 기기 키 단위로 보관됩니다.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-config.js"></script>
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-store.js"></script>
+  <script src="/pgo/assets/js/pgo-box.js"></script>
+</body>
+</html>

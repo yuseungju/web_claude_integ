@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>카운터 분석 · PGO 분석기</title>
+  <meta name="description" content="상대 포켓몬의 약점과 추천 카운터 포켓몬 분석" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>PGO 분석기
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html" aria-current="page">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>카운터 분석</h1>
+      <p>상대(레이드 보스)를 고르면 약점과 함께 상성·공격력·내구를 종합한 추천 카운터를 뽑습니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-controls">
+        <div class="pgo-field">
+          <label for="target">상대 포켓몬</label>
+          <select class="pgo-select" id="target"></select>
+        </div>
+        <div class="pgo-field">
+          <label for="pool">카운터 후보 범위</label>
+          <select class="pgo-select" id="pool">
+            <option value="base">기본 폼만</option>
+            <option value="all">특수 폼 포함</option>
+            <option value="nomega">메가 제외 (특수 폼 포함)</option>
+          </select>
+        </div>
+        <div class="pgo-field">
+          <label for="topn">표시 개수</label>
+          <select class="pgo-select" id="topn">
+            <option value="20">상위 20</option>
+            <option value="40">상위 40</option>
+            <option value="60">상위 60</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="targetInfo"></div>
+
+    <div class="pgo-panel" id="counterPanel" hidden>
+      <h2>추천 카운터</h2>
+      <div class="pgo-table-wrap">
+        <table class="pgo-table">
+          <thead>
+            <tr>
+              <th>#</th><th>포켓몬</th><th>타입</th>
+              <th>공격배율</th><th>유효공격력</th><th>피격배율</th><th>내구</th><th>종합점수</th>
+            </tr>
+          </thead>
+          <tbody id="counterRows"></tbody>
+        </table>
+      </div>
+      <div class="pgo-note" style="margin-top:.8rem">
+        <b>공격배율</b> = 공격자의 자속(STAB) 타입 중 상대에게 가장 잘 통하는 배율 ·
+        <b>유효공격력</b> = 공격 종족값 × 공격배율 × 1.2(자속) ·
+        <b>피격배율</b> = 상대의 자속 공격이 이 포켓몬에게 주는 배율 ·
+        <b>내구</b> = √(방어 × 체력) ·
+        <b>종합점수</b> = 유효공격력<sup>0.75</sup> × (내구 ÷ 피격배율)<sup>0.25</sup> 를 1위 기준 100으로 정규화.
+        기술 세트·DPS는 반영하지 않은 타입/종족값 기반 근사치입니다.
+      </div>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    포켓몬 데이터 출처: PokeAPI (CC BY-NC-SA 3.0) · Pokémon © Nintendo / Creatures Inc. / GAME FREAK Inc.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-counter.js"></script>
+</body>
+</html>

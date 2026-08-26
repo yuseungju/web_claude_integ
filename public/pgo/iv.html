@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CP · IV 계산기 · PGO 분석기</title>
+  <meta name="description" content="CP와 HP로 개체값(IV) 조합 역산" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>PGO 분석기
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/iv.html" aria-current="page">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>CP · IV 계산기</h1>
+      <p>게임에 표시된 CP와 HP를 넣으면 가능한 개체값(IV) 조합을 역산합니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-controls">
+        <div class="pgo-field">
+          <label for="mon">포켓몬</label>
+          <select class="pgo-select" id="mon"></select>
+        </div>
+        <div class="pgo-field">
+          <label for="cp">CP</label>
+          <input class="pgo-input" id="cp" type="number" min="10" max="6000" placeholder="예: 1523" />
+        </div>
+        <div class="pgo-field">
+          <label for="hp">HP <span style="font-weight:400">(선택)</span></label>
+          <input class="pgo-input" id="hp" type="number" min="10" max="600" placeholder="예: 118" />
+        </div>
+        <div class="pgo-field">
+          <label for="grade">감정 등급</label>
+          <select class="pgo-select" id="grade">
+            <option value="">전체</option>
+            <option value="4">★★★ (37~45)</option>
+            <option value="3">★★ (30~36)</option>
+            <option value="2">★ (23~29)</option>
+            <option value="1">☆ (0~22)</option>
+          </select>
+        </div>
+        <div class="pgo-field">
+          <label for="cap">레벨 범위</label>
+          <select class="pgo-select" id="cap">
+            <option value="50">1 ~ 50 (XL 포함)</option>
+            <option value="40">1 ~ 40</option>
+            <option value="35">1 ~ 35 (야생·날씨부스트)</option>
+            <option value="20">20 / 25 (레이드·알)</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:.75rem">
+        <button class="pgo-btn" id="calc" type="button">계산</button>
+        <button class="pgo-btn ghost" id="clear" type="button">초기화</button>
+      </div>
+    </div>
+
+    <div id="summary"></div>
+
+    <div class="pgo-panel" id="resultPanel" hidden>
+      <h2>가능한 조합 <span class="pgo-badge" id="resultCount"></span></h2>
+      <div class="pgo-table-wrap">
+        <table class="pgo-table">
+          <thead>
+            <tr>
+              <th>레벨</th><th>공격 IV</th><th>방어 IV</th><th>체력 IV</th>
+              <th>합계</th><th>%</th><th>등급</th><th>50레벨 CP</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div id="truncated"></div>
+    </div>
+  </main>
+
+  <footer class="pgo-footer">
+    CP = floor((공격+IV) × √(방어+IV) × √(체력+IV) × CPM² ÷ 10),
+    HP = floor((체력+IV) × CPM). 종족값은 메인시리즈 환산치를 사용하므로
+    Niantic이 개별 조정한 일부 종은 결과가 실제와 다를 수 있습니다.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-config.js"></script>
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-store.js"></script>
+  <script src="/pgo/assets/js/pgo-iv.js"></script>
+</body>
+</html>
