@@ -4,3 +4,6 @@ lambda-package/
 lambda-deploy.zip
 .env
 .env.local
+.vscode/
+server.log
+*.log
