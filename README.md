@@ -72,13 +72,22 @@ node tools/build-pgo-godata.js   # 위 둘 + pokemon-go-api + pvpoke -> godex.js
 - **ER** — `(DPS³ × TDO)^(1/4)`. 화력 가중 종합 지표이자 기본 정렬 기준
 - 순위는 **전체 / 등급 / 타입 / 세대** 각 계열마다 따로 매겨 도감 카드와 상세 모달에 표시
 
-### 백엔드 (선택)
+### 백엔드
 
-보관함은 기본적으로 브라우저 `localStorage`에만 저장된다.
-서버 저장으로 전환하려면:
+보관함은 **서버 저장(RDS)** 으로 동작한다. 구성 요소:
 
-1. `db/pgo_schema.sql`을 기존 RDS에 실행 (`pgo_` 접두어 테이블만 생성, 기존 테이블 무영향)
-2. `lambda/pgo.js`가 배포된 상태에서
-3. `public/pgo/assets/js/pgo-config.js`의 `PGO_API_BASE`에 API Gateway 엔드포인트 지정
+| 계층 | 위치 | 내용 |
+|---|---|---|
+| 테이블 | `db/pgo_schema.sql` | `pgo_trainer` / `pgo_box` / `pgo_favorite` / `pgo_lookup_log` |
+| API | `lambda/pgo.js` | `GET·POST /pgo/box`, `DELETE /pgo/box/{id}` |
+| 연결 | `public/pgo/assets/js/pgo-config.js` | `PGO_API_BASE` |
 
 `lambda/pgo.js`는 `pgo_*` 테이블만 다루며 기존 기사/웹소설 라우트와 코드가 섞이지 않는다.
+`lambda/index.js`에는 `/pgo/` 접두 경로를 위임하는 분기 하나만 들어가고,
+매칭되는 라우트가 없으면 `null`을 반환해 기존 라우터로 그대로 통과한다.
+
+로그인은 없다. 브라우저가 발급한 `device_key` 단위로 보관함을 구분하므로
+키를 아는 사람은 해당 보관함을 볼 수 있다 — 민감한 정보는 저장하지 않는다.
+입력값은 `poke_key` 패턴 검사, IV 0~15 clamp, 보관함 500건 상한을 적용한다.
+
+`PGO_API_BASE`를 비우면 `localStorage` 저장으로 자동 폴백한다 (백엔드 없이도 동작).
