@@ -14,7 +14,7 @@
     iv:   (a, b) => (ivPct(b) ?? -1) - (ivPct(a) ?? -1),
     cp:   (a, b) => (b.cp || 0) - (a.cp || 0),
     name: (a, b) => {
-      const an = UI.byId(a.poke_i), bn = UI.byId(b.poke_i);
+      const an = UI.byKey(a.poke_key), bn = UI.byKey(b.poke_key);
       return (an ? an.n : '').localeCompare(bn ? bn.n : '', 'ko');
     },
   };
@@ -40,7 +40,7 @@
     }
 
     $('boxRows').innerHTML = sorted.map(e => {
-      const p = UI.byId(e.poke_i);
+      const p = UI.byKey(e.poke_key);
       const iv = e.iv_atk == null ? null : { a: e.iv_atk, d: e.iv_def, s: e.iv_sta };
       const cp50 = p && iv ? P.cp(p.go, iv, P.MAX_LEVEL_XL) : null;
       const pct = ivPct(e);
@@ -49,7 +49,7 @@
           <span style="display:inline-flex;align-items:center;gap:.45rem">
             ${p ? UI.imgTag(p, 'pgo-card-img') : ''}
             <span>
-              <b class="pgo-detail" data-i="${e.poke_i}" style="cursor:pointer">${p ? UI.esc(P.displayName(p)) : '(알 수 없음)'}</b>
+              <b class="pgo-detail" data-key="${UI.esc(String(e.poke_key))}" style="cursor:pointer">${p ? UI.esc(P.displayName(p)) : '(알 수 없음)'}</b>
               ${e.nickname ? `<br><span style="font-size:.72rem;color:var(--pgo-text-mute)">${UI.esc(e.nickname)}</span>` : ''}
             </span>
           </span>
@@ -98,7 +98,7 @@
       }
       const detail = e.target.closest('.pgo-detail');
       if (detail) {
-        const p = UI.byId(detail.dataset.i);
+        const p = UI.byKey(detail.dataset.key);
         if (p) UI.openDetail(p);
       }
     });

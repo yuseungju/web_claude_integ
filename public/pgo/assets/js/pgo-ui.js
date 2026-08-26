@@ -18,6 +18,12 @@
     return `<span class="pgo-type" style="background:${P.typeColor(id)}">${esc(P.typeName(id))}</span>`;
   }
 
+  /** 등급(계열) 배지 */
+  function classBadge(c) {
+    if (c === 0) return '';
+    return `<span class="pgo-type" style="background:${P.classColor(c)};color:#141a29">${esc(P.className(c))}</span>`;
+  }
+
   /** 배율 -> 표시 문자열 + 색상 클래스 */
   const MULT_CLASS = [
     [2.56, 'x256'], [1.6, 'x160'], [1, 'x100'],
@@ -28,30 +34,39 @@
     return 'x015';
   }
   function multText(m) {
-    // 0.244140625 같은 값이 그대로 보이지 않게 유효숫자 3자리로 자른다
     return `${Number(m.toFixed(3))}x`;
   }
   function multHtml(m) {
     return `<span class="pgo-mult ${multClass(m)}">${multText(m)}</span>`;
   }
 
-  /** 이미지 로드 실패 시 조용히 숨긴다 (스프라이트는 외부 CDN) */
   function imgTag(p, cls) {
     return `<img class="${cls}" loading="lazy" alt="${esc(P.displayName(p))}"
       src="${P.spriteUrl(p)}" onerror="this.style.visibility='hidden'">`;
   }
 
+  /** 순위 배지 — 상위권일수록 강조 */
+  function rankBadge(rank, total, label) {
+    if (!rank) return `<span class="pgo-rank-badge none">순위 없음</span>`;
+    const pct = total ? rank / total : 1;
+    const tier = rank <= 10 ? 'top' : pct <= 0.1 ? 'high' : pct <= 0.4 ? 'mid' : pct <= 0.75 ? 'low' : 'bottom';
+    return `<span class="pgo-rank-badge ${tier}">${label ? esc(label) + ' ' : ''}#${rank}${total ? `<i>/${total}</i>` : ''}</span>`;
+  }
+
   /** 포켓몬 카드 (버튼) */
   function card(p) {
-    return `<button class="pgo-card" data-i="${p.i}">
+    return `<button class="pgo-card" data-idx="${p.idx}">
       <div class="pgo-card-top">
         ${imgTag(p, 'pgo-card-img')}
-        <div>
+        <div style="min-width:0">
           <span class="pgo-card-dex">#${String(p.d).padStart(4, '0')}</span>
           <div class="pgo-card-name">${esc(p.n)}</div>
-          ${p.f ? `<div class="pgo-card-form">${esc(p.f)}</div>` : ''}
-          <div class="pgo-card-types">${p.t.map(typeBadge).join('')}</div>
+          <div class="pgo-card-types">${p.t.map(typeBadge).join('')}${classBadge(p.c)}</div>
         </div>
+      </div>
+      <div class="pgo-card-ranks">
+        ${rankBadge(p.rank.overall, P.totals.overall, '종합')}
+        ${rankBadge(p.rank.classRank, p.rank.classTotal, P.className(p.c))}
       </div>
       <div class="pgo-card-stats">
         <div><span class="pgo-stat-k">공격</span><span class="pgo-stat-v">${p.go.atk}</span></div>
@@ -64,9 +79,9 @@
 
   /** <select>에 포켓몬 목록 채우기 */
   function fillPokemonSelect(sel, opts) {
-    const list = (opts && opts.list) || P.pokemon;
+    const list = (opts && opts.list) || P.pokemon.filter(p => p.r);
     sel.innerHTML = '<option value="">— 포켓몬 선택 —</option>'
-      + list.map(p => `<option value="${p.i}">${esc(P.displayName(p))} (#${p.d})</option>`).join('');
+      + list.map(p => `<option value="${p.idx}">${esc(P.displayName(p))} (#${p.d})</option>`).join('');
   }
 
   /** 타입 <select> 채우기 */
@@ -75,13 +90,14 @@
       + P.types.map(t => `<option value="${t.id}">${esc(t.ko)}</option>`).join('');
   }
 
-  const byId = i => P.pokemon.find(p => p.i === Number(i));
+  const byId = idx => P.pokemon[Number(idx)];
+  const byKey = k => P.pokemon.find(p => p.k === k);
 
   /** 스탯 막대 그래프 */
   function statBars(p) {
     const rows = [
-      ['공격', p.go.atk, 400, '#ff8f5f'],
-      ['방어', p.go.def, 400, '#6fc9ff'],
+      ['공격', p.go.atk, 450, '#ff8f5f'],
+      ['방어', p.go.def, 450, '#6fc9ff'],
       ['체력', p.go.sta, 500, '#3fcf8e'],
     ];
     return `<div class="pgo-statbars">${rows.map(([k, v, max, color]) => `
@@ -121,6 +137,60 @@
       </div>`;
   }
 
+  /** 순위 요약 블록 — 계열별 순위를 한눈에 */
+  function rankSummary(p) {
+    const t = P.totals;
+    const rows = [
+      ['종합 (전체)', p.rank.overall, t.overall],
+      [`${P.className(p.c)} 계열`, p.rank.classRank, p.rank.classTotal],
+      ['DPS (전체)', p.rank.dps, t.overall],
+      ['내구 (전체)', p.rank.bulk, t.overall],
+      [`${p.g}세대`, p.rank.byGen && p.rank.byGen[p.g], t.byGen && t.byGen[p.g]],
+    ];
+    p.t.forEach(ti => rows.push([
+      `${P.typeName(ti)} 타입`,
+      p.rank.byType && p.rank.byType[ti],
+      t.byType && t.byType[ti],
+    ]));
+
+    return `<div>
+      <div class="pgo-section-title">계열별 순위</div>
+      <div class="pgo-rank-grid">
+        ${rows.map(([label, rank, total]) => `
+          <div class="pgo-rank-cell">
+            <span class="pgo-kv-k">${esc(label)}</span>
+            ${rankBadge(rank, total)}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  /** 최적 기술 조합 */
+  function movesetBlock(p) {
+    const r = p.rating;
+    if (!r.fast || !r.charged) {
+      return `<div class="pgo-note">공격 기술 데이터가 없어 전투력을 계산할 수 없습니다.</div>`;
+    }
+    return `<div>
+      <div class="pgo-section-title">최적 기술 조합 (레이드 기준)</div>
+      <div class="pgo-kv">
+        <div class="pgo-kv-item">
+          <span class="pgo-kv-k">속공</span>
+          <span class="pgo-kv-v" style="font-size:.85rem">${esc(r.fast.n)}</span>
+          <span class="pgo-kv-k">${typeBadge(r.fast.t)} 위력 ${r.fast.p} · ${(r.fast.d / 1000).toFixed(1)}초</span>
+        </div>
+        <div class="pgo-kv-item">
+          <span class="pgo-kv-k">차지</span>
+          <span class="pgo-kv-v" style="font-size:.85rem">${esc(r.charged.n)}</span>
+          <span class="pgo-kv-k">${typeBadge(r.charged.t)} 위력 ${r.charged.p} · 에너지 ${r.charged.e}</span>
+        </div>
+        <div class="pgo-kv-item"><span class="pgo-kv-k">DPS</span><span class="pgo-kv-v">${r.dps.toFixed(1)}</span></div>
+        <div class="pgo-kv-item"><span class="pgo-kv-k">TDO</span><span class="pgo-kv-v">${Math.round(r.tdo)}</span></div>
+        <div class="pgo-kv-item"><span class="pgo-kv-k">종합 ER</span><span class="pgo-kv-v">${r.er.toFixed(1)}</span></div>
+      </div>
+    </div>`;
+  }
+
   /** 상세 모달 — 페이지에 #pgoModal 백드롭이 있어야 한다 */
   function openDetail(p) {
     const backdrop = document.getElementById('pgoModal');
@@ -143,21 +213,23 @@
             <span class="pgo-card-dex">#${String(p.d).padStart(4, '0')}</span>
             <span class="pgo-badge">${p.g}세대</span>
             ${p.t.map(typeBadge).join('')}
-            <span class="pgo-badge ${p.measured ? 'measured' : ''}">${p.measured ? '실측값' : '환산값'}</span>
+            ${classBadge(p.c)}
+            ${p.r ? '' : '<span class="pgo-badge">미출시</span>'}
           </div>
         </div>
         <button class="pgo-modal-close" data-close aria-label="닫기">&times;</button>
       </div>
       <div class="pgo-modal-body">
         <div>
-          <div class="pgo-section-title">포켓몬GO 종족값</div>
+          <div class="pgo-section-title">포켓몬GO 종족값 (게임 실측값)</div>
           ${statBars(p)}
         </div>
+        ${rankSummary(p)}
+        ${movesetBlock(p)}
         <div class="pgo-kv">
           <div class="pgo-kv-item"><span class="pgo-kv-k">최대 CP (50레벨)</span><span class="pgo-kv-v">${p.maxCp}</span></div>
           <div class="pgo-kv-item"><span class="pgo-kv-k">40레벨 CP</span><span class="pgo-kv-v">${p.cp40}</span></div>
           <div class="pgo-kv-item"><span class="pgo-kv-k">내구지수(방×체)</span><span class="pgo-kv-v">${p.bulk}</span></div>
-          <div class="pgo-kv-item"><span class="pgo-kv-k">종합지수</span><span class="pgo-kv-v">${Math.round(Math.cbrt(p.go.atk * p.go.def * p.go.sta))}</span></div>
         </div>
         ${defenseSummary(p)}
         <div>
@@ -168,11 +240,6 @@
               <tbody>${cpRow}</tbody>
             </table>
           </div>
-        </div>
-        <div class="pgo-note">
-          메인시리즈 종족값을 포켓몬GO 환산식으로 변환한 값입니다.
-          Niantic이 개별 조정한 일부 종(뮤츠·뮤 등)은 <b>실측값</b> 배지로 구분되며,
-          그 외 전설·환상 포켓몬은 실제 게임 수치와 차이가 있을 수 있습니다.
         </div>
       </div>`;
 
@@ -187,7 +254,6 @@
     document.body.style.overflow = '';
   }
 
-  /** 모달 닫기 동작(백드롭 클릭 / X / ESC) 연결 — 페이지당 1회 */
   function bindModal() {
     const backdrop = document.getElementById('pgoModal');
     if (!backdrop) return;
@@ -199,7 +265,6 @@
     });
   }
 
-  /** 데이터 로드 + 에러를 화면에 표시하는 공통 부트스트랩 */
   function boot(render) {
     P.load().then(() => {
       bindModal();
@@ -216,8 +281,8 @@
   }
 
   global.PGOUI = {
-    esc, typeBadge, multClass, multText, multHtml, imgTag, card,
-    fillPokemonSelect, fillTypeSelect, byId, statBars, defenseSummary,
-    openDetail, closeDetail, bindModal, boot,
+    esc, typeBadge, classBadge, rankBadge, multClass, multText, multHtml, imgTag, card,
+    fillPokemonSelect, fillTypeSelect, byId, byKey, statBars, defenseSummary,
+    rankSummary, movesetBlock, openDetail, closeDetail, bindModal, boot,
   };
 })(window);

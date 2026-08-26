@@ -1,8 +1,11 @@
 /**
- * PGO 분석 엔진 — 데이터 로딩 + 포켓몬GO 스탯/CP/타입 계산
+ * PGO 분석 엔진 — 데이터 로딩 + 포켓몬GO 스탯/CP/타입/랭킹 계산
  *
  * 이 파일은 /pgo/ 앱 전용이다. 기존 SAP 사이트(/assets/*)와 어떤 것도 공유하지 않는다.
  * 전역 오염을 막기 위해 모든 것을 window.PGO 하나에만 노출한다.
+ *
+ * 종족값은 tools/build-pgo-godata.js 가 만든 godex.json 의 **게임 내 실측값**이다.
+ * (예전 메인시리즈 환산식은 더 이상 쓰지 않는다.)
  */
 (function (global) {
   'use strict';
@@ -46,6 +49,12 @@
 
   // ── 타입 상성 배율 ────────────────────────────────────────────
   const EFF = { DOUBLE_RESIST: 0.390625, RESIST: 0.625, NEUTRAL: 1, SUPER: 1.6 };
+  const STAB = 1.2;
+
+  // ── 랭킹 계산 상수 ────────────────────────────────────────────
+  const RANK_LEVEL = 40;        // 랭킹 산출 기준 레벨 (개체값 15/15/15)
+  const TARGET_DEF = 180;       // 가상 레이드 보스 방어 종족값
+  const ENEMY_DPS_K = 900;      // 피격 DPS 근사 상수 (적DPS ≈ K / 방어력)
 
   const TYPE_COLOR = {
     1: '#9fa19f', 2: '#ff8000', 3: '#81b9ef', 4: '#9141cb', 5: '#915121',
@@ -54,29 +63,20 @@
     16: '#5060e1', 17: '#624d4e', 18: '#ef70ef',
   };
 
-  // ── 상태 ──────────────────────────────────────────────────────
-  let DB = null;   // { types, chart, pokemon }
-  const typeById = {};
+  /** 등급(계열) 정의 — godex.json 의 c 필드 */
+  const CLASSES = [
+    { id: 0, ko: '일반', color: '#8c98b4' },
+    { id: 1, ko: '전설', color: '#ffcb05' },
+    { id: 2, ko: '환상', color: '#ff7ad9' },
+    { id: 3, ko: '울트라비스트', color: '#59e0c5' },
+    { id: 4, ko: '메가', color: '#ff8f5f' },
+  ];
+  const CLASS_BY_ID = {};
+  CLASSES.forEach(c => { CLASS_BY_ID[c.id] = c; });
 
-  /**
-   * 메인시리즈 종족값 -> 포켓몬GO 종족값(근사 환산).
-   * Niantic이 개별 조정한 종이 일부 있어 실제 게임 수치와 1~2 차이가 날 수 있다.
-   *   ScaledAtk = round(2 * (7/8*max(공,특공) + 1/8*min(공,특공)))
-   *   ScaledDef = round(2 * (5/8*max(방,특방) + 3/8*min(방,특방)))
-   *   SpeedMod  = 1 + (스피드 - 75) / 500
-   *   체력      = floor(HP * 1.75 + 50)
-   */
-  function toGoStats(s) {
-    const [hp, atk, def, spa, spd, spe] = s;
-    const scaledAtk = Math.round(2 * ((7 / 8) * Math.max(atk, spa) + (1 / 8) * Math.min(atk, spa)));
-    const scaledDef = Math.round(2 * ((5 / 8) * Math.max(def, spd) + (3 / 8) * Math.min(def, spd)));
-    const speedMod = 1 + (spe - 75) / 500;
-    return {
-      atk: Math.round(scaledAtk * speedMod),
-      def: Math.round(scaledDef * speedMod),
-      sta: Math.floor(hp * 1.75 + 50),
-    };
-  }
+  // ── 상태 ──────────────────────────────────────────────────────
+  let DB = null;
+  const typeById = {};
 
   /** CP = floor( (공+IV) * sqrt(방+IV) * sqrt(체+IV) * CPM^2 / 10 ), 최소 10 */
   function cp(go, iv, level) {
@@ -95,104 +95,197 @@
 
   const IV_PERFECT = { a: 15, d: 15, s: 15 };
 
-  /** 개체값 만렙 기준 최대 CP */
   function maxCp(go, level) {
     return cp(go, IV_PERFECT, level || MAX_LEVEL_XL);
   }
 
   // ── 타입 계산 ────────────────────────────────────────────────
-  /** 공격타입 -> 방어타입 조합에 대한 최종 배율 */
   function effectiveness(attackTypeId, defenderTypeIds) {
     return defenderTypeIds.reduce((m, t) => m * (DB.chart[attackTypeId]?.[t] ?? 1), 1);
   }
 
-  /** 방어자 기준 18타입 전체 피해배율 { typeId: 배율 } */
   function defenseProfile(defenderTypeIds) {
     const out = {};
     DB.types.forEach(t => { out[t.id] = effectiveness(t.id, defenderTypeIds); });
     return out;
   }
 
-  /** 공격자 타입 조합이 상대에게 낼 수 있는 최고 배율 (STAB 기준 최선의 자속기 가정) */
   function bestStab(attackerTypeIds, defenderTypeIds) {
     return attackerTypeIds.reduce((best, t) => Math.max(best, effectiveness(t, defenderTypeIds)), 0);
+  }
+
+  // ── 전투력 계산 (레이드 기준) ─────────────────────────────────
+  /** GO 피해 공식: floor(0.5 * 위력 * 공/방 * 자속 * 상성) + 1 */
+  function moveDamage(move, atkEff, targetDef, typeIds, targetTypes) {
+    const stab = typeIds.includes(move.t) ? STAB : 1;
+    const eff = targetTypes ? effectiveness(move.t, targetTypes) : 1;
+    return Math.floor(0.5 * move.p * (atkEff / targetDef) * stab * eff) + 1;
+  }
+
+  /**
+   * 속공 1개 + 차지 1개 조합의 사이클 DPS.
+   * 차지기 1회를 쓰기 위해 필요한 속공 횟수 n = ceil(소모에너지 / 획득에너지)
+   */
+  function pairDps(fast, charged, atkEff, typeIds, targetTypes) {
+    if (!fast || !charged || !fast.e) return 0;
+    const n = Math.ceil(charged.e / fast.e);
+    const cycleTime = (n * fast.d + charged.d) / 1000;
+    if (cycleTime <= 0) return 0;
+    const dmg = n * moveDamage(fast, atkEff, TARGET_DEF, typeIds, targetTypes)
+      + moveDamage(charged, atkEff, TARGET_DEF, typeIds, targetTypes);
+    return dmg / cycleTime;
+  }
+
+  /**
+   * 최적 기술 조합의 DPS / TDO / ER 계산.
+   * targetTypes 를 주면 그 상대 기준, 없으면 상성 중립(범용) 기준.
+   */
+  function combatRating(p, targetTypes) {
+    const m = CPM[RANK_LEVEL];
+    const atkEff = (p.s[0] + 15) * m;
+    const defEff = (p.s[1] + 15) * m;
+    const hpEff = Math.floor((p.s[2] + 15) * m);
+
+    let best = { dps: 0, fast: null, charged: null };
+    for (const fi of p.fm) {
+      const fast = DB.moves[fi];
+      for (const ci of p.cm) {
+        const charged = DB.moves[ci];
+        const dps = pairDps(fast, charged, atkEff, p.t, targetTypes);
+        if (dps > best.dps) best = { dps, fast, charged };
+      }
+    }
+
+    // 피격 DPS 근사 -> 생존 시간 -> 총 피해량
+    const enemyDps = ENEMY_DPS_K / defEff;
+    const survival = hpEff / enemyDps;
+    const tdo = best.dps * survival;
+    // 공격 성능에 가중치를 둔 종합 지표 (DPS^3 x TDO 의 4제곱근)
+    const er = Math.pow(Math.pow(best.dps, 3) * tdo, 0.25);
+
+    return {
+      dps: best.dps, tdo, er, survival,
+      fast: best.fast, charged: best.charged,
+      atkEff, defEff, hpEff,
+      bulk: defEff * hpEff / 1000,
+    };
+  }
+
+  // ── 랭킹 부여 ────────────────────────────────────────────────
+  /** list 를 metric 내림차순으로 정렬해 1위부터 순번을 매긴다 */
+  function assignRanks(list, metric, writeKey) {
+    [...list].sort((a, b) => b.rating[metric] - a.rating[metric])
+      .forEach((p, i) => { p.rank[writeKey] = i + 1; });
+  }
+
+  function buildRankings() {
+    DB.pokemon.forEach(p => {
+      p.rating = combatRating(p);
+      p.rank = {};
+    });
+
+    // 미출시 폼(게임 파일에만 있는 데이터)은 순위 산정에서 제외한다
+    const all = DB.pokemon.filter(p => p.r);
+
+    // 전체 랭킹
+    assignRanks(all, 'er', 'overall');
+    assignRanks(all, 'dps', 'dps');
+    assignRanks(all, 'bulk', 'bulk');
+    DB.totals = { overall: all.length };
+
+    // 계열별 랭킹 — 등급 / 타입 / 세대
+    const groupRank = (keyFn, rankKey, totalKey) => {
+      const groups = new Map();
+      all.forEach(p => {
+        for (const g of keyFn(p)) {
+          if (!groups.has(g)) groups.set(g, []);
+          groups.get(g).push(p);
+        }
+      });
+      const totals = {};
+      groups.forEach((list, g) => {
+        totals[g] = list.length;
+        [...list].sort((a, b) => b.rating.er - a.rating.er)
+          .forEach((p, i) => { p.rank[rankKey] = p.rank[rankKey] || {}; p.rank[rankKey][g] = i + 1; });
+      });
+      DB.totals[totalKey] = totals;
+    };
+
+    groupRank(p => [p.c], 'byClass', 'byClass');
+    groupRank(p => p.t, 'byType', 'byType');
+    groupRank(p => [p.g], 'byGen', 'byGen');
+
+    // 카드/검색에 바로 쓰는 대표 순위: 자기 등급 안에서의 순위
+    all.forEach(p => {
+      p.rank.classRank = p.rank.byClass[p.c];
+      p.rank.classTotal = DB.totals.byClass[p.c];
+    });
   }
 
   // ── 조회 헬퍼 ────────────────────────────────────────────────
   function typeName(id) { return typeById[id]?.ko || String(id); }
   function typeColor(id) { return TYPE_COLOR[id] || '#888'; }
+  function className(c) { return CLASS_BY_ID[c]?.ko || '일반'; }
+  function classColor(c) { return CLASS_BY_ID[c]?.color || '#8c98b4'; }
 
-  /** 표시용 이름: 폼이 있으면 "리자몽 (메가 X)" */
-  function displayName(p) { return p.f ? `${p.n} (${p.f})` : p.n; }
+  /** godex.json 의 n 은 폼까지 포함한 완전한 한국어명이라 그대로 쓴다 (예: '메가이상해꽃') */
+  function displayName(p) { return p.n; }
 
   /** 스프라이트는 tools/fetch-pgo-sprites.js 로 저장소에 번들되어 있다 (외부 CDN 미사용) */
   function spriteUrl(p) {
     return `/pgo/assets/sprites/${p.i}.png`;
   }
 
-  /** 검색어 매칭 (한글명/영문명/도감번호) */
   function matches(p, q) {
     if (!q) return true;
     const s = q.trim().toLowerCase();
     if (!s) return true;
     return p.n.toLowerCase().includes(s)
-      || p.e.toLowerCase().includes(s)
+      || p.k.toLowerCase().replace(/_/g, ' ').includes(s)
       || String(p.d) === s
       || (p.f && p.f.toLowerCase().includes(s));
   }
 
   // ── 초기화 ───────────────────────────────────────────────────
-  function overrideKey(p) { return p.f ? `${p.d}:${p.f}` : String(p.d); }
-
-  async function fetchJson(url, required) {
-    const res = await fetch(url);
-    if (!res.ok) {
-      if (required) throw new Error(`${url} 를 불러오지 못했습니다 (HTTP ${res.status})`);
-      return null;
-    }
-    return res.json();
-  }
-
   let loadPromise = null;
   function load() {
     if (loadPromise) return loadPromise;
-    loadPromise = (async () => {
-      const [dex, overrides] = await Promise.all([
-        fetchJson('/pgo/assets/data/pokedex.json', true),
-        fetchJson('/pgo/assets/data/go-overrides.json', false).catch(() => null),
-      ]);
+    loadPromise = fetch('/pgo/assets/data/godex.json')
+      .then(res => {
+        if (!res.ok) throw new Error(`도감 데이터를 불러오지 못했습니다 (HTTP ${res.status})`);
+        return res.json();
+      })
+      .then(json => {
+        DB = json;
+        DB.types.forEach(t => { typeById[t.id] = t; });
 
-      DB = dex;
-      DB.types.forEach(t => { typeById[t.id] = t; });
+        DB.pokemon.forEach((p, idx) => {
+          p.idx = idx;                                  // 화면에서 쓰는 고유 인덱스
+          p.go = { atk: p.s[0], def: p.s[1], sta: p.s[2] };
+          p.maxCp = maxCp(p.go, MAX_LEVEL_XL);
+          p.cp40 = maxCp(p.go, MAX_LEVEL_TRADE);
+          p.bulk = Math.round(p.go.def * p.go.sta / 100);
+        });
 
-      // 파생값을 미리 계산해 매 렌더마다 재계산하지 않게 한다
-      DB.pokemon.forEach(p => {
-        const ov = overrides && overrides[overrideKey(p)];
-        if (Array.isArray(ov)) {
-          p.go = { atk: ov[0], def: ov[1], sta: ov[2] };
-          p.measured = true;            // 게임 내 실측값 (환산식 예외 종)
-        } else {
-          p.go = toGoStats(p.s);
-          p.measured = false;           // 메인시리즈 종족값 환산
-        }
-        p.maxCp = maxCp(p.go, MAX_LEVEL_XL);
-        p.cp40 = maxCp(p.go, MAX_LEVEL_TRADE);
-        p.bulk = Math.round(p.go.def * p.go.sta / 100);
+        buildRankings();
+        return DB;
       });
-
-      return DB;
-    })();
     return loadPromise;
   }
 
   global.PGO = {
-    CPM, LEVELS, EFF, MAX_LEVEL_WILD, MAX_LEVEL_TRADE, MAX_LEVEL_XL, IV_PERFECT,
+    CPM, LEVELS, EFF, STAB, MAX_LEVEL_WILD, MAX_LEVEL_TRADE, MAX_LEVEL_XL, IV_PERFECT,
+    RANK_LEVEL, TARGET_DEF, CLASSES,
     load,
     get db() { return DB; },
     get pokemon() { return DB ? DB.pokemon : []; },
     get types() { return DB ? DB.types : []; },
-    toGoStats, cp, hp, maxCp,
+    get moves() { return DB ? DB.moves : []; },
+    get totals() { return DB ? DB.totals : {}; },
+    cp, hp, maxCp,
     effectiveness, defenseProfile, bestStab,
-    typeName, typeColor, displayName, spriteUrl, matches,
+    combatRating, pairDps, moveDamage,
+    typeName, typeColor, className, classColor,
+    displayName, spriteUrl, matches,
   };
 })(window);

@@ -135,7 +135,7 @@
   async function save(btn) {
     if (!current) return;
     const entry = {
-      poke_i: current.i,
+      poke_key: current.k,
       nickname: '',
       cp: parseInt($('cp').value, 10) || null,
       hp: parseInt($('hp').value, 10) || null,

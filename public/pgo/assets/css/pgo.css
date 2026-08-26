@@ -275,3 +275,58 @@ body.pgo {
   .pgo-controls { grid-template-columns: 1fr 1fr; }
   .pgo-modal-head img { width: 56px; height: 56px; }
 }
+
+/* ── 순위 배지 ───────────────────────────────────────────── */
+.pgo-rank-badge {
+  display: inline-flex; align-items: baseline; gap: 1px;
+  font-family: var(--pgo-mono); font-size: 0.72rem; font-weight: 700;
+  padding: 0.12rem 0.42rem; border-radius: 5px; white-space: nowrap;
+  background: var(--pgo-surface-2); color: var(--pgo-text-dim);
+}
+.pgo-rank-badge i { font-style: normal; font-size: 0.62rem; opacity: .6; font-weight: 400; }
+.pgo-rank-badge.top    { background: var(--pgo-accent);        color: #1a1200; }
+.pgo-rank-badge.high   { background: rgba(63,207,142,.20);     color: var(--pgo-green); }
+.pgo-rank-badge.mid    { background: rgba(111,201,255,.15);    color: #6fc9ff; }
+.pgo-rank-badge.low    { background: var(--pgo-surface-2);     color: var(--pgo-text-dim); }
+.pgo-rank-badge.bottom { background: rgba(238,75,75,.15);      color: #ff8b8b; }
+.pgo-rank-badge.none   { background: transparent;              color: var(--pgo-text-mute); font-weight: 400; }
+
+.pgo-card-ranks {
+  display: flex; gap: 0.25rem; flex-wrap: wrap;
+  margin-top: 0.55rem;
+}
+
+.pgo-rank-grid {
+  display: grid; gap: 0.45rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.pgo-rank-cell {
+  background: var(--pgo-bg-soft); border-radius: var(--pgo-radius-sm);
+  padding: 0.45rem 0.6rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;
+}
+
+/* ── 계열 최상위 요약 ────────────────────────────────────── */
+.pgo-tier-grid {
+  display: grid; gap: 0.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.pgo-tier-cell {
+  background: var(--pgo-bg-soft); border: 1px solid var(--pgo-border);
+  border-radius: var(--pgo-radius); padding: 0.7rem 0.6rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+  font: inherit; color: inherit; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.pgo-tier-cell:hover { border-color: var(--pgo-accent-2); background: var(--pgo-surface-2); }
+.pgo-tier-label { font-size: 0.68rem; font-weight: 700; }
+.pgo-tier-img { width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated; }
+.pgo-tier-name { font-size: 0.84rem; font-weight: 700; text-align: center; line-height: 1.2; }
+.pgo-tier-er { font-family: var(--pgo-mono); font-size: 0.72rem; color: var(--pgo-text-mute); }
+
+.pgo-row-img {
+  width: 30px; height: 30px; object-fit: contain; flex: none;
+  image-rendering: pixelated;
+}
+
+.pgo-chip input[type="checkbox"] { accent-color: var(--pgo-accent-2); }

@@ -61,7 +61,7 @@
   async function add(entry) {
     const row = Object.assign({
       id: null,
-      poke_i: null, nickname: '',
+      poke_key: null, nickname: '',
       cp: null, hp: null, level: null,
       iv_atk: null, iv_def: null, iv_sta: null,
       memo: '',

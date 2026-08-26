@@ -25,12 +25,13 @@ CREATE TABLE IF NOT EXISTS pgo_trainer (
 
 -- ────────────────────────────────────────────
 -- 보관함 — CP·IV 계산기에서 저장한 개체 기록
---   poke_i : public/pgo/assets/data/pokedex.json 의 i (폼 포함 고유 id)
+--   poke_key : godex.json 의 k (예: 'MACHAMP', 'CHARIZARD_MEGA_X').
+--              배열 인덱스가 아니라 포켓몬GO 고유 키라 데이터 재빌드에도 안 깨진다.
 -- ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS pgo_box (
   id         SERIAL      PRIMARY KEY,
   trainer_id INTEGER     NOT NULL REFERENCES pgo_trainer(id) ON DELETE CASCADE,
-  poke_i     INTEGER     NOT NULL,
+  poke_key   TEXT        NOT NULL,
   nickname   TEXT        DEFAULT '',
   cp         INTEGER,
   hp         INTEGER,
@@ -50,9 +51,9 @@ CREATE INDEX IF NOT EXISTS idx_pgo_box_trainer ON pgo_box(trainer_id, created_at
 -- ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS pgo_favorite (
   trainer_id INTEGER     NOT NULL REFERENCES pgo_trainer(id) ON DELETE CASCADE,
-  poke_i     INTEGER     NOT NULL,
+  poke_key   TEXT        NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (trainer_id, poke_i)
+  PRIMARY KEY (trainer_id, poke_key)
 );
 
 -- ────────────────────────────────────────────
@@ -60,9 +61,9 @@ CREATE TABLE IF NOT EXISTS pgo_favorite (
 -- ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS pgo_lookup_log (
   id         SERIAL      PRIMARY KEY,
-  poke_i     INTEGER     NOT NULL,
+  poke_key   TEXT        NOT NULL,
   kind       VARCHAR(20) NOT NULL,          -- 'counter' | 'detail' | 'iv'
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_pgo_lookup_poke ON pgo_lookup_log(poke_i, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pgo_lookup_poke ON pgo_lookup_log(poke_key, created_at DESC);

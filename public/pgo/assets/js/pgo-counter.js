@@ -7,9 +7,9 @@
   const STAB = 1.2;
 
   function candidatePool(mode) {
-    if (mode === 'base') return P.pokemon.filter(p => !p.f);
-    if (mode === 'nomega') return P.pokemon.filter(p => !/^메가/.test(p.f));
-    return P.pokemon;
+    if (mode === 'base') return P.pokemon.filter(p => p.r && !p.f);
+    if (mode === 'nomega') return P.pokemon.filter(p => p.r && p.c !== 4);
+    return P.pokemon.filter(p => p.r);
   }
 
   function score(attacker, target) {
@@ -36,7 +36,7 @@
           <div style="display:flex;gap:.3rem;align-items:center;margin-top:.3rem;flex-wrap:wrap">
             <span class="pgo-card-dex">#${String(target.d).padStart(4, '0')}</span>
             ${target.t.map(UI.typeBadge).join('')}
-            <span class="pgo-badge ${target.measured ? 'measured' : ''}">${target.measured ? '실측값' : '환산값'}</span>
+            ${UI.classBadge(target.c)}
           </div>
         </div>
         <div class="pgo-kv" style="flex:1;min-width:260px">
@@ -50,7 +50,7 @@
   }
 
   function renderCounters(target) {
-    const pool = candidatePool($('pool').value).filter(p => p.i !== target.i);
+    const pool = candidatePool($('pool').value).filter(p => p.idx !== target.idx);
     const topN = Number($('topn').value);
 
     const ranked = pool.map(p => score(p, target))
@@ -65,7 +65,7 @@
     }
 
     const top = ranked[0].raw;
-    $('counterRows').innerHTML = ranked.map((r, i) => `<tr data-i="${r.p.i}" style="cursor:pointer">
+    $('counterRows').innerHTML = ranked.map((r, i) => `<tr data-idx="${r.p.idx}" style="cursor:pointer">
       <td class="num">${i + 1}</td>
       <td>${UI.esc(P.displayName(r.p))}</td>
       <td>${r.p.t.map(UI.typeBadge).join(' ')}</td>
@@ -95,13 +95,13 @@
     ['target', 'pool', 'topn'].forEach(id => $(id).addEventListener('change', update));
 
     $('counterRows').addEventListener('click', e => {
-      const tr = e.target.closest('tr[data-i]');
-      if (tr) UI.openDetail(UI.byId(tr.dataset.i));
+      const tr = e.target.closest('tr[data-idx]');
+      if (tr) UI.openDetail(UI.byId(tr.dataset.idx));
     });
 
     // 기본값: 초기 화면이 비지 않도록 대표 레이드 보스(뮤츠)를 띄운다
-    const seed = P.pokemon.find(p => p.d === 150 && !p.f);
-    if (seed) $('target').value = seed.i;
+    const seed = P.pokemon.find(p => p.k === 'MEWTWO');
+    if (seed) $('target').value = seed.idx;
     update();
   }
 

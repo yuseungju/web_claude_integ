@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>계열별 순위 · PGO 분석기</title>
+  <meta name="description" content="등급·타입·세대 계열별 포켓몬GO 강함 순위" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>PGO 분석기
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/rank.html" aria-current="page">계열별 순위</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>계열별 순위</h1>
+      <p>실측 종족값과 실제 기술 수치로 계산한 강함 순위입니다. 등급 · 타입 · 세대로 계열을 나눠 봅니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-controls">
+        <div class="pgo-field">
+          <label for="axis">계열 기준</label>
+          <select class="pgo-select" id="axis">
+            <option value="class">등급 (일반·전설·환상·UB·메가)</option>
+            <option value="type">타입</option>
+            <option value="gen">세대</option>
+            <option value="all">전체 (계열 구분 없음)</option>
+          </select>
+        </div>
+        <div class="pgo-field">
+          <label for="group">계열 값</label>
+          <select class="pgo-select" id="group"></select>
+        </div>
+        <div class="pgo-field">
+          <label for="metric">지표</label>
+          <select class="pgo-select" id="metric">
+            <option value="er">종합 ER (공격 중심)</option>
+            <option value="dps">DPS (순수 화력)</option>
+            <option value="bulk">내구 (방어×체력)</option>
+            <option value="tdo">TDO (총 피해량)</option>
+          </select>
+        </div>
+        <div class="pgo-field">
+          <label for="dir">보기</label>
+          <select class="pgo-select" id="dir">
+            <option value="top">좋은 순 (상위)</option>
+            <option value="bottom">안 좋은 순 (하위)</option>
+          </select>
+        </div>
+        <div class="pgo-field">
+          <label for="limit">개수</label>
+          <select class="pgo-select" id="limit">
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="0">전체</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <span class="pgo-chip" id="groupCount">—</span>
+        <label class="pgo-chip" style="cursor:pointer">
+          <input type="checkbox" id="megaOff" style="margin:0" /> 메가 제외
+        </label>
+        <label class="pgo-chip" style="cursor:pointer">
+          <input type="checkbox" id="formOff" style="margin:0" /> 특수 폼 제외
+        </label>
+      </div>
+    </div>
+
+    <div class="pgo-panel" id="tierPanel">
+      <h2>등급별 최상위</h2>
+      <div class="pgo-tier-grid" id="tierGrid"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2 id="rankTitle">순위</h2>
+      <div class="pgo-table-wrap">
+        <table class="pgo-table">
+          <thead>
+            <tr>
+              <th>순위</th><th>포켓몬</th><th>타입</th><th>등급</th>
+              <th>공/방/체</th><th>DPS</th><th>TDO</th><th>ER</th><th>최적 기술</th>
+            </tr>
+          </thead>
+          <tbody id="rankRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>지표 설명</h2>
+      <div class="pgo-note">
+        레벨 40 · 개체값 15/15/15 기준으로, 보유 기술 전 조합 중 가장 강한 조합을 골라 계산합니다.<br><br>
+        <b>DPS</b> — 초당 피해량. 속공/차지 사이클을 실제 위력·에너지·시전시간으로 시뮬레이션합니다.
+        피해 공식은 <code>floor(0.5 × 위력 × 공격÷방어 × 자속) + 1</code>, 가상 상대 방어력 180 기준.<br>
+        <b>TDO</b> — 쓰러지기 전까지 넣는 총 피해량. 생존시간(체력×방어에 비례)을 곱한 값.<br>
+        <b>ER</b> — <code>(DPS³ × TDO)</code>의 4제곱근. 화력에 가중치를 둔 종합 지표로, 기본 정렬 기준입니다.<br>
+        <b>내구</b> — 방어력 × 체력. 레이드 방어나 체육관 방어 성능 지표.<br><br>
+        상성은 중립(등배) 가정입니다. 특정 상대 기준 순위는 <a href="/pgo/counter.html" style="color:var(--pgo-accent-2)">카운터 분석</a>을 쓰세요.
+        게임 파일에만 있고 아직 출시되지 않은 폼은 순위에서 제외했습니다.
+      </div>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    종족값·기술 데이터 출처: pokemon-go-api · 출시 여부: pvpoke · 타입 상성·스프라이트: PokeAPI (CC BY-NC-SA 3.0).
+    Pokémon © Nintendo / Creatures Inc. / GAME FREAK Inc. · 본 페이지는 비공식 팬 도구입니다.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-rank.js"></script>
+</body>
+</html>
