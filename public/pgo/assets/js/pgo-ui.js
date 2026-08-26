@@ -53,26 +53,46 @@
     return `<span class="pgo-rank-badge ${tier}">${label ? esc(label) + ' ' : ''}#${rank}${total ? `<i>/${total}</i>` : ''}</span>`;
   }
 
+  /** 보유 판정 배너 — 카드에서 가장 먼저 읽히는 요소 */
+  function tierBanner(p) {
+    const t = P.tier(p);
+    return `<div class="pgo-tier-banner t${t.id}">
+      <span class="pgo-tier-word">${esc(t.ko)}</span>
+      <span class="pgo-tier-mark">${esc(t.short)}</span>
+    </div>`;
+  }
+
+  /** 진화형 기준으로 판정된 경우 그 근거를 한 줄로 보여준다 */
+  function inheritedNote(p) {
+    if (!p.potential || !p.potential.inherited) return '';
+    return `<div class="pgo-card-basis">→ ${esc(P.displayName(p.potential.src))} 기준</div>`;
+  }
+
   /** 포켓몬 카드 (버튼) */
   function card(p) {
-    return `<button class="pgo-card" data-idx="${p.idx}">
-      <div class="pgo-card-top">
-        ${imgTag(p, 'pgo-card-img')}
-        <div style="min-width:0">
-          <span class="pgo-card-dex">#${String(p.d).padStart(4, '0')}</span>
-          <div class="pgo-card-name">${esc(p.n)}</div>
-          <div class="pgo-card-types">${p.t.map(typeBadge).join('')}${classBadge(p.c)}</div>
+    const t = P.tier(p);
+    return `<button class="pgo-card tier-${t.id}" data-idx="${p.idx}">
+      ${tierBanner(p)}
+      <div class="pgo-card-body">
+        <div class="pgo-card-top">
+          ${imgTag(p, 'pgo-card-img')}
+          <div style="min-width:0">
+            <span class="pgo-card-dex">#${String(p.d).padStart(4, '0')}</span>
+            <div class="pgo-card-name">${esc(p.n)}</div>
+            <div class="pgo-card-types">${p.t.map(typeBadge).join('')}${classBadge(p.c)}</div>
+          </div>
         </div>
-      </div>
-      <div class="pgo-card-ranks">
-        ${rankBadge(p.rank.overall, P.totals.overall, '종합')}
-        ${rankBadge(p.rank.classRank, p.rank.classTotal, P.className(p.c))}
-      </div>
-      <div class="pgo-card-stats">
-        <div><span class="pgo-stat-k">공격</span><span class="pgo-stat-v">${p.go.atk}</span></div>
-        <div><span class="pgo-stat-k">방어</span><span class="pgo-stat-v">${p.go.def}</span></div>
-        <div><span class="pgo-stat-k">체력</span><span class="pgo-stat-v">${p.go.sta}</span></div>
-        <div><span class="pgo-stat-k">최대CP</span><span class="pgo-stat-v">${p.maxCp}</span></div>
+        ${inheritedNote(p)}
+        <div class="pgo-card-ranks">
+          ${rankBadge(p.potentialRank, P.totals.potential, '잠재')}
+          ${rankBadge(p.rank.classRank, p.rank.classTotal, P.className(p.c))}
+        </div>
+        <div class="pgo-card-stats">
+          <div><span class="pgo-stat-k">공격</span><span class="pgo-stat-v">${p.go.atk}</span></div>
+          <div><span class="pgo-stat-k">방어</span><span class="pgo-stat-v">${p.go.def}</span></div>
+          <div><span class="pgo-stat-k">체력</span><span class="pgo-stat-v">${p.go.sta}</span></div>
+          <div><span class="pgo-stat-k">최대CP</span><span class="pgo-stat-v">${p.maxCp}</span></div>
+        </div>
       </div>
     </button>`;
   }
@@ -205,6 +225,7 @@
     </tr>`).join('');
 
     backdrop.querySelector('.pgo-modal').innerHTML = `
+      ${tierBanner(p)}
       <div class="pgo-modal-head">
         ${imgTag(p, '')}
         <div>
@@ -220,6 +241,10 @@
         <button class="pgo-modal-close" data-close aria-label="닫기">&times;</button>
       </div>
       <div class="pgo-modal-body">
+        ${p.potential && p.potential.inherited ? `<div class="pgo-note">
+          이 포켓몬의 보유 판정은 진화형 <b>${esc(P.displayName(p.potential.src))}</b> 기준입니다
+          (잠재 ER ${p.potential.er.toFixed(1)}). 지금 상태의 성능이 아니라 <b>키웠을 때의 가치</b>를 나타냅니다.
+        </div>` : ''}
         <div>
           <div class="pgo-section-title">포켓몬GO 종족값 (게임 실측값)</div>
           ${statBars(p)}
@@ -281,7 +306,7 @@
   }
 
   global.PGOUI = {
-    esc, typeBadge, classBadge, rankBadge, multClass, multText, multHtml, imgTag, card,
+    esc, typeBadge, classBadge, rankBadge, tierBanner, inheritedNote, multClass, multText, multHtml, imgTag, card,
     fillPokemonSelect, fillTypeSelect, byId, byKey, statBars, defenseSummary,
     rankSummary, movesetBlock, openDetail, closeDetail, bindModal, boot,
   };

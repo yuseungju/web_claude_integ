@@ -152,6 +152,8 @@ function main() {
       t: types,
       s: [st.attack, st.defense, st.stamina],
       fm, cm,
+      ev: opts.evolutions || [],   // 진화 대상 키 (원본 표기, 아래에서 실제 키로 정규화)
+      mg: opts.megas || [],        // 메가진화 키
     });
   }
 
@@ -178,6 +180,8 @@ function main() {
       push(p, {
         key: p.id, dexNr: p.dexNr, gen: p.generation, cls, form: '',
         released: isReleased(p.id),
+        evolutions: (p.evolutions || []).map(e => [e.formId, e.id]),
+        megas: Object.keys(p.megaEvolutions || {}),
       });
       const base = pokemon[pokemon.length - 1];
 
@@ -186,6 +190,8 @@ function main() {
         push(f, {
           key, dexNr: p.dexNr, gen: p.generation, cls: fCls,
           form: formTag(key, p.id), suffix: formSuffix(key, p.id), released: isReleased(key),
+          evolutions: (f.evolutions || []).map(e => [e.formId, e.id]),
+          megas: Object.keys(f.megaEvolutions || {}),
         });
       }
 
@@ -240,6 +246,24 @@ function main() {
     });
     pokemon.forEach(p => { delete p.suffix; });
 
+    // ── 후처리 3: 진화/메가 키 정규화 ─────────────────────
+    // 진화 정보의 formId 는 'DRAGONAIR_NORMAL' 처럼 우리 키와 다를 수 있어
+    // [formId, id] 후보 중 실제로 존재하는 키만 남긴다. 지역폼은 formId 가 맞고
+    // (ARCANINE_HISUIAN), 일반 폼은 id 가 맞다 (DRAGONAIR).
+    const keySet = new Set(pokemon.map(p => p.k));
+    let evLinks = 0, evDropped = 0;
+    pokemon.forEach(p => {
+      const out = [];
+      for (const cands of p.ev) {
+        const hit = cands.find(c => c && keySet.has(c));
+        if (hit) { if (!out.includes(hit)) out.push(hit); }
+        else evDropped++;
+      }
+      p.ev = out;
+      p.mg = p.mg.filter(k => keySet.has(k));
+      evLinks += p.ev.length;
+    });
+
     pokemon.sort((a, b) => a.d - b.d || a.c - b.c || a.k.localeCompare(b.k));
 
     fs.writeFileSync(OUT, JSON.stringify({
@@ -256,7 +280,7 @@ function main() {
     const byClass = pokemon.reduce((a, p) => (a[p.c] = (a[p.c] || 0) + 1, a), {});
     console.log(`완료: ${pokemon.length}종 · 기술 ${moves.length}개 → ${path.relative(process.cwd(), OUT)} (${kb}KB)`);
     console.log(`  등급별: 일반 ${byClass[0] || 0} · 전설 ${byClass[1] || 0} · 환상 ${byClass[2] || 0} · 울트라비스트 ${byClass[3] || 0} · 메가 ${byClass[4] || 0}`);
-    console.log(`  외형전용 폼 제거 ${dropped}종 · 미출시 ${pokemon.filter(p => !p.r).length}종 · 스프라이트 없음 ${noSprite} · 기술 없음 ${noMoves}`);
+    console.log(`  진화 링크 ${evLinks}개 (미해결 ${evDropped}개) · 외형전용 폼 제거 ${dropped}종 · 미출시 ${pokemon.filter(p => !p.r).length}종 · 스프라이트 없음 ${noSprite} · 기술 없음 ${noMoves}`);
   });
 }
 

@@ -101,15 +101,17 @@
       `${groupLabel()} — ${metric.label} ${desc ? '상위' : '하위'} ${limit ? `${Math.min(limit, rows.length)}종` : '전체'}`;
 
     if (!rows.length) {
-      $('rankRows').innerHTML = '<tr><td colspan="9" class="pgo-empty">조건에 맞는 포켓몬이 없습니다.</td></tr>';
+      $('rankRows').innerHTML = '<tr><td colspan="10" class="pgo-empty">조건에 맞는 포켓몬이 없습니다.</td></tr>';
       return;
     }
 
     $('rankRows').innerHTML = rows.map(({ p, rank }) => {
       const r = p.rating;
       const moves = r.fast && r.charged ? `${UI.esc(r.fast.n)} + ${UI.esc(r.charged.n)}` : '—';
+      const t = P.tier(p);
       return `<tr data-idx="${p.idx}" style="cursor:pointer">
         <td class="num">${UI.rankBadge(rank, ranked.length)}</td>
+        <td><span class="pgo-tier-tag t${t.id}">${UI.esc(t.ko)}</span></td>
         <td>
           <span style="display:inline-flex;align-items:center;gap:.45rem">
             ${UI.imgTag(p, 'pgo-row-img')}<b>${UI.esc(p.n)}</b>

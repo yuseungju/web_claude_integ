@@ -11,6 +11,8 @@
   let shown = 0;
 
   const SORTERS = {
+    tier:  (a, b) => (a.potentialRank || 1e9) - (b.potentialRank || 1e9),
+    tierWorst: (a, b) => (b.potentialRank || 0) - (a.potentialRank || 0),
     rank:  (a, b) => (a.rank.overall || 1e9) - (b.rank.overall || 1e9),
     dps:   (a, b) => b.rating.dps - a.rating.dps,
     bulk:  (a, b) => b.rating.bulk - a.rating.bulk,
@@ -29,6 +31,7 @@
     const gen = Number(els.gen.value) || 0;
     const cls = els.cls.value;
     const form = els.form.value;
+    const tier = els.tier.value;
 
     filtered = P.pokemon.filter(p => {
       if (!els.unreleased.checked && !p.r) return false;
@@ -36,12 +39,14 @@
       if (type && !p.t.includes(type)) return false;
       if (gen && p.g !== gen) return false;
       if (cls !== '' && p.c !== Number(cls)) return false;
+      if (tier === 'keep' && p.tier > 1) return false;          // 보유할 만한 것만
+      else if (tier !== '' && tier !== 'keep' && p.tier !== Number(tier)) return false;
       if (form === 'base' && p.f) return false;
       if (form === 'only' && !p.f) return false;
       return true;
     });
 
-    filtered.sort(SORTERS[els.sort.value] || SORTERS.rank);
+    filtered.sort(SORTERS[els.sort.value] || SORTERS.tier);
 
     els.count.textContent = `${filtered.length.toLocaleString('ko-KR')}종`;
     shown = 0;
@@ -61,8 +66,21 @@
   }
 
   function render() {
-    ['q', 'type1', 'gen', 'cls', 'form', 'sort', 'count', 'grid', 'more', 'reset', 'unreleased']
+    ['q', 'type1', 'gen', 'cls', 'form', 'sort', 'tier', 'count', 'grid', 'more', 'reset', 'unreleased']
       .forEach(id => { els[id] = $(id); });
+
+    els.tier.insertAdjacentHTML('beforeend',
+      '<option value="keep">보유할 것만 (S+A)</option>'
+      + P.TIERS.map(t => `<option value="${t.id}">${t.ko}만</option>`).join(''));
+
+    // 등급 범례 — 각 등급의 뜻과 해당 종 수
+    const counts = {};
+    P.pokemon.filter(p => p.r).forEach(p => { counts[p.tier] = (counts[p.tier] || 0) + 1; });
+    $('tierLegend').innerHTML = P.TIERS.map(t =>
+      `<span class="pgo-chip" style="gap:.4rem">
+         <span class="pgo-tier-tag t${t.id}">${t.ko}</span>
+         <span style="color:var(--pgo-text-mute)">${t.desc} · ${counts[t.id] || 0}종</span>
+       </span>`).join('');
 
     UI.fillTypeSelect(els.type1);
 
@@ -78,7 +96,7 @@
       clearTimeout(timer);
       timer = setTimeout(apply, 180);
     });
-    ['type1', 'gen', 'cls', 'form', 'sort'].forEach(id => els[id].addEventListener('change', apply));
+    ['type1', 'gen', 'cls', 'form', 'sort', 'tier'].forEach(id => els[id].addEventListener('change', apply));
     els.unreleased.addEventListener('change', apply);
 
     els.reset.addEventListener('click', () => {
@@ -87,7 +105,8 @@
       els.gen.value = '';
       els.cls.value = '';
       els.form.value = 'all';
-      els.sort.value = 'rank';
+      els.tier.value = '';
+      els.sort.value = 'tier';
       els.unreleased.checked = false;
       apply();
     });

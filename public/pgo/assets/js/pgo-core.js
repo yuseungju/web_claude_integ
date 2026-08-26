@@ -74,6 +74,21 @@
   const CLASS_BY_ID = {};
   CLASSES.forEach(c => { CLASS_BY_ID[c.id] = c; });
 
+  /**
+   * 보유 판정 등급 — 화면에서 가장 먼저 보이는 값.
+   * 진화 전 포켓몬은 최종진화(및 메가) 기준으로 판정하므로,
+   * 미뇽처럼 지금은 약해도 망나뇽이 되면 강한 종은 상위 등급을 받는다.
+   * cut 은 잠재력 순위 백분위 상한.
+   */
+  const TIERS = [
+    { id: 0, ko: '필수 보유', short: 'S', cut: 0.03, color: '#ffcb05', desc: '최상위권. 무조건 키운다' },
+    { id: 1, ko: '보유',      short: 'A', cut: 0.15, color: '#3fcf8e', desc: '실전에서 제 몫을 한다' },
+    { id: 2, ko: '보통',      short: 'B', cut: 0.45, color: '#6fc9ff', desc: '아쉬우면 쓸 만한 수준' },
+    { id: 3, ko: '버림',      short: 'C', cut: 1.00, color: '#ee6b6b', desc: '사탕용. 키울 가치 없음' },
+  ];
+  const TIER_BY_ID = {};
+  TIERS.forEach(t => { TIER_BY_ID[t.id] = t; });
+
   // ── 상태 ──────────────────────────────────────────────────────
   let DB = null;
   const typeById = {};
@@ -178,11 +193,82 @@
       .forEach((p, i) => { p.rank[writeKey] = i + 1; });
   }
 
+  /**
+   * 진화 체인 잠재력 — 자신 · 진화 후손 · 각자의 메가 중 가장 높은 ER.
+   * 진화 전 포켓몬이 최종진화 기준으로 평가되도록 한다.
+   */
+  function buildPotential() {
+    const byKey = new Map(DB.pokemon.map(p => [p.k, p]));
+    const memo = new Map();
+    const visiting = new Set();
+
+    function best(p) {
+      if (memo.has(p.k)) return memo.get(p.k);
+      if (visiting.has(p.k)) return { er: p.rating.er, src: p };   // 순환 방어
+      visiting.add(p.k);
+
+      let out = { er: p.rating.er, src: p };
+      const take = c => { if (c && c.er > out.er) out = c; };
+
+      (p.mg || []).forEach(k => {
+        const m = byKey.get(k);
+        if (m && m.r) take({ er: m.rating.er, src: m });
+      });
+      (p.ev || []).forEach(k => {
+        const child = byKey.get(k);
+        if (child) take(best(child));
+      });
+
+      visiting.delete(p.k);
+      memo.set(p.k, out);
+      return out;
+    }
+
+    DB.pokemon.forEach(p => {
+      const b = best(p);
+      p.potential = {
+        er: b.er,
+        src: b.src,
+        inherited: b.src.k !== p.k,        // 자기 자신이 아니라 진화형에서 온 값인지
+      };
+    });
+  }
+
+  /**
+   * 잠재력 순위 백분위로 보유/버림 등급을 매긴다.
+   * 잠재력이 같으면(같은 진화 체인이라 값이 동일한 경우가 많다) 반드시 같은 등급이
+   * 되도록, 등급·순위 모두 동점 그룹의 첫 번째 위치를 기준으로 계산한다.
+   */
+  function assignTiers(all) {
+    const sorted = [...all].sort((a, b) => b.potential.er - a.potential.er);
+    const tierAt = pct => (TIERS.find(t => pct <= t.cut) || TIERS[TIERS.length - 1]).id;
+
+    let i = 0;
+    while (i < sorted.length) {
+      let j = i;
+      while (j < sorted.length && sorted[j].potential.er === sorted[i].potential.er) j++;
+      const tierId = tierAt((i + 1) / sorted.length);
+      for (let k = i; k < j; k++) {
+        sorted[k].tier = tierId;
+        sorted[k].potentialRank = i + 1;      // 동점은 같은 순위
+      }
+      i = j;
+    }
+    DB.totals.potential = sorted.length;
+    // 미출시 폼은 순위 대상이 아니므로 최하위 등급으로 둔다
+    DB.pokemon.filter(p => !p.r).forEach(p => {
+      p.tier = TIERS[TIERS.length - 1].id;
+      p.potentialRank = null;
+    });
+  }
+
   function buildRankings() {
     DB.pokemon.forEach(p => {
       p.rating = combatRating(p);
       p.rank = {};
     });
+
+    buildPotential();
 
     // 미출시 폼(게임 파일에만 있는 데이터)은 순위 산정에서 제외한다
     const all = DB.pokemon.filter(p => p.r);
@@ -211,6 +297,8 @@
       DB.totals[totalKey] = totals;
     };
 
+    assignTiers(all);
+
     groupRank(p => [p.c], 'byClass', 'byClass');
     groupRank(p => p.t, 'byType', 'byType');
     groupRank(p => [p.g], 'byGen', 'byGen');
@@ -227,6 +315,7 @@
   function typeColor(id) { return TYPE_COLOR[id] || '#888'; }
   function className(c) { return CLASS_BY_ID[c]?.ko || '일반'; }
   function classColor(c) { return CLASS_BY_ID[c]?.color || '#8c98b4'; }
+  function tier(p) { return TIER_BY_ID[p.tier] || TIERS[TIERS.length - 1]; }
 
   /** godex.json 의 n 은 폼까지 포함한 완전한 한국어명이라 그대로 쓴다 (예: '메가이상해꽃') */
   function displayName(p) { return p.n; }
@@ -275,7 +364,7 @@
 
   global.PGO = {
     CPM, LEVELS, EFF, STAB, MAX_LEVEL_WILD, MAX_LEVEL_TRADE, MAX_LEVEL_XL, IV_PERFECT,
-    RANK_LEVEL, TARGET_DEF, CLASSES,
+    RANK_LEVEL, TARGET_DEF, CLASSES, TIERS,
     load,
     get db() { return DB; },
     get pokemon() { return DB ? DB.pokemon : []; },
@@ -285,7 +374,7 @@
     cp, hp, maxCp,
     effectiveness, defenseProfile, bestStab,
     combatRating, pairDps, moveDamage,
-    typeName, typeColor, className, classColor,
+    typeName, typeColor, className, classColor, tier,
     displayName, spriteUrl, matches,
   };
 })(window);

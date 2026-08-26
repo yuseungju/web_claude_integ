@@ -27,7 +27,7 @@
   <main class="pgo-main">
     <div class="pgo-page-head">
       <h1>포켓몬 도감</h1>
-      <p>포켓몬GO 실측 종족값과 기술 데이터로 계산한 계열별 순위를 함께 보여줍니다.</p>
+      <p>보유 판정은 <b>최종진화 기준</b>입니다 — 지금 약해도 진화시키면 강한 종은 상위 등급을 받습니다.</p>
     </div>
 
     <div class="pgo-panel">
@@ -39,6 +39,12 @@
         <div class="pgo-field">
           <label for="type1">타입</label>
           <select class="pgo-select" id="type1"></select>
+        </div>
+        <div class="pgo-field">
+          <label for="tier">보유 판정</label>
+          <select class="pgo-select" id="tier">
+            <option value="">전체</option>
+          </select>
         </div>
         <div class="pgo-field">
           <label for="cls">계열(등급)</label>
@@ -63,8 +69,10 @@
         <div class="pgo-field">
           <label for="sort">정렬</label>
           <select class="pgo-select" id="sort">
-            <option value="rank">종합 순위 ↑</option>
-            <option value="worst">종합 순위 ↓ (약한 순)</option>
+            <option value="tier">보유 등급 ↑</option>
+            <option value="tierWorst">보유 등급 ↓ (버릴 것부터)</option>
+            <option value="rank">현재 성능 순위 ↑</option>
+            <option value="worst">현재 성능 순위 ↓</option>
             <option value="dps">DPS</option>
             <option value="bulk">내구</option>
             <option value="maxCp">최대 CP</option>
@@ -76,6 +84,7 @@
           </select>
         </div>
       </div>
+      <div id="tierLegend" style="margin-top:.85rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center"></div>
       <div style="margin-top:.75rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
         <span class="pgo-chip" id="count">—</span>
         <label class="pgo-chip" style="cursor:pointer">

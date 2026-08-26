@@ -330,3 +330,59 @@ body.pgo {
 }
 
 .pgo-chip input[type="checkbox"] { accent-color: var(--pgo-accent-2); }
+
+/* ══════════════════════════════════════════════════════════════
+   보유 판정 등급 — 카드에서 가장 먼저 읽혀야 하는 요소
+   진화 전 포켓몬은 최종진화 기준으로 판정된다.
+   ══════════════════════════════════════════════════════════════ */
+.pgo-tier-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.34rem 0.6rem;
+  border-radius: calc(var(--pgo-radius) - 1px) calc(var(--pgo-radius) - 1px) 0 0;
+  font-weight: 800; letter-spacing: -0.2px;
+}
+.pgo-tier-word { font-size: 0.92rem; }
+.pgo-tier-mark {
+  font-family: var(--pgo-mono); font-size: 0.72rem; font-weight: 800;
+  opacity: .55; border: 1.5px solid currentColor; border-radius: 4px;
+  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+}
+/* 0 필수 보유 · 1 보유 · 2 보통 · 3 버림 */
+.pgo-tier-banner.t0 { background: #ffcb05; color: #241a00; }
+.pgo-tier-banner.t1 { background: #2f9e6b; color: #eafff5; }
+.pgo-tier-banner.t2 { background: #2b4a6b; color: #d6ecff; }
+.pgo-tier-banner.t3 { background: #3a2330; color: #ff9b9b; }
+
+/* 카드 전체를 등급 색으로 물들여 스캔하기 쉽게 한다 */
+.pgo-card { padding: 0; overflow: hidden; }
+.pgo-card-body { padding: 0.7rem; }
+.pgo-card.tier-0 { border-color: #ffcb0577; }
+.pgo-card.tier-1 { border-color: #2f9e6b77; }
+.pgo-card.tier-2 { border-color: var(--pgo-border); }
+.pgo-card.tier-3 { border-color: var(--pgo-border); opacity: .72; }
+.pgo-card.tier-3:hover { opacity: 1; }
+.pgo-card.tier-0:hover { border-color: var(--pgo-accent); }
+.pgo-card.tier-1:hover { border-color: #3fcf8e; }
+
+.pgo-card-basis {
+  margin-top: 0.45rem;
+  font-size: 0.7rem; color: var(--pgo-text-mute);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* 모달 상단 배너는 모달 모서리에 맞춘다 */
+.pgo-modal > .pgo-tier-banner {
+  border-radius: calc(var(--pgo-radius) - 1px) calc(var(--pgo-radius) - 1px) 0 0;
+  padding: 0.5rem 1.1rem;
+}
+.pgo-modal > .pgo-tier-banner .pgo-tier-word { font-size: 1rem; }
+
+/* 표 안에서 쓰는 소형 등급 배지 */
+.pgo-tier-tag {
+  display: inline-block; padding: 0.12rem 0.45rem; border-radius: 5px;
+  font-size: 0.7rem; font-weight: 800; white-space: nowrap;
+}
+.pgo-tier-tag.t0 { background: #ffcb05; color: #241a00; }
+.pgo-tier-tag.t1 { background: #2f9e6b; color: #eafff5; }
+.pgo-tier-tag.t2 { background: #2b4a6b; color: #d6ecff; }
+.pgo-tier-tag.t3 { background: #3a2330; color: #ff9b9b; }
