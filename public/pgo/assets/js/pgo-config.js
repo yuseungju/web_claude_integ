@@ -7,4 +7,4 @@
  *
  *   window.PGO_API_BASE = 'https://xxxxxxxx.execute-api.ap-southeast-2.amazonaws.com';
  */
-window.PGO_API_BASE = '';
+window.PGO_API_BASE = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
