@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const https = require('https');
+const pgo = require('./pgo');
 
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -63,6 +64,14 @@ exports.handler = async (event) => {
   const path   = getPath(event);
 
   if (method === 'OPTIONS') return { statusCode: 200, headers: CORS, body: '' };
+
+  // ────────────────────────────────────────────
+  // [PGO 분석기] /pgo/* — pgo_ 테이블만 다루는 독립 모듈 (lambda/pgo.js)
+  // ────────────────────────────────────────────
+  if (path.startsWith('/pgo/')) {
+    const pgoRes = await pgo.route({ pool, resp, getBody }, event, method, path);
+    if (pgoRes) return pgoRes;
+  }
 
   // ────────────────────────────────────────────
   // [공통] 인증
