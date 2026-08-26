@@ -386,3 +386,55 @@ body.pgo {
 .pgo-tier-tag.t1 { background: #2f9e6b; color: #eafff5; }
 .pgo-tier-tag.t2 { background: #2b4a6b; color: #d6ecff; }
 .pgo-tier-tag.t3 { background: #3a2330; color: #ff9b9b; }
+
+/* ══════════════════════════════════════════════════════════════
+   메인 히어로 제목
+   ══════════════════════════════════════════════════════════════ */
+.pgo-hero {
+  position: relative;
+  margin-bottom: 1.4rem;
+  padding: 1.9rem 1.6rem 1.7rem;
+  border: 1px solid var(--pgo-border);
+  border-radius: var(--pgo-radius);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255,203,5,.16) 0%, transparent 52%),
+    radial-gradient(120% 140% at 100% 100%, rgba(59,125,216,.20) 0%, transparent 55%),
+    var(--pgo-surface);
+  overflow: hidden;
+}
+/* 포켓볼 실루엣 워터마크 */
+.pgo-hero::after {
+  content: '';
+  position: absolute; right: -46px; top: -46px;
+  width: 190px; height: 190px; border-radius: 50%;
+  background: linear-gradient(180deg, var(--pgo-red) 0 48%, #fff 48% 52%, #f3f4f8 52% 100%);
+  opacity: .06; pointer-events: none;
+}
+.pgo-hero-title {
+  position: relative;
+  font-size: clamp(1.6rem, 5.2vw, 2.7rem);
+  font-weight: 900;
+  line-height: 1.18;
+  letter-spacing: -1.2px;
+}
+.pgo-hero-title em {
+  font-style: normal;
+  background: linear-gradient(92deg, var(--pgo-accent) 0%, #ffe27a 45%, #7fc4ff 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.pgo-hero-sub {
+  position: relative;
+  margin-top: 0.7rem;
+  max-width: 46rem;
+  font-size: 0.9rem;
+  color: var(--pgo-text-dim);
+  line-height: 1.65;
+}
+.pgo-hero-sub b { color: var(--pgo-text); }
+
+/* 브랜드명이 길어져서 헤더에서 줄바꿈 없이 줄어들도록 */
+.pgo-brand { font-size: 0.95rem; min-width: 0; }
+@media (max-width: 900px) {
+  .pgo-brand { font-size: 0.86rem; white-space: normal; }
+}

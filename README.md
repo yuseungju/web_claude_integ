@@ -6,7 +6,7 @@
 | 앱 | URL | 성격 | 에셋 |
 |---|---|---|---|
 | SAP 업무 활용 정리 | `/` | 정적 문서 사이트 | `public/assets/`, `public/process/` |
-| PGO 분석기 | `/pgo/` | 포켓몬GO 포켓몬 분석 도구 | `public/pgo/assets/` |
+| 사라님을 위한 포켓몬 쓸모분석 | `/pgo/` | 포켓몬GO 보유/버림 판정 도구 | `public/pgo/assets/` |
 
 두 앱은 CSS 토큰·클래스명·JS 전역이 서로 겹치지 않는다.
 PGO 쪽은 전부 `pgo-` 접두어를 쓰고 전역은 `window.PGO*` 하나뿐이다.
@@ -27,7 +27,7 @@ npm start            # http://localhost:3000
 
 `server.js`는 `public/`을 그대로 서빙하는 개발용 정적 서버다.
 
-## PGO 분석기
+## 사라님을 위한 포켓몬 쓸모분석 (`/pgo/`)
 
 ### 화면
 
