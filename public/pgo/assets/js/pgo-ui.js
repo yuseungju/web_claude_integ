@@ -62,6 +62,36 @@
     </div>`;
   }
 
+  const review = p => (global.PGOReview ? global.PGOReview.of(p) : null);
+
+  /** 카드용 한줄평 */
+  function verdictLine(p) {
+    const rv = review(p);
+    return rv ? `<div class="pgo-card-line">${esc(rv.line)}</div>` : '';
+  }
+
+  /** 한줄평 원문 (표 등에서 직접 쓸 때) */
+  function reviewLine(p) {
+    const rv = review(p);
+    return rv ? rv.line : '';
+  }
+
+  /** 모달용 전체 평가 리뷰 */
+  function reviewBlock(p) {
+    const rv = review(p);
+    if (!rv) return '';
+    const list = (items, cls, mark) => items.length
+      ? `<ul class="pgo-review-list ${cls}">${items.map(x => `<li><span>${mark}</span><span>${x}</span></li>`).join('')}</ul>`
+      : '';
+    return `<div>
+      <div class="pgo-section-title">평가 리뷰</div>
+      <div class="pgo-review-line">${esc(rv.line)}</div>
+      ${list(rv.pros, 'pro', '＋')}
+      ${list(rv.cons, 'con', '－')}
+      ${rv.notes.map(n => `<div class="pgo-note" style="margin-top:.55rem">${n}</div>`).join('')}
+    </div>`;
+  }
+
   /** 진화형 기준으로 판정된 경우 그 근거를 한 줄로 보여준다 */
   function inheritedNote(p) {
     if (!p.potential || !p.potential.inherited) return '';
@@ -82,6 +112,7 @@
             <div class="pgo-card-types">${p.t.map(typeBadge).join('')}${classBadge(p.c)}</div>
           </div>
         </div>
+        ${verdictLine(p)}
         ${inheritedNote(p)}
         <div class="pgo-card-ranks">
           ${rankBadge(p.potentialRank, P.totals.potential, '잠재')}
@@ -241,10 +272,7 @@
         <button class="pgo-modal-close" data-close aria-label="닫기">&times;</button>
       </div>
       <div class="pgo-modal-body">
-        ${p.potential && p.potential.inherited ? `<div class="pgo-note">
-          이 포켓몬의 보유 판정은 진화형 <b>${esc(P.displayName(p.potential.src))}</b> 기준입니다
-          (잠재 ER ${p.potential.er.toFixed(1)}). 지금 상태의 성능이 아니라 <b>키웠을 때의 가치</b>를 나타냅니다.
-        </div>` : ''}
+        ${reviewBlock(p)}
         <div>
           <div class="pgo-section-title">포켓몬GO 종족값 (게임 실측값)</div>
           ${statBars(p)}
@@ -308,6 +336,6 @@
   global.PGOUI = {
     esc, typeBadge, classBadge, rankBadge, tierBanner, inheritedNote, multClass, multText, multHtml, imgTag, card,
     fillPokemonSelect, fillTypeSelect, byId, byKey, statBars, defenseSummary,
-    rankSummary, movesetBlock, openDetail, closeDetail, bindModal, boot,
+    rankSummary, movesetBlock, verdictLine, reviewLine, reviewBlock, openDetail, closeDetail, bindModal, boot,
   };
 })(window);

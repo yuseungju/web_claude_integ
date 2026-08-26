@@ -6,6 +6,7 @@
   const $ = id => document.getElementById(id);
 
   const METRIC = {
+    potential: { label: '보유 잠재력', get: p => p.potential.er, fmt: v => v.toFixed(1) },
     er:   { label: '종합 ER', get: p => p.rating.er,   fmt: v => v.toFixed(1) },
     dps:  { label: 'DPS',     get: p => p.rating.dps,  fmt: v => v.toFixed(1) },
     bulk: { label: '내구',    get: p => p.rating.bulk, fmt: v => Math.round(v) },
@@ -97,16 +98,18 @@
     const view = desc ? ranked : [...ranked].reverse();
     const rows = limit ? view.slice(0, limit) : view;
 
+    $('metricHead').textContent = metric.label;
     $('rankTitle').textContent =
       `${groupLabel()} — ${metric.label} ${desc ? '상위' : '하위'} ${limit ? `${Math.min(limit, rows.length)}종` : '전체'}`;
 
     if (!rows.length) {
-      $('rankRows').innerHTML = '<tr><td colspan="10" class="pgo-empty">조건에 맞는 포켓몬이 없습니다.</td></tr>';
+      $('rankRows').innerHTML = '<tr><td colspan="9" class="pgo-empty">조건에 맞는 포켓몬이 없습니다.</td></tr>';
       return;
     }
 
     $('rankRows').innerHTML = rows.map(({ p, rank }) => {
       const r = p.rating;
+      // metric 은 상위 스코프에서 이미 선택돼 있다
       const moves = r.fast && r.charged ? `${UI.esc(r.fast.n)} + ${UI.esc(r.charged.n)}` : '—';
       const t = P.tier(p);
       return `<tr data-idx="${p.idx}" style="cursor:pointer">
@@ -121,9 +124,8 @@
         <td>${UI.classBadge(p.c) || '<span class="pgo-badge">일반</span>'}</td>
         <td class="num">${p.go.atk} / ${p.go.def} / ${p.go.sta}</td>
         <td class="num">${r.dps.toFixed(1)}</td>
-        <td class="num">${Math.round(r.tdo)}</td>
-        <td class="num"><b>${r.er.toFixed(1)}</b></td>
-        <td style="white-space:normal;font-size:.76rem">${moves}</td>
+        <td class="num"><b>${metric.fmt(metric.get(p))}</b></td>
+        <td class="pgo-rank-line">${UI.esc(UI.reviewLine(p))}<br><span>${moves}</span></td>
       </tr>`;
     }).join('');
   }

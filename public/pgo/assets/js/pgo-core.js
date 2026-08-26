@@ -277,6 +277,11 @@
     assignRanks(all, 'er', 'overall');
     assignRanks(all, 'dps', 'dps');
     assignRanks(all, 'bulk', 'bulk');
+    // 리뷰에서 '상위 몇 %' 근거로 쓰려고 종족값 순위도 따로 매긴다
+    [['atk', 0], ['def', 1], ['sta', 2]].forEach(([key, i]) => {
+      [...all].sort((a, b) => b.s[i] - a.s[i])
+        .forEach((p, n) => { p.rank[key] = n + 1; });
+    });
     DB.totals = { overall: all.length };
 
     // 계열별 랭킹 — 등급 / 타입 / 세대

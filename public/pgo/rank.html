@@ -27,7 +27,7 @@
   <main class="pgo-main">
     <div class="pgo-page-head">
       <h1>계열별 순위</h1>
-      <p>실측 종족값과 실제 기술 수치로 계산한 강함 순위입니다. 등급 · 타입 · 세대로 계열을 나눠 봅니다.</p>
+      <p>1위부터 전 종을 순서대로 나열합니다. 등급 · 타입 · 세대로 계열을 좁혀 볼 수도 있습니다.</p>
     </div>
 
     <div class="pgo-panel">
@@ -35,10 +35,10 @@
         <div class="pgo-field">
           <label for="axis">계열 기준</label>
           <select class="pgo-select" id="axis">
+            <option value="all">전체 (1위부터 전 종)</option>
             <option value="class">등급 (일반·전설·환상·UB·메가)</option>
             <option value="type">타입</option>
             <option value="gen">세대</option>
-            <option value="all">전체 (계열 구분 없음)</option>
           </select>
         </div>
         <div class="pgo-field">
@@ -48,7 +48,8 @@
         <div class="pgo-field">
           <label for="metric">지표</label>
           <select class="pgo-select" id="metric">
-            <option value="er">종합 ER (공격 중심)</option>
+            <option value="potential">보유 잠재력 (진화 반영)</option>
+            <option value="er">종합 ER (현재 폼 기준)</option>
             <option value="dps">DPS (순수 화력)</option>
             <option value="bulk">내구 (방어×체력)</option>
             <option value="tdo">TDO (총 피해량)</option>
@@ -64,10 +65,10 @@
         <div class="pgo-field">
           <label for="limit">개수</label>
           <select class="pgo-select" id="limit">
+            <option value="0">전체</option>
             <option value="30">30</option>
             <option value="50">50</option>
             <option value="100">100</option>
-            <option value="0">전체</option>
           </select>
         </div>
       </div>
@@ -94,7 +95,7 @@
           <thead>
             <tr>
               <th>순위</th><th>보유</th><th>포켓몬</th><th>타입</th><th>등급</th>
-              <th>공/방/체</th><th>DPS</th><th>TDO</th><th>ER</th><th>최적 기술</th>
+              <th>공/방/체</th><th>DPS</th><th id="metricHead">지표</th><th>한줄평</th>
             </tr>
           </thead>
           <tbody id="rankRows"></tbody>
@@ -127,6 +128,7 @@
   </footer>
 
   <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-review.js"></script>
   <script src="/pgo/assets/js/pgo-ui.js"></script>
   <script src="/pgo/assets/js/pgo-rank.js"></script>
 </body>
