@@ -167,10 +167,11 @@
   }
 
   function renderRaids() {
+    // 섀도우 레이드처럼 매일 도는 것은 빼고 5성(전설)·6성(메가) 위주로 보여준다
     const live = E.forDay(todayStr)
-      .filter(e => ['legendary', 'mega', 'shadow', 'raid', 'raidday'].includes(e.cat));
+      .filter(e => E.RAID_LIKE.includes(e.cat));
     if (!live.length) {
-      $('raidBody').innerHTML = '<div class="pgo-empty">오늘 도는 전설 · 메가 레이드가 없습니다.</div>';
+      $('raidBody').innerHTML = '<div class="pgo-empty">오늘 도는 5성 · 메가 레이드가 없습니다.</div>';
       return;
     }
     $('raidBody').innerHTML = live.map(e => {
@@ -187,7 +188,7 @@
   }
 
   function renderUpcoming() {
-    const list = E.upcoming(todayStr, 40, { rareOnly: true })
+    const list = E.upcoming(todayStr, 60, { mode: 'select' })
       .filter(e => e.start > `${todayStr}T23:59:59`)
       .slice(0, 8);
     $('upcomingBody').innerHTML = list.length
@@ -210,13 +211,15 @@
     $('todayDate').textContent =
       `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 (${E.DOW[now.getDay()]})`;
     const season = E.forDay(todayStr).find(e => e.cat === 'season');
-    const rare = E.forDay(todayStr, { rareOnly: true }).length;
+    const rare = E.forDay(todayStr, { mode: 'select' }).length;
     $('todaySub').textContent = season
       ? `${koName(season)} 시즌 · 오늘 챙길 귀한 일정 ${rare}건`
       : `오늘 챙길 귀한 일정 ${rare}건`;
   }
 
   function boot() {
+    E.setTierResolver(k => { const p = byKey(k); return p ? p.tier : null; });
+
     E.load().then(() => {
       renderHeader();
       renderTimed();

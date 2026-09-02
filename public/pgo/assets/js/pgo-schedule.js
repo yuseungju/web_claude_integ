@@ -10,7 +10,7 @@
   let view = new Date(today.getFullYear(), today.getMonth(), 1);
   let selected = null;
 
-  const rareOnly = () => $('rareOnly').checked;
+  const mode = () => $('mode').value;
   const byKey = k => P.pokemon.find(p => p.k === k);
 
   /** 이벤트명을 한국어로 (등장 포켓몬은 한국어명으로 치환) */
@@ -55,7 +55,7 @@
     const y = view.getFullYear(), m = view.getMonth();
     $('calTitle').textContent = `${y}년 ${m + 1}월`;
 
-    const map = E.forMonth(y, m, { rareOnly: rareOnly() });
+    const map = E.forMonth(y, m, { mode: mode() });
     const first = new Date(y, m, 1);
     const lead = first.getDay();
     const days = new Date(y, m + 1, 0).getDate();
@@ -97,7 +97,7 @@
 
   function renderDay(dayStr) {
     selected = dayStr;
-    const list = E.forDay(dayStr, { rareOnly: rareOnly() });
+    const list = E.forDay(dayStr, { mode: mode() });
     const d = new Date(`${dayStr}T00:00:00`);
     $('dayTitle').textContent =
       `${d.getMonth() + 1}월 ${d.getDate()}일 (${E.DOW[d.getDay()]}) — ${list.length}건`;
@@ -114,7 +114,7 @@
     const monthStart = `${y}-${String(m + 1).padStart(2, '0')}-01`;
     const monthEnd = `${y}-${String(m + 1).padStart(2, '0')}-31`;
     const list = E.all()
-      .filter(e => (!rareOnly() || e.rare) && e.start <= `${monthEnd}T23:59:59` && e.end >= `${monthStart}T00:00:00`)
+      .filter(e => E.match(e, mode()) && e.start <= `${monthEnd}T23:59:59` && e.end >= `${monthStart}T00:00:00`)
       .sort((a, b) => a.start.localeCompare(b.start));
 
     $('listTitle').textContent = `${y}년 ${m + 1}월 일정 — ${list.length}건`;
@@ -124,7 +124,7 @@
   }
 
   function renderLegend() {
-    const used = new Set(E.all().filter(e => !rareOnly() || e.rare).map(e => e.cat));
+    const used = new Set(E.all().filter(e => E.match(e, mode())).map(e => e.cat));
     $('catLegend').innerHTML = [...used].map(k => {
       const c = E.cat(k);
       return `<span class="pgo-chip"><span class="pgo-ev-cat" style="background:${c.color}">${c.icon}</span>${UI.esc(c.ko)}</span>`;
@@ -150,6 +150,9 @@
   }
 
   function boot() {
+    // 이벤트 필터가 보유 등급을 쓸 수 있게 도감 데이터를 연결한다
+    E.setTierResolver(k => { const p = byKey(k); return p ? p.tier : null; });
+
     E.load().then(() => {
       renderAll();
       renderSource();
@@ -175,7 +178,7 @@
       view = new Date(today.getFullYear(), today.getMonth(), 1);
       renderAll(); renderDay(todayStr);
     });
-    $('rareOnly').addEventListener('change', renderAll);
+    $('mode').addEventListener('change', () => { renderAll(); });
 
     $('calGrid').addEventListener('click', e => {
       const cell = e.target.closest('.pgo-cal-cell[data-day]');

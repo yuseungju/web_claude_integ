@@ -105,16 +105,73 @@
     return n;
   }
 
+  // ── 표시 범위 필터 ──────────────────────────────────────────
+  // 5성(전설)·6성(메가) 레이드가 핵심이고, 그중에서도 보유 등급이 좋은 것만 보고 싶다는
+  // 요구가 있어 등급 기준 필터를 둔다. 등급 판정은 도감 데이터가 필요하므로
+  // 페이지에서 resolver 를 주입받는다.
+  let tierOf = () => null;          // (pokemonKey) -> tier id (0 필수보유 ~ 3 버림)
+  function setTierResolver(fn) { tierOf = fn; }
+
+  const RAID_56 = ['legendary', 'mega'];              // 5성 전설 · 6성 메가
+  const RAID_LIKE = ['legendary', 'mega', 'raidhour', 'raidday'];
+  const PERK = ['pass', 'sale', 'research', 'ticket'];  // 패스 · 할인 · 리서치
+
+  /** 이벤트에 등장하는 포켓몬 중 가장 높은 등급 (숫자가 작을수록 좋음) */
+  function bestTier(e) {
+    let best = null;
+    (e.mons || []).forEach(k => {
+      const t = tierOf(k);
+      if (t === null || t === undefined) return;
+      if (best === null || t < best) best = t;
+    });
+    return best;
+  }
+
+  /**
+   * 엄선 기준 — 5성과 메가에 다른 잣대를 쓴다.
+   *   5성(전설): 등장 자체가 드무니 '버림(C)' 등급만 뺀다
+   *   메가(6성): 자주 돌아오니 '보유(A)' 이상만 남긴다
+   *   섀도우: 상시로 도는 편이라 기본에서는 제외
+   * 레이드 아워·데이는 그 보스가 위 기준을 통과할 때만 남긴다.
+   */
+  function passesSelect(e) {
+    const t = bestTier(e);
+    if (t === null) return false;
+    const isMega = e.cat === 'mega' || (e.mons || []).some(k => /_MEGA|_PRIMAL/.test(k));
+    return isMega ? t <= 1 : t <= 2;
+  }
+
+  const MODES = {
+    select: e => {
+      if (PERK.includes(e.cat)) return true;
+      if (!RAID_LIKE.includes(e.cat)) return false;
+      return passesSelect(e);
+    },
+    // 5성·메가 레이드 전부 (등급 무관) + 패스·할인·리서치
+    raids: e => PERK.includes(e.cat) || RAID_LIKE.includes(e.cat),
+    // 기존 '귀한 것' — 섀도우 레이드, 커뮤니티 데이, 페스티벌까지 포함
+    rare: e => !!e.rare,
+    all: () => true,
+  };
+  const MODE_LABEL = {
+    select: '엄선 (5성은 C 제외 · 메가는 A 이상 · 섀도우 제외)',
+    raids: '5성 · 메가 레이드 전체',
+    rare: '귀한 것 전체 (섀도우·커뮤데이 포함)',
+    all: '전체 일정',
+  };
+
+  const match = (e, mode) => (MODES[mode] || MODES.select)(e);
+
   // ── 질의 ────────────────────────────────────────────────────
   const all = () => (DB ? DB.events : []);
   const raids = () => (DB ? DB.raids : []);
 
-  /** 특정 날짜에 해당하는 이벤트 */
+  /** 특정 날짜에 해당하는 이벤트. opts.mode 를 주면 그 범위로 거른다 */
   function forDay(dayStr, opts) {
-    const rareOnly = opts && opts.rareOnly;
+    const mode = opts && opts.mode;
     return all()
       .filter(e => onDay(e, dayStr))
-      .filter(e => !rareOnly || e.rare)
+      .filter(e => !mode || match(e, mode))
       .sort((a, b) => {
         const at = isTimed(a) ? 0 : 1, bt = isTimed(b) ? 0 : 1;
         return at - bt || a.start.localeCompare(b.start);
@@ -123,7 +180,7 @@
 
   /** 특정 연-월(0-based month)의 날짜별 이벤트 맵 */
   function forMonth(year, month, opts) {
-    const rareOnly = opts && opts.rareOnly;
+    const mode = opts && opts.mode;
     const map = {};
     const first = new Date(year, month, 1);
     const last = new Date(year, month + 1, 0);
@@ -131,7 +188,7 @@
       map[ymd(new Date(year, month, d))] = [];
     }
     all().forEach(e => {
-      if (rareOnly && !e.rare) return;
+      if (mode && !match(e, mode)) return;
       const s = parse(e.start), t = parse(e.end);
       if (t < first || s > new Date(year, month, last.getDate(), 23, 59, 59)) return;
       Object.keys(map).forEach(day => { if (onDay(e, day)) map[day].push(e); });
@@ -142,10 +199,10 @@
 
   /** 오늘 이후 다가오는 이벤트 */
   function upcoming(fromDayStr, limit, opts) {
-    const rareOnly = opts && opts.rareOnly;
+    const mode = opts && opts.mode;
     return all()
       .filter(e => e.end >= `${fromDayStr}T00:00:00`)
-      .filter(e => !rareOnly || e.rare)
+      .filter(e => !mode || match(e, mode))
       .sort((a, b) => a.start.localeCompare(b.start))
       .slice(0, limit || 20);
   }
@@ -202,6 +259,7 @@
 
   global.PGOEvents = {
     CAT, load, refresh, label,
+    MODES, MODE_LABEL, RAID_56, RAID_LIKE, PERK, setTierResolver, bestTier, match,
     get db() { return DB; },
     all, raids, forDay, forMonth, upcoming,
     ymd, parse, fmtTime, fmtDate, fmtRange, onDay, startsOn, isTimed, DOW,

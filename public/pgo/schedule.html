@@ -29,7 +29,7 @@
   <main class="pgo-main">
     <div class="pgo-page-head">
       <h1>일정 캘린더</h1>
-      <p>전설 · 메가 레이드와 할인 · 패스 · 리서치처럼 <b>놓치면 아까운 일정만</b> 골라 보여줍니다.</p>
+      <p>기본은 <b>엄선</b>입니다 — <b>5성 전설</b>은 「버림」 등급만 빼고, <b>6성 메가</b>는 「보유」 이상만, <b>섀도우 레이드는 제외</b>하고 패스 · 할인 · 리서치를 함께 띄웁니다.</p>
     </div>
 
     <div class="pgo-panel">
@@ -38,9 +38,15 @@
         <div class="pgo-cal-title" id="calTitle">—</div>
         <button class="pgo-btn ghost" id="nextMonth" type="button">▶</button>
         <button class="pgo-btn ghost" id="thisMonth" type="button">이번 달</button>
-        <label class="pgo-chip" style="cursor:pointer;margin-left:auto">
-          <input type="checkbox" id="rareOnly" checked style="margin:0" /> 귀한 것만
-        </label>
+        <div class="pgo-field" style="margin-left:auto;min-width:15rem">
+          <label for="mode">표시 범위</label>
+          <select class="pgo-select" id="mode">
+            <option value="select">엄선 — 5성(C 제외) · 메가(A 이상)</option>
+            <option value="raids">5성 · 메가 레이드 전체</option>
+            <option value="rare">귀한 것 전체 (섀도우·커뮤데이 포함)</option>
+            <option value="all">전체 일정</option>
+          </select>
+        </div>
       </div>
       <div id="catLegend" class="pgo-cat-legend"></div>
     </div>
