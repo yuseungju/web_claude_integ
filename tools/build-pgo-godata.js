@@ -145,6 +145,7 @@ function main() {
       i: sprite,
       d: dexNr,
       n: entry.names?.Korean || entry.names?.English || key,
+      en: entry.names?.English || key,   // 이벤트 데이터(영문)와 매칭용
       f: opts.form || '',
       suffix: opts.suffix || '',
       g: gen,

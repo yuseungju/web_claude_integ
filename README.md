@@ -33,7 +33,9 @@ npm start            # http://localhost:3000
 
 | 경로 | 내용 |
 |---|---|
-| `/pgo/` | 도감 — 1,248종 검색·계열 필터·정렬, 카드에 계열별 순위 표시 |
+| `/pgo/` | 도감 — 검색·계열 필터·정렬, 카드에 보유 판정과 순위 표시 |
+| `/pgo/today.html` | 오늘의 일정 — 하루에 챙길 것을 동선 순서로 정리한 체크리스트 |
+| `/pgo/schedule.html` | 일정 캘린더 — 전설·메가 레이드, 할인·패스·리서치만 골라 월 단위로 |
 | `/pgo/rank.html` | 전체 순위 — 1위부터 전 종 나열, 계열(등급/타입/세대)로 좁히기, 한줄평 포함 |
 | `/pgo/iv.html` | CP·IV 계산기 — 표시 CP/HP로 가능한 (레벨, IV) 조합 역산 |
 | `/pgo/counter.html` | 카운터 분석 — 상대 약점 + 추천 카운터 랭킹 |
@@ -48,6 +50,7 @@ npm start            # http://localhost:3000
 node tools/build-pgo-data.js     # PokeAPI GraphQL -> pokedex.json (타입 상성표 + 스프라이트 매핑)
 node tools/fetch-pgo-sprites.js  # 스프라이트 -> public/pgo/assets/sprites/ (약 1.2MB)
 node tools/build-pgo-godata.js   # 위 둘 + pokemon-go-api + pvpoke -> godex.json (런타임이 읽는 파일)
+node tools/build-pgo-events.js   # ScrapedDuck(LeekDuck) -> events.json (일정)
 ```
 
 런타임이 읽는 파일은 `godex.json` 하나다. 담긴 내용:
@@ -105,6 +108,21 @@ node tools/build-pgo-godata.js   # 위 둘 + pokemon-go-api + pvpoke -> godex.js
 - **TDO** — DPS × 생존시간(체력 × 방어 비례)
 - **ER** — `(DPS³ × TDO)^(1/4)`. 화력 가중 종합 지표이자 기본 정렬 기준
 - 순위는 **전체 / 등급 / 타입 / 세대** 각 계열마다 따로 매겨 도감 카드와 상세 모달에 표시
+
+### 일정 (`pgo-events.js`)
+
+일정 원본은 [ScrapedDuck](https://github.com/bigfoott/ScrapedDuck)(LeekDuck 공개 스크랩)이다.
+빌드 때 `events.json`으로 번들해 두고, 페이지를 열면 원본에서 최신본을 다시 받아
+갈아끼운다. 네트워크가 막히면 번들본을 그대로 쓰므로 화면이 비지 않는다.
+
+- 이벤트를 카테고리로 분류하고 `rare` 플래그를 매긴다. 캘린더는 기본적으로
+  **전설/메가/섀도우 레이드 · 레이드 아워/데이 · GO 패스 · 할인 · 리서치**만 띄운다.
+- 이벤트 이름에서 포켓몬을 뽑아 `godex`와 연결한다 →
+  캘린더에서 바로 그 포켓몬의 **보유 등급 배지**가 보이고, 눌러서 상세를 열 수 있다.
+- 영문 이벤트명은 한국어로 옮긴다 (`Xerneas in 5-star Raid Battles` → `제르네아스 5성 레이드`).
+  규칙에 없는 고유 이벤트명은 원문을 그대로 둔다.
+- **오늘의 일정**은 하루 일과를 동선 순서(집 → 걷기 → 포켓스톱·체육관 → 레이드 → 마무리)로
+  배치하고, 체크 상태를 날짜별 `localStorage`에 저장해 자정에 새로 시작한다.
 
 ### 백엔드
 

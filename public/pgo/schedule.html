@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일정 캘린더 · 사라님을 위한 포켓몬 쓸모분석</title>
+  <meta name="description" content="전설·메가 레이드와 할인·리서치 등 귀한 일정만 모은 캘린더" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>사라님을 위한 포켓몬 쓸모분석
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/today.html">오늘의 일정</a>
+        <a href="/pgo/schedule.html" aria-current="page">일정 캘린더</a>
+        <a href="/pgo/rank.html">계열별 순위</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>일정 캘린더</h1>
+      <p>전설 · 메가 레이드와 할인 · 패스 · 리서치처럼 <b>놓치면 아까운 일정만</b> 골라 보여줍니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-cal-head">
+        <button class="pgo-btn ghost" id="prevMonth" type="button">◀</button>
+        <div class="pgo-cal-title" id="calTitle">—</div>
+        <button class="pgo-btn ghost" id="nextMonth" type="button">▶</button>
+        <button class="pgo-btn ghost" id="thisMonth" type="button">이번 달</button>
+        <label class="pgo-chip" style="cursor:pointer;margin-left:auto">
+          <input type="checkbox" id="rareOnly" checked style="margin:0" /> 귀한 것만
+        </label>
+      </div>
+      <div id="catLegend" class="pgo-cat-legend"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-cal-wrap">
+        <div class="pgo-cal-dow" id="calDow"></div>
+        <div class="pgo-cal-grid" id="calGrid"></div>
+      </div>
+    </div>
+
+    <div class="pgo-panel" id="dayPanel" hidden>
+      <h2 id="dayTitle">—</h2>
+      <div id="dayBody"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2 id="listTitle">이 달의 일정</h2>
+      <div id="monthList"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>데이터 출처</h2>
+      <div class="pgo-note" id="srcNote">—</div>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    일정 출처: LeekDuck (ScrapedDuck) · 포켓몬 데이터: pokemon-go-api · pvpoke · PokeAPI.
+    Pokémon © Nintendo / Creatures Inc. / GAME FREAK Inc. · 본 페이지는 비공식 팬 도구입니다.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-review.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-events.js"></script>
+  <script src="/pgo/assets/js/pgo-schedule.js"></script>
+</body>
+</html>

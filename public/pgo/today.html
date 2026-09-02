@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오늘의 일정 · 사라님을 위한 포켓몬 쓸모분석</title>
+  <meta name="description" content="오늘 해야 할 것을 최적 동선 순서로 정리한 하루 체크리스트" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>사라님을 위한 포켓몬 쓸모분석
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/today.html" aria-current="page">오늘의 일정</a>
+        <a href="/pgo/schedule.html">일정 캘린더</a>
+        <a href="/pgo/rank.html">계열별 순위</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-today-head">
+      <div>
+        <div class="pgo-today-date" id="todayDate">—</div>
+        <div class="pgo-today-sub" id="todaySub">—</div>
+      </div>
+      <div class="pgo-today-progress">
+        <div class="pgo-progress-ring" id="progressRing"><span id="progressText">0%</span></div>
+        <button class="pgo-btn ghost" id="resetToday" type="button">체크 초기화</button>
+      </div>
+    </div>
+
+    <div class="pgo-panel" id="timedPanel">
+      <h2>⏰ 시간 맞춰야 하는 것</h2>
+      <div id="timedBody"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>🗺️ 오늘의 동선</h2>
+      <p style="font-size:.8rem;color:var(--pgo-text-mute);margin-bottom:.9rem">
+        위에서부터 순서대로 하면 헛걸음이 없습니다. 체크는 이 브라우저에 <b>날짜별로</b> 저장되고 자정에 새로 시작합니다.
+      </p>
+      <div id="routeBody"></div>
+    </div>
+
+    <div class="pgo-panel" id="raidPanel">
+      <h2>⚔️ 지금 도는 레이드 보스</h2>
+      <div id="raidBody"></div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>📅 다가오는 귀한 일정</h2>
+      <div id="upcomingBody"></div>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    일정 출처: LeekDuck (ScrapedDuck). 니안틱 공지에 따라 바뀔 수 있으니 중요한 건 게임 내 공지로 한 번 더 확인하세요.
+    Pokémon © Nintendo / Creatures Inc. / GAME FREAK Inc.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-review.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-events.js"></script>
+  <script src="/pgo/assets/js/pgo-today.js"></script>
+</body>
+</html>
