@@ -614,3 +614,56 @@ body.pgo {
   .pgo-cal-chip { display: none; }
   .pgo-timed { grid-template-columns: 4.2rem 1fr; }
 }
+
+/* ── 레이드 보스 카드 (포켓몬 단위) ──────────────────────── */
+.pgo-boss-group { margin-bottom: 1.1rem; }
+.pgo-boss-group:last-child { margin-bottom: 0; }
+.pgo-boss {
+  display: grid; grid-template-columns: 56px 1fr; gap: 0.7rem; align-items: center;
+  width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  padding: 0.55rem 0.6rem; margin-bottom: 0.4rem;
+  background: var(--pgo-bg-soft); border: 1px solid var(--pgo-border);
+  border-radius: var(--pgo-radius-sm);
+  transition: border-color .15s, background .15s;
+}
+.pgo-boss:hover { border-color: var(--pgo-accent-2); background: var(--pgo-surface-2); }
+.pgo-boss.tier-0 { border-color: #ffcb0577; }
+.pgo-boss.tier-1 { border-color: #2f9e6b77; }
+.pgo-boss.tier-3 { opacity: .7; }
+.pgo-boss-img { width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; }
+.pgo-boss-main { min-width: 0; }
+.pgo-boss-name {
+  font-size: 0.94rem; font-weight: 800;
+  display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+}
+.pgo-boss-types { display: flex; gap: 0.25rem; align-items: center; flex-wrap: wrap; margin-top: 0.25rem; }
+.pgo-boss-line { font-size: 0.74rem; color: var(--pgo-text-dim); margin-top: 0.28rem; line-height: 1.4; }
+.pgo-boss-meta { font-family: var(--pgo-mono); font-size: 0.7rem; color: var(--pgo-text-mute); margin-top: 0.22rem; }
+.pgo-shiny { font-size: 0.8rem; }
+.pgo-boss-rest { margin-top: 0.3rem; }
+.pgo-boss-rest summary {
+  cursor: pointer; font-size: 0.76rem; color: var(--pgo-text-mute);
+  padding: 0.35rem 0.2rem; list-style: none;
+}
+.pgo-boss-rest summary::before { content: '▸ '; }
+.pgo-boss-rest[open] summary::before { content: '▾ '; }
+.pgo-boss-rest summary:hover { color: var(--pgo-text); }
+
+/* ── 포켓몬별 보기 (캘린더) ─────────────────────────────── */
+.pgo-mon-when {
+  display: grid; grid-template-columns: 56px 1fr; gap: 0.7rem; align-items: start;
+  padding: 0.6rem 0; border-bottom: 1px solid var(--pgo-border);
+}
+.pgo-mon-when:last-child { border-bottom: none; }
+.pgo-mon-when-img { width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; cursor: pointer; }
+.pgo-mon-when-name {
+  font-size: 0.94rem; font-weight: 800; cursor: pointer;
+  display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+}
+.pgo-mon-when-line { font-size: 0.74rem; color: var(--pgo-text-dim); margin-top: 0.25rem; line-height: 1.45; }
+.pgo-mon-when-slots { display: grid; gap: 0.25rem; margin-top: 0.4rem; }
+.pgo-mon-when-slot {
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+  font-size: 0.76rem; color: var(--pgo-text-dim);
+}
+.pgo-mon-when-slot b { font-family: var(--pgo-mono); color: var(--pgo-text); font-weight: 700; }

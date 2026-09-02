@@ -166,23 +166,70 @@
       </div>`).join('');
   }
 
+  const WEATHER_KO = {
+    clear: '맑음', sunny: '맑음', rainy: '비', partlycloudy: '구름 조금',
+    cloudy: '흐림', windy: '바람', snow: '눈', fog: '안개',
+  };
+
+  /** 보스 한 마리 카드 — 포켓몬 단위로 풀어서 보여준다 */
+  function bossCard(r) {
+    const p = (r.mons || []).map(byKey).find(Boolean);
+    if (!p) {
+      return `<div class="pgo-boss"><div class="pgo-boss-main">
+        <div class="pgo-boss-name">${UI.esc(r.name)}</div>
+        <div class="pgo-boss-meta">도감에서 찾지 못한 포켓몬</div>
+      </div></div>`;
+    }
+    const t = P.tier(p);
+    const cp = r.cp ? `CP ${r.cp[0]}~${r.cp[1]}` : '';
+    const cpB = r.cpBoost ? `날씨부스트 ${r.cpBoost[0]}~${r.cpBoost[1]}` : '';
+    const weather = (r.weather || []).map(w => WEATHER_KO[w] || w).join(' · ');
+    const rv = window.PGOReview ? window.PGOReview.of(p) : null;
+
+    return `<button class="pgo-boss tier-${t.id}" data-idx="${p.idx}">
+      ${UI.imgTag(p, 'pgo-boss-img')}
+      <div class="pgo-boss-main">
+        <div class="pgo-boss-name">
+          ${UI.esc(p.n)}
+          <span class="pgo-tier-tag t${t.id}">${UI.esc(t.ko)}</span>
+          ${r.shiny ? '<span class="pgo-shiny" title="색이 다른 포켓몬 가능">✨</span>' : ''}
+        </div>
+        <div class="pgo-boss-types">${p.t.map(UI.typeBadge).join('')}
+          <span class="pgo-rank-badge ${t.id === 0 ? 'top' : t.id === 1 ? 'high' : 'low'}">잠재 #${p.potentialRank}<i>/${P.totals.potential}</i></span>
+        </div>
+        ${rv ? `<div class="pgo-boss-line">${UI.esc(rv.line)}</div>` : ''}
+        <div class="pgo-boss-meta">${UI.esc([cp, cpB, weather && `날씨 ${weather}`].filter(Boolean).join(' · '))}</div>
+      </div>
+    </button>`;
+  }
+
   function renderRaids() {
-    // 섀도우 레이드처럼 매일 도는 것은 빼고 5성(전설)·6성(메가) 위주로 보여준다
-    const live = E.forDay(todayStr)
-      .filter(e => E.RAID_LIKE.includes(e.cat));
-    if (!live.length) {
-      $('raidBody').innerHTML = '<div class="pgo-empty">오늘 도는 5성 · 메가 레이드가 없습니다.</div>';
+    // events.json 은 공지된 이벤트만 담아서, 상시 로테이션으로 도는 보스(메가라티오스 등)가
+    // 빠진다. 실제로 지금 뭘 잡을 수 있는지는 raids.json 목록을 봐야 한다.
+    const groups = E.raidGroups();
+    if (!groups.length) {
+      $('raidBody').innerHTML = '<div class="pgo-empty">지금 도는 레이드 정보가 없습니다.</div>';
       return;
     }
-    $('raidBody').innerHTML = live.map(e => {
-      const c = E.cat(e.cat);
-      return `<div class="pgo-ev-row">
-        <span class="pgo-ev-cat" style="background:${c.color}">${c.icon}</span>
-        <div class="pgo-ev-main">
-          <div class="pgo-ev-name" title="${UI.esc(e.name)}">${UI.esc(koName(e))}</div>
-          <div class="pgo-ev-meta">${UI.esc(c.ko)} · ${UI.esc(E.fmtRange(e))}</div>
-          ${monChips(e.mons)}
+    // 캘린더 '엄선'과 같은 잣대: 5성은 버림(C)만 접고, 메가·3성·1성은 보유(A) 이상만 편다
+    const isGood = (g, r) => {
+      if (r.best === null) return false;
+      return g.rank === 0 ? r.best <= 2 : r.best <= 1;
+    };
+    const valuable = g => g.list.filter(r => isGood(g, r));
+
+    $('raidBody').innerHTML = groups.map(g => {
+      const good = valuable(g);
+      const rest = g.list.filter(r => !good.includes(r));
+      return `<div class="pgo-boss-group">
+        <div class="pgo-route-title"><span>${g.rank === 0 ? '★' : g.rank === 1 ? 'M' : '·'}</span>${UI.esc(g.label)}
+          <span style="margin-left:auto;font-weight:400;font-size:.74rem;color:var(--pgo-text-mute)">${g.list.length}종</span>
         </div>
+        ${good.map(bossCard).join('')}
+        ${rest.length ? `<details class="pgo-boss-rest">
+          <summary>덜 중요한 ${rest.length}종 보기</summary>
+          ${rest.map(bossCard).join('')}
+        </details>` : ''}
       </div>`;
     }).join('');
   }
@@ -254,7 +301,7 @@
     });
 
     document.addEventListener('click', e => {
-      const chip = e.target.closest('.pgo-mon-chip');
+      const chip = e.target.closest('.pgo-mon-chip, .pgo-boss[data-idx]');
       if (chip) UI.openDetail(UI.byId(chip.dataset.idx));
     });
   }

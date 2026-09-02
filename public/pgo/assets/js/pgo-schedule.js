@@ -123,6 +123,79 @@
       : '<div class="pgo-empty">표시할 일정이 없습니다.</div>';
   }
 
+  /**
+   * 포켓몬 단위로 풀어서 보여준다 — 같은 포켓몬이 5성·레이드아워로 여러 번
+   * 나오면 한 줄로 묶고, 언제 얻을 수 있는지 기간만 나열한다.
+   * 지금 로테이션으로 도는 보스(raids.json)도 함께 넣는다 — events.json 에는
+   * 메가라티오스처럼 상시로 도는 보스가 빠져 있기 때문이다.
+   */
+  function renderMons() {
+    const y = view.getFullYear(), m = view.getMonth();
+    const monthStart = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    const monthEnd = `${y}-${String(m + 1).padStart(2, '0')}-31`;
+    const inMonth = e => e.start <= `${monthEnd}T23:59:59` && e.end >= `${monthStart}T00:00:00`;
+
+    const map = new Map();   // idx -> { p, slots: [] }
+    const add = (p, slot) => {
+      if (!map.has(p.idx)) map.set(p.idx, { p, slots: [] });
+      map.get(p.idx).slots.push(slot);
+    };
+
+    E.all().filter(e => E.match(e, mode()) && inMonth(e)).forEach(e => {
+      (e.mons || []).forEach(k => {
+        const p = byKey(k);
+        if (p) add(p, { when: E.fmtRange(e), what: E.cat(e.cat).ko, color: E.cat(e.cat).color });
+      });
+    });
+
+    // 이번 달을 보고 있을 때만 '지금 도는 보스'를 함께 표시한다
+    if (y === today.getFullYear() && m === today.getMonth()) {
+      E.raidGroups().forEach(g => g.list.forEach(r => {
+        (r.mons || []).forEach(k => {
+          const p = byKey(k);
+          if (!p) return;
+          if (mode() === 'select' && (r.best === null || r.best > 1)) return;
+          add(p, { when: '지금 진행 중', what: `${g.label}${r.shiny ? ' · 색이 다른 포켓몬 가능' : ''}`,
+                   color: E.cat(g.rank === 0 ? 'legendary' : g.rank === 1 ? 'mega' : 'raid').color });
+        });
+      }));
+    }
+
+    const list = [...map.values()].sort((a, b) => a.p.potentialRank - b.p.potentialRank);
+    $('monTitle').textContent = `${y}년 ${m + 1}월에 챙길 포켓몬 — ${list.length}종`;
+
+    $('monList').innerHTML = list.length ? list.map(({ p, slots }) => {
+      const t = P.tier(p);
+      const rv = window.PGOReview ? window.PGOReview.of(p) : null;
+      // 같은 문구가 겹치면 하나로
+      const seen = new Set();
+      const uniq = slots.filter(s => {
+        const key = `${s.when}|${s.what}`;
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+      return `<div class="pgo-mon-when">
+        <img class="pgo-mon-when-img" data-idx="${p.idx}" loading="lazy"
+             alt="${UI.esc(p.n)}" src="${P.spriteUrl(p)}" onerror="this.style.visibility='hidden'">
+        <div style="min-width:0">
+          <div class="pgo-mon-when-name" data-idx="${p.idx}">
+            ${UI.esc(p.n)}
+            <span class="pgo-tier-tag t${t.id}">${UI.esc(t.ko)}</span>
+            <span class="pgo-rank-badge ${t.id === 0 ? 'top' : t.id === 1 ? 'high' : 'low'}">잠재 #${p.potentialRank}<i>/${P.totals.potential}</i></span>
+            ${p.t.map(UI.typeBadge).join('')}
+          </div>
+          ${rv ? `<div class="pgo-mon-when-line">${UI.esc(rv.line)}</div>` : ''}
+          <div class="pgo-mon-when-slots">
+            ${uniq.map(s => `<div class="pgo-mon-when-slot">
+              <span class="pgo-ev-cat" style="background:${s.color};width:16px;height:16px;font-size:.6rem">·</span>
+              <b>${UI.esc(s.when)}</b><span>${UI.esc(s.what)}</span>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    }).join('') : '<div class="pgo-empty">이 달에 챙길 포켓몬이 없습니다.</div>';
+  }
+
   function renderLegend() {
     const used = new Set(E.all().filter(e => E.match(e, mode())).map(e => e.cat));
     $('catLegend').innerHTML = [...used].map(k => {
@@ -133,6 +206,7 @@
 
   function renderAll() {
     renderCalendar();
+    renderMons();
     renderMonthList();
     renderLegend();
     if (selected) renderDay(selected);
@@ -186,7 +260,7 @@
     });
 
     document.addEventListener('click', e => {
-      const chip = e.target.closest('.pgo-mon-chip');
+      const chip = e.target.closest('.pgo-mon-chip, [data-idx].pgo-mon-when-img, [data-idx].pgo-mon-when-name');
       if (chip) UI.openDetail(UI.byId(chip.dataset.idx));
     });
   }

@@ -207,6 +207,44 @@
       .slice(0, limit || 20);
   }
 
+  // ── 현재 도는 레이드 보스 (raids.json) ──────────────────────
+  // events.json 은 '공지된 이벤트'만 담는다. 메가라티오스처럼 상시 로테이션으로
+  // 도는 보스는 여기에만 있으므로, 오늘 뭘 잡을 수 있는지는 이 목록을 봐야 한다.
+  const TIER_LABEL = [
+    [/5-?star/i, { ko: '5성 전설', rank: 0 }],
+    [/mega/i,    { ko: '메가 (6성)', rank: 1 }],
+    [/elite/i,   { ko: '엘리트', rank: 2 }],
+    [/3-?star/i, { ko: '3성', rank: 3 }],
+    [/1-?star/i, { ko: '1성', rank: 4 }],
+  ];
+  function raidTier(r) {
+    for (const [re, info] of TIER_LABEL) if (re.test(r.tier || '')) return info;
+    return { ko: r.tier || '기타', rank: 9 };
+  }
+  const isShadowRaid = r => /^shadow/i.test(r.name || '');
+
+  /**
+   * 현재 보스를 티어별로 묶는다.
+   * @param opts.valuableOnly 보유 등급 A 이상만 (등급 판정은 setTierResolver 필요)
+   */
+  function raidGroups(opts) {
+    const valuableOnly = opts && opts.valuableOnly;
+    const groups = new Map();
+    raids().forEach(r => {
+      const t = raidTier(r);
+      const best = bestTier({ mons: r.mons });
+      if (valuableOnly && (best === null || best > 1)) return;
+      const key = `${t.rank}|${t.ko}${isShadowRaid(r) ? ' · 섀도우' : ''}`;
+      if (!groups.has(key)) groups.set(key, { label: key.split('|')[1], rank: t.rank, shadow: isShadowRaid(r), list: [] });
+      groups.get(key).list.push(Object.assign({ best }, r));
+    });
+    const out = [...groups.values()];
+    out.forEach(g => g.list.sort((a, b) => (a.best === null ? 9 : a.best) - (b.best === null ? 9 : b.best)));
+    // 섀도우는 같은 티어 안에서 뒤로
+    out.sort((a, b) => a.rank - b.rank || (a.shadow ? 1 : 0) - (b.shadow ? 1 : 0));
+    return out;
+  }
+
   // ── 로딩 ────────────────────────────────────────────────────
   function load() {
     if (loadPromise) return loadPromise;
@@ -260,6 +298,7 @@
   global.PGOEvents = {
     CAT, load, refresh, label,
     MODES, MODE_LABEL, RAID_56, RAID_LIKE, PERK, setTierResolver, bestTier, match,
+    raidGroups, raidTier, isShadowRaid,
     get db() { return DB; },
     all, raids, forDay, forMonth, upcoming,
     ymd, parse, fmtTime, fmtDate, fmtRange, onDay, startsOn, isTimed, DOW,
