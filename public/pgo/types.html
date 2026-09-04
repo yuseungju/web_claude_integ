@@ -4,20 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>타입 상성 · 사라님을 위한 포켓몬 쓸모분석</title>
-  <meta name="description" content="포켓몬GO 타입 상성표와 복합 타입 계산기" />
+  <meta name="description" content="포켓몬GO 타입 상성 — 어느 쪽이 유리한지 한눈에" />
   <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
-  <style>
-    .pgo-matrix { border-collapse: collapse; font-size: 0.7rem; }
-    .pgo-matrix th, .pgo-matrix td {
-      border: 1px solid var(--pgo-border); padding: 0.22rem 0.3rem;
-      text-align: center; white-space: nowrap;
-    }
-    .pgo-matrix thead th { background: var(--pgo-bg-soft); font-weight: 600; }
-    .pgo-matrix .rowhead { text-align: right; padding-right: 0.45rem; }
-    .pgo-matrix td.c { font-family: var(--pgo-mono); font-weight: 700; }
-    .pgo-matrix td.c[data-m="1"] { color: var(--pgo-text-mute); opacity: .45; }
-    .pgo-vert { writing-mode: vertical-rl; transform: rotate(180deg); padding: 0.35rem 0.2rem !important; }
-  </style>
 </head>
 <body class="pgo">
   <header class="pgo-header">
@@ -42,11 +30,23 @@
   <main class="pgo-main">
     <div class="pgo-page-head">
       <h1>타입 상성</h1>
-      <p>포켓몬GO 기준 배율입니다. 효과 굉장 1.6배, 효과 별로 0.625배, 2중 반감 0.390625배.</p>
+      <p><b>1.6배</b>면 때리는 쪽이 유리하고, <b>0.625배 · 0.39배</b>면 맞는 쪽이 유리합니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>타입 하나 골라 보기</h2>
+      <p style="font-size:.8rem;color:var(--pgo-text-mute);margin-bottom:.9rem">
+        고른 타입이 <b>때릴 때</b>와 <b>맞을 때</b> 각각 어디에 유리한지 문장으로 정리합니다.
+      </p>
+      <div class="pgo-type-picker" id="typePicker"></div>
+      <div id="typeDetail" style="margin-top:1.1rem"></div>
     </div>
 
     <div class="pgo-panel">
       <h2>복합 타입 계산기</h2>
+      <p style="font-size:.8rem;color:var(--pgo-text-mute);margin-bottom:.9rem">
+        방어하는 쪽 타입을 고르면 어떤 공격에 아프고 어떤 공격을 잘 버티는지 계산합니다.
+      </p>
       <div class="pgo-controls">
         <div class="pgo-field">
           <label for="t1">방어 타입 1</label>
@@ -62,12 +62,16 @@
 
     <div class="pgo-panel">
       <h2>전체 상성표</h2>
-      <p style="font-size:.76rem;color:var(--pgo-text-mute);margin-bottom:.7rem">
-        가로: 공격 타입 → 세로: 방어 타입. 셀 값은 배율입니다.
-      </p>
+      <div class="pgo-matrix-legend">
+        <span class="pgo-matrix-axis"><b>세로</b> 공격 타입</span>
+        <span class="pgo-matrix-axis"><b>가로</b> 방어 타입</span>
+        <span class="pgo-chip"><span class="pgo-mult x160">1.6x</span>&nbsp;공격 쪽 유리</span>
+        <span class="pgo-chip"><span class="pgo-mult x063">0.625x</span>&nbsp;<span class="pgo-mult x039">0.39x</span>&nbsp;방어 쪽 유리</span>
+      </div>
       <div class="pgo-table-wrap">
         <table class="pgo-matrix" id="matrix"></table>
       </div>
+      <div id="cellHint" class="pgo-cell-hint">칸에 마우스를 올리거나 눌러 보세요.</div>
     </div>
   </main>
 
