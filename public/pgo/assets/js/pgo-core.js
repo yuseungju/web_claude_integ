@@ -114,6 +114,50 @@
     return cp(go, IV_PERFECT, level || MAX_LEVEL_XL);
   }
 
+  // ── 개체값 역산 ──────────────────────────────────────────────
+  /**
+   * 표시 CP(+HP)로 가능한 (레벨, 개체값) 조합을 모두 찾는다.
+   * @param levels 검사할 레벨 배열
+   * @param targetHp null 이면 CP만으로 판정
+   * @param ivMin 최소 개체값 (레이드·알 산출물은 10)
+   */
+  function solveIV(p, targetCp, targetHp, levels, ivMin) {
+    const min = ivMin || 0;
+    const out = [];
+    for (const level of levels) {
+      const m = CPM[level];
+      if (!m) continue;
+
+      // HP를 알면 체력 개체값을 먼저 좁힌다
+      let sMin = min, sMax = 15;
+      if (targetHp != null) {
+        let lo = null, hi = null;
+        for (let s = min; s <= 15; s++) {
+          if (Math.max(10, Math.floor((p.go.sta + s) * m)) === targetHp) {
+            if (lo === null) lo = s;
+            hi = s;
+          }
+        }
+        if (lo === null) continue;
+        sMin = lo; sMax = hi;
+      }
+
+      for (let a = min; a <= 15; a++) {
+        for (let d = min; d <= 15; d++) {
+          for (let s = sMin; s <= sMax; s++) {
+            if (cp(p.go, { a, d, s }, level) !== targetCp) continue;
+            out.push({ level, a, d, s, total: a + d + s });
+          }
+        }
+      }
+    }
+    out.sort((x, y) => y.total - x.total || x.level - y.level);
+    return out;
+  }
+
+  /** 해당 레벨에서 개체값 만렙(15/15/15)일 때의 CP */
+  const perfectCp = (p, level) => cp(p.go, IV_PERFECT, level);
+
   // ── 타입 계산 ────────────────────────────────────────────────
   function effectiveness(attackTypeId, defenderTypeIds) {
     return defenderTypeIds.reduce((m, t) => m * (DB.chart[attackTypeId]?.[t] ?? 1), 1);
@@ -376,7 +420,7 @@
     get types() { return DB ? DB.types : []; },
     get moves() { return DB ? DB.moves : []; },
     get totals() { return DB ? DB.totals : {}; },
-    cp, hp, maxCp,
+    cp, hp, maxCp, solveIV, perfectCp,
     effectiveness, defenseProfile, bestStab,
     combatRating, pairDps, moveDamage,
     typeName, typeColor, className, classColor, tier,

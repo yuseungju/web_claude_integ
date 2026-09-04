@@ -27,40 +27,8 @@
   function solve(p, targetCp, targetHp, grade, cap) {
     const range = GRADE_RANGE[grade];
     const ivMin = cap === '20' ? 10 : 0;         // 레이드/알 산출물은 IV 최소 10
-    const out = [];
-
-    for (const level of levelsFor(cap)) {
-      const m = P.CPM[level];
-      if (!m) continue;
-
-      // HP를 알면 체력 IV를 먼저 좁힐 수 있다
-      let sMin = ivMin, sMax = 15;
-      if (targetHp != null) {
-        let lo = null, hi = null;
-        for (let s = ivMin; s <= 15; s++) {
-          if (Math.max(10, Math.floor((p.go.sta + s) * m)) === targetHp) {
-            if (lo === null) lo = s;
-            hi = s;
-          }
-        }
-        if (lo === null) continue;               // 이 레벨에서는 HP가 성립하지 않음
-        sMin = lo; sMax = hi;
-      }
-
-      for (let a = ivMin; a <= 15; a++) {
-        for (let d = ivMin; d <= 15; d++) {
-          for (let s = sMin; s <= sMax; s++) {
-            const total = a + d + s;
-            if (range && (total < range[0] || total > range[1])) continue;
-            if (P.cp(p.go, { a, d, s }, level) !== targetCp) continue;
-            out.push({ level, a, d, s, total });
-          }
-        }
-      }
-    }
-
-    out.sort((x, y) => y.total - x.total || x.level - y.level);
-    return out;
+    return P.solveIV(p, targetCp, targetHp, levelsFor(cap), ivMin)
+      .filter(r => !range || (r.total >= range[0] && r.total <= range[1]));
   }
 
   function renderSummary(p, results) {

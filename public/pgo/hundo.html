@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4성 판별 · 사라님을 위한 포켓몬 쓸모분석</title>
+  <meta name="description" content="CP로 100%(4성) 개체인지 판별하고 전 종 100% CP 표를 조회" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>사라님을 위한 포켓몬 쓸모분석
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/today.html">오늘의 일정</a>
+        <a href="/pgo/schedule.html">일정 캘린더</a>
+        <a href="/pgo/rank.html">계열별 순위</a>
+        <a href="/pgo/hundo.html" aria-current="page">4성 판별</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>4성 판별 (100% 개체)</h1>
+      <p>포켓몬과 <b>CP</b>만 넣으면 개체값 만렙(15/15/15)일 가능성을 알려줍니다. 레이드 · 알처럼 레벨이 정해진 조우는 <b>확정 판정</b>이 나옵니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-controls">
+        <div class="pgo-field">
+          <label for="mon">포켓몬</label>
+          <select class="pgo-select" id="mon"></select>
+        </div>
+        <div class="pgo-field">
+          <label for="cp">CP</label>
+          <input class="pgo-input" id="cp" type="number" min="10" max="9999" placeholder="예: 2191" />
+        </div>
+        <div class="pgo-field">
+          <label for="hp">HP <span style="font-weight:400">(선택)</span></label>
+          <input class="pgo-input" id="hp" type="number" min="1" max="999" placeholder="알면 더 정확" />
+        </div>
+        <div class="pgo-field">
+          <label for="src">어디서 얻었나요</label>
+          <select class="pgo-select" id="src"></select>
+        </div>
+      </div>
+      <div style="margin-top:.75rem">
+        <button class="pgo-btn" id="check" type="button">판별</button>
+        <button class="pgo-btn ghost" id="clear" type="button">초기화</button>
+      </div>
+    </div>
+
+    <div id="verdict"></div>
+
+    <div class="pgo-panel" id="chartPanel" hidden>
+      <h2 id="chartTitle">이 포켓몬의 100% CP 표</h2>
+      <p style="font-size:.8rem;color:var(--pgo-text-mute);margin-bottom:.9rem">
+        각 조우 레벨에서 <b>개체값이 15/15/15일 때의 CP</b>입니다. 고정 레벨 조우는 이 값이
+        그 레벨에서 나올 수 있는 <b>최댓값</b>이라, CP가 정확히 같으면 100% 확정입니다.
+      </p>
+      <div class="pgo-table-wrap">
+        <table class="pgo-table">
+          <thead><tr><th>조우 경로</th><th>레벨</th><th>100% CP</th><th>100% HP</th><th>최저 CP (0/0/0)</th></tr></thead>
+          <tbody id="chartRows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>전체 100% CP 표</h2>
+      <p style="font-size:.8rem;color:var(--pgo-text-mute);margin-bottom:.9rem">
+        전 종의 조우 레벨별 100% CP입니다. CP를 입력하면 <b>그 CP가 100%가 되는 포켓몬</b>을 거꾸로 찾아줍니다.
+      </p>
+      <div class="pgo-controls">
+        <div class="pgo-field">
+          <label for="q">포켓몬 검색</label>
+          <input class="pgo-input" id="q" type="search" placeholder="이름 또는 도감번호" autocomplete="off" />
+        </div>
+        <div class="pgo-field">
+          <label for="rcp">CP 역조회</label>
+          <input class="pgo-input" id="rcp" type="number" min="10" max="9999" placeholder="이 CP가 100%인 종 찾기" />
+        </div>
+        <div class="pgo-field">
+          <label for="tierFilter">보유 등급</label>
+          <select class="pgo-select" id="tierFilter">
+            <option value="">전체</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <span class="pgo-chip" id="tableCount">—</span>
+      </div>
+      <div class="pgo-table-wrap" style="margin-top:.9rem">
+        <table class="pgo-table">
+          <thead>
+            <tr>
+              <th>포켓몬</th><th>보유</th>
+              <th>레이드·알<br>L20</th><th>부스트<br>L25</th>
+              <th>리서치<br>L15</th><th>그림자<br>L8</th>
+              <th>야생 최대<br>L30</th><th>야생 부스트<br>L35</th>
+              <th>파워업<br>L40</th><th>만렙<br>L50</th>
+            </tr>
+          </thead>
+          <tbody id="tableRows"></tbody>
+        </table>
+      </div>
+      <div id="tableMore"></div>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    CP = floor((공격+IV) × √(방어+IV) × √(체력+IV) × CPM² ÷ 10).
+    종족값은 게임 실측값이라 계산 결과가 게임 내 표시와 일치합니다
+    (pvpoke 공개 CP 값과 510종 중 496종 정확히 일치, 나머지는 상대 쪽 메가 데이터 누락).
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-review.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-hundo.js"></script>
+</body>
+</html>
