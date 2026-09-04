@@ -5,6 +5,7 @@
   const P = window.PGO, UI = window.PGOUI;
   const $ = id => document.getElementById(id);
   const STAB = 1.2;
+  let picker = null;
 
   function candidatePool(mode) {
     if (mode === 'base') return P.pokemon.filter(p => p.r && !p.f);
@@ -80,7 +81,7 @@
   }
 
   function update() {
-    const target = UI.byId($('target').value);
+    const target = picker.get();
     if (!target) {
       $('targetInfo').innerHTML = '<div class="pgo-panel"><div class="pgo-empty">상대 포켓몬을 선택하세요.</div></div>';
       $('counterPanel').hidden = true;
@@ -91,8 +92,11 @@
   }
 
   function render() {
-    UI.fillPokemonSelect($('target'));
-    ['target', 'pool', 'topn'].forEach(id => $(id).addEventListener('change', update));
+    picker = UI.mountPicker($('target'), {
+      placeholder: '상대 포켓몬 이름 또는 도감번호 (예: 뮤츠, 150)',
+      onSelect: update,
+    });
+    ['pool', 'topn'].forEach(id => $(id).addEventListener('change', update));
 
     $('counterRows').addEventListener('click', e => {
       const tr = e.target.closest('tr[data-idx]');
@@ -101,8 +105,8 @@
 
     // 기본값: 초기 화면이 비지 않도록 대표 레이드 보스(뮤츠)를 띄운다
     const seed = P.pokemon.find(p => p.k === 'MEWTWO');
-    if (seed) $('target').value = seed.idx;
-    update();
+    if (seed) picker.set(seed);
+    else update();
   }
 
   UI.boot(render);

@@ -13,6 +13,7 @@
   const P = window.PGO, UI = window.PGOUI;
   const $ = id => document.getElementById(id);
   const PAGE = 40;
+  let picker = null;
 
   /**
    * 조우 경로별 레벨.
@@ -214,7 +215,7 @@
 
   // ── 부트 ────────────────────────────────────────────────────
   function run() {
-    const p = UI.byId($('mon').value);
+    const p = picker.get();
     const targetCp = parseInt($('cp').value, 10);
     const hpRaw = $('hp').value.trim();
     const targetHp = hpRaw === '' ? null : parseInt(hpRaw, 10);
@@ -227,16 +228,18 @@
   }
 
   function render() {
-    UI.fillPokemonSelect($('mon'));
+    picker = UI.mountPicker($('mon'), {
+      placeholder: '포켓몬 이름 또는 도감번호 (예: 레쿠쟈, 384)',
+      onSelect: p => { if (p) { renderChart(p); if ($('cp').value) run(); } },
+    });
     $('src').innerHTML = SOURCES.map(s => `<option value="${s.id}">${UI.esc(s.ko)}</option>`).join('');
     $('tierFilter').insertAdjacentHTML('beforeend',
       P.TIERS.map(t => `<option value="${t.id}">${t.ko}</option>`).join(''));
 
     $('check').addEventListener('click', run);
-    $('mon').addEventListener('change', () => { const p = UI.byId($('mon').value); if (p) renderChart(p); });
     ['cp', 'hp'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') run(); }));
     $('clear').addEventListener('click', () => {
-      $('mon').value = ''; $('cp').value = ''; $('hp').value = ''; $('src').value = 'raid';
+      picker.clear(); $('cp').value = ''; $('hp').value = ''; $('src').value = 'raid';
       $('verdict').innerHTML = ''; $('chartPanel').hidden = true;
     });
 

@@ -6,6 +6,7 @@
   const $ = id => document.getElementById(id);
   const MAX_ROWS = 300;   // 표에 그리는 최대 행 수 (조합이 수백 개 나올 수 있음)
   let current = null;     // 마지막으로 계산한 포켓몬 (보관함 저장에 사용)
+  let picker = null;
 
   /** 감정 등급 -> IV 합계 범위 */
   const GRADE_RANGE = { 4: [37, 45], 3: [30, 36], 2: [23, 29], 1: [0, 22] };
@@ -85,7 +86,7 @@
   }
 
   function run() {
-    const p = UI.byId($('mon').value);
+    const p = picker.get();
     const targetCp = parseInt($('cp').value, 10);
     const hpRaw = $('hp').value.trim();
     const targetHp = hpRaw === '' ? null : parseInt(hpRaw, 10);
@@ -124,14 +125,16 @@
   }
 
   function render() {
-    UI.fillPokemonSelect($('mon'));
+    picker = UI.mountPicker($('mon'), {
+      placeholder: '포켓몬 이름 또는 도감번호 (예: 괴력몬, 68)',
+    });
     $('calc').addEventListener('click', run);
     $('rows').addEventListener('click', e => {
       const btn = e.target.closest('.pgo-save');
       if (btn) save(btn);
     });
     $('clear').addEventListener('click', () => {
-      $('mon').value = ''; $('cp').value = ''; $('hp').value = '';
+      picker.clear(); $('cp').value = ''; $('hp').value = '';
       $('grade').value = ''; $('cap').value = '50';
       $('summary').innerHTML = '';
       $('resultPanel').hidden = true;

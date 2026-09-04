@@ -141,6 +141,92 @@
       + P.types.map(t => `<option value="${t.id}">${esc(t.ko)}</option>`).join('');
   }
 
+  /**
+   * 검색 가능한 포켓몬 선택기 — 1,100종이 넘어서 <select> 로는 못 찾는다.
+   * 자리표시자 요소를 입력창 + 후보 목록으로 바꾼다.
+   *
+   * @param host  자리에 놓을 요소 (기존 select 를 넘기면 그 자리를 대체한다)
+   * @param opts  { placeholder, onSelect(p), list }
+   * @returns { get(), set(p), clear(), input }
+   */
+  function mountPicker(host, opts) {
+    const o = opts || {};
+    const source = () => (o.list ? o.list() : P.pokemon.filter(p => p.r));
+
+    const wrap = document.createElement('div');
+    wrap.className = 'pgo-picker';
+    wrap.innerHTML = `
+      <input class="pgo-input pgo-picker-input" type="search" autocomplete="off"
+             placeholder="${esc(o.placeholder || '이름 또는 도감번호로 검색')}" />
+      <div class="pgo-picker-list" hidden></div>`;
+    host.parentNode.replaceChild(wrap, host);
+
+    const input = wrap.querySelector('.pgo-picker-input');
+    const list = wrap.querySelector('.pgo-picker-list');
+    let selected = null;
+    let matches = [];
+    let cursor = -1;
+
+    function close() { list.hidden = true; cursor = -1; }
+
+    function render(q) {
+      matches = source().filter(p => P.matches(p, q)).slice(0, 40);
+      if (!matches.length) {
+        list.innerHTML = '<div class="pgo-picker-empty">검색 결과가 없습니다</div>';
+        list.hidden = false;
+        return;
+      }
+      list.innerHTML = matches.map((p, i) => {
+        const t = P.tier(p);
+        return `<button type="button" class="pgo-picker-item${i === cursor ? ' on' : ''}" data-i="${i}">
+          ${imgTag(p, 'pgo-picker-img')}
+          <span class="pgo-picker-name">${esc(p.n)}</span>
+          <span class="pgo-picker-dex">#${p.d}</span>
+          <span class="pgo-tier-tag t${t.id}">${esc(t.short)}</span>
+        </button>`;
+      }).join('');
+      list.hidden = false;
+    }
+
+    function choose(p) {
+      selected = p;
+      input.value = p ? `${p.n} (#${p.d})` : '';
+      close();
+      if (o.onSelect) o.onSelect(p);
+    }
+
+    function move(step) {
+      if (list.hidden) { render(''); }
+      if (!matches.length) return;
+      cursor = (cursor + step + matches.length) % matches.length;
+      [...list.querySelectorAll('.pgo-picker-item')].forEach((el, i) => el.classList.toggle('on', i === cursor));
+      const on = list.querySelector('.pgo-picker-item.on');
+      if (on) on.scrollIntoView({ block: 'nearest' });
+    }
+
+    input.addEventListener('input', () => { selected = null; cursor = -1; render(input.value); });
+    input.addEventListener('focus', () => render(selected ? '' : input.value));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+      else if (e.key === 'Enter') {
+        if (!list.hidden && matches.length) { e.preventDefault(); choose(matches[cursor >= 0 ? cursor : 0]); }
+      } else if (e.key === 'Escape') { close(); }
+    });
+    list.addEventListener('mousedown', e => {
+      const item = e.target.closest('.pgo-picker-item');
+      if (item) { e.preventDefault(); choose(matches[Number(item.dataset.i)]); }
+    });
+    document.addEventListener('click', e => { if (!wrap.contains(e.target)) close(); });
+
+    return {
+      get: () => selected,
+      set: p => choose(p),
+      clear: () => { selected = null; input.value = ''; close(); },
+      input,
+    };
+  }
+
   const byId = idx => P.pokemon[Number(idx)];
   const byKey = k => P.pokemon.find(p => p.k === k);
 
@@ -335,7 +421,7 @@
 
   global.PGOUI = {
     esc, typeBadge, classBadge, rankBadge, tierBanner, inheritedNote, multClass, multText, multHtml, imgTag, card,
-    fillPokemonSelect, fillTypeSelect, byId, byKey, statBars, defenseSummary,
+    fillPokemonSelect, fillTypeSelect, mountPicker, byId, byKey, statBars, defenseSummary,
     rankSummary, movesetBlock, verdictLine, reviewLine, reviewBlock, openDetail, closeDetail, bindModal, boot,
   };
 })(window);

@@ -703,3 +703,28 @@ body.pgo {
 .pgo-table tr.perfect td { font-weight: 700; }
 .pgo-table td.hit { background: rgba(255,203,5,.18); font-weight: 800; color: var(--pgo-accent); }
 .pgo-table th { line-height: 1.25; }
+
+/* ── 검색 가능한 포켓몬 선택기 ───────────────────────────── */
+.pgo-picker { position: relative; }
+.pgo-picker-input { width: 100%; }
+.pgo-picker-input::-webkit-search-cancel-button { filter: invert(0.6); }
+.pgo-picker-list {
+  position: absolute; z-index: 60; left: 0; right: 0; top: calc(100% + 4px);
+  max-height: 19rem; overflow-y: auto;
+  background: var(--pgo-surface); border: 1px solid var(--pgo-border);
+  border-radius: var(--pgo-radius-sm);
+  box-shadow: 0 12px 32px rgba(0,0,0,.5);
+  padding: 0.25rem;
+}
+.pgo-picker-list[hidden] { display: none; }
+.pgo-picker-item {
+  display: grid; grid-template-columns: 34px 1fr auto auto; gap: 0.45rem;
+  align-items: center; width: 100%; text-align: left;
+  padding: 0.3rem 0.4rem; border: none; border-radius: var(--pgo-radius-sm);
+  background: transparent; color: inherit; font: inherit; cursor: pointer;
+}
+.pgo-picker-item:hover, .pgo-picker-item.on { background: var(--pgo-surface-2); }
+.pgo-picker-img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; }
+.pgo-picker-name { font-size: 0.86rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pgo-picker-dex { font-family: var(--pgo-mono); font-size: 0.7rem; color: var(--pgo-text-mute); }
+.pgo-picker-empty { padding: 0.7rem; font-size: 0.82rem; color: var(--pgo-text-mute); text-align: center; }
