@@ -68,6 +68,26 @@
     </div>
 
     <div class="pgo-panel">
+      <h2>직접 골라서 비교</h2>
+      <p style="font-size:.8rem;color:var(--pgo-text-mute);margin-bottom:.9rem">
+        좌 · 우에 원하는 포켓몬을 넣으면 <b>누가 이길지</b>와 함께 서로에 대한
+        공격력 · 방어력 · 상성 배율을 나란히 비교합니다.
+      </p>
+      <div class="pgo-compare-pick">
+        <div class="pgo-field">
+          <label for="leftPick">왼쪽</label>
+          <select id="leftPick"></select>
+        </div>
+        <button class="pgo-btn ghost" id="swap" type="button" title="좌우 바꾸기">⇄</button>
+        <div class="pgo-field">
+          <label for="rightPick">오른쪽</label>
+          <select id="rightPick"></select>
+        </div>
+      </div>
+      <div id="compareOut" style="margin-top:1.1rem"></div>
+    </div>
+
+    <div class="pgo-panel">
       <h2>상성표 <span style="font-weight:400;font-size:.8rem;color:var(--pgo-text-mute)">— 세로 공격 · 가로 방어</span></h2>
       <div class="pgo-matrix-legend">
         <span class="pgo-chip"><span class="pgo-mult x160">1.6x</span>&nbsp;공격 쪽 유리</span>

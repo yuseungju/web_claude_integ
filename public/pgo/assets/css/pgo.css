@@ -931,3 +931,48 @@ body.pgo {
   .pgo-vs-mark { text-align: center; }
   .pgo-fighter-img { width: 72px; height: 72px; }
 }
+
+/* ── 직접 골라서 비교 ────────────────────────────────────── */
+.pgo-compare-pick {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.7rem; align-items: end;
+}
+.pgo-compare-pick .pgo-btn { padding: 0.5rem 0.7rem; font-size: 1rem; }
+
+.pgo-cmp-head {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.8rem; align-items: center;
+}
+.pgo-cmp-side {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.7rem 0.8rem; border-radius: var(--pgo-radius);
+  background: var(--pgo-bg-soft); border: 2px solid transparent;
+}
+.pgo-cmp-side.win { border-color: var(--pgo-accent); background: rgba(255,203,5,.08); }
+.pgo-cmp-side:last-child { flex-direction: row-reverse; text-align: right; }
+.pgo-cmp-side:last-child .pgo-fighter-types { justify-content: flex-end; }
+.pgo-cmp-img { width: 58px; height: 58px; object-fit: contain; image-rendering: pixelated; flex: none; }
+.pgo-cmp-name { font-size: 0.98rem; font-weight: 800; line-height: 1.25; }
+.pgo-cmp-mid { text-align: center; }
+.pgo-cmp-vs { font-family: var(--pgo-mono); font-weight: 900; color: var(--pgo-text-mute); }
+.pgo-cmp-winner {
+  font-size: 0.76rem; font-weight: 800; margin-top: 0.2rem;
+  color: var(--pgo-accent); white-space: nowrap;
+}
+
+.pgo-cmp-table { table-layout: fixed; }
+.pgo-cmp-table th, .pgo-cmp-table td { text-align: center; }
+.pgo-cmp-table .pgo-cmp-label {
+  font-size: 0.74rem; color: var(--pgo-text-mute); white-space: nowrap;
+  width: 40%; text-align: center;
+}
+.pgo-cmp-table td.num { font-size: 0.86rem; text-align: center; }
+.pgo-cmp-table td.num.lead {
+  color: var(--pgo-accent); font-weight: 800;
+  background: rgba(255,203,5,.09);
+}
+
+@media (max-width: 620px) {
+  .pgo-compare-pick { grid-template-columns: 1fr; }
+  .pgo-cmp-head { grid-template-columns: 1fr; }
+  .pgo-cmp-side:last-child { flex-direction: row; text-align: left; }
+  .pgo-cmp-side:last-child .pgo-fighter-types { justify-content: flex-start; }
+}

@@ -172,21 +172,22 @@
     const wBest = edge(wAtk, l.t, true);
     const lWorst = edge(lAtk, w.t, false);
 
+    // 각 항목을 완결된 문장으로 만들어 이어 붙인다 ('…들어가고.' 처럼 끊기지 않게)
     const bits = [];
     if (wBest && wBest.eff > 1.01) {
-      bits.push(`<b>${UI.esc(w.n)}</b>의 ${P.typeName(wBest.mv.t)} 공격(${UI.esc(wBest.mv.n)})이 <b class="good">${UI.multText(wBest.eff)}</b>로 잘 들어가고`);
+      bits.push(`<b>${UI.esc(w.n)}</b>의 ${P.typeName(wBest.mv.t)} 공격(${UI.esc(wBest.mv.n)})이 <b class="good">${UI.multText(wBest.eff)}</b>로 잘 들어갑니다.`);
     }
     if (lWorst && lWorst.eff < 0.99) {
-      bits.push(`<b>${UI.esc(l.n)}</b>의 ${P.typeName(lWorst.mv.t)} 공격은 <b class="bad">${UI.multText(lWorst.eff)}</b>로 막힙니다`);
+      bits.push(`반대로 <b>${UI.esc(l.n)}</b>의 ${P.typeName(lWorst.mv.t)} 공격은 <b class="bad">${UI.multText(lWorst.eff)}</b>로 막힙니다.`);
     }
     if (!bits.length) {
       const atkGap = w.go.atk - l.go.atk;
       bits.push(atkGap > 0
-        ? `상성은 비슷하지만 <b>${UI.esc(w.n)}</b>의 공격 종족값이 ${atkGap} 높습니다`
-        : `상성은 비슷하지만 <b>${UI.esc(w.n)}</b>${josa(w.n, '이가').slice(-1)} 더 단단해서 오래 버팁니다`);
+        ? `상성은 비슷하지만 <b>${UI.esc(w.n)}</b>의 공격 종족값이 ${atkGap} 높습니다.`
+        : `상성은 비슷하지만 <b>${UI.esc(w.n)}</b>${josa(w.n, '이가').slice(-1)} 더 단단해서 오래 버팁니다.`);
     }
     const gap = d.margin >= 0.35 ? '일방적입니다' : d.margin >= 0.12 ? '분명한 차이입니다' : '아슬아슬합니다';
-    return `${bits.join(', ')}. 승부는 ${gap}`;
+    return `${bits.join(' ')} 승부는 ${gap}.`;
   }
 
   function renderAnswer(chosen) {
@@ -241,6 +242,102 @@
     $('next').hidden = false;
   }
 
+  // ── 직접 골라서 비교 ─────────────────────────────────────────
+  let leftPicker = null, rightPicker = null;
+
+  /**
+   * 능력치 한 줄 — 유리한 쪽을 강조한다.
+   * @param opt.unit 단위 문자열
+   * @param opt.lowerIsBetter 쓰러뜨리는 시간처럼 작을수록 좋은 값
+   */
+  function statRow(label, va, vb, opt) {
+    const o = opt || {};
+    const fmt = v => {
+      if (!Number.isFinite(v)) return '—';
+      if (o.fmt) return o.fmt(v);
+      return (Number.isInteger(v) ? v : v.toFixed(1)) + (o.unit || '');
+    };
+    const better = (x, y) => (o.lowerIsBetter ? x < y : x > y);
+    const aLead = Number.isFinite(va) && (!Number.isFinite(vb) || better(va, vb));
+    const bLead = Number.isFinite(vb) && (!Number.isFinite(va) || better(vb, va));
+    return `<tr>
+      <td class="num ${aLead ? 'lead' : ''}">${fmt(va)}</td>
+      <td class="pgo-cmp-label">${UI.esc(label)}</td>
+      <td class="num ${bLead ? 'lead' : ''}">${fmt(vb)}</td>
+    </tr>`;
+  }
+
+  /** 상대에게 가장 잘 통하는 기술의 배율 (표에 쓰는 요약값) */
+  function topEff(atk, defTypes) {
+    const e = edge(atk, defTypes, true);
+    return e ? e.eff : 1;
+  }
+
+  function renderCompare() {
+    const a = leftPicker.get(), b = rightPicker.get();
+    const box = $('compareOut');
+    if (!a || !b) {
+      box.innerHTML = '<div class="pgo-empty">좌 · 우에 포켓몬을 하나씩 골라 주세요.</div>';
+      return;
+    }
+    if (a.idx === b.idx) {
+      box.innerHTML = '<div class="pgo-note">같은 포켓몬끼리는 비교할 수 없습니다. 한쪽을 바꿔 주세요.</div>';
+      return;
+    }
+
+    const d = P.duel(a, b);
+    const wn = d.winner ? d.winner.n : null;
+    const effA = topEff(d.atkA, b.t), effB = topEff(d.atkB, a.t);
+
+    box.innerHTML = `
+      <div class="pgo-cmp-head">
+        <div class="pgo-cmp-side${d.winner === a ? ' win' : ''}">
+          ${UI.imgTag(a, 'pgo-cmp-img')}
+          <div><div class="pgo-cmp-name">${UI.esc(a.n)}</div>
+          <div class="pgo-fighter-types">${a.t.map(UI.typeBadge).join('')}</div></div>
+        </div>
+        <div class="pgo-cmp-mid">
+          <div class="pgo-cmp-vs">VS</div>
+          ${wn ? `<div class="pgo-cmp-winner">${UI.esc(wn)} 승</div>` : '<div class="pgo-cmp-winner">무승부</div>'}
+        </div>
+        <div class="pgo-cmp-side${d.winner === b ? ' win' : ''}">
+          ${UI.imgTag(b, 'pgo-cmp-img')}
+          <div><div class="pgo-cmp-name">${UI.esc(b.n)}</div>
+          <div class="pgo-fighter-types">${b.t.map(UI.typeBadge).join('')}</div></div>
+        </div>
+      </div>
+
+      <div class="pgo-note" style="margin-top:.9rem">${d.winner ? summary(d) : '두 쪽이 서로를 쓰러뜨리는 데 걸리는 시간이 같습니다.'}</div>
+
+      <div class="pgo-table-wrap" style="margin-top:.9rem">
+        <table class="pgo-table pgo-cmp-table">
+          <thead><tr>
+            <th class="num">${UI.esc(a.n)}</th><th class="pgo-cmp-label">항목</th><th class="num">${UI.esc(b.n)}</th>
+          </tr></thead>
+          <tbody>
+            ${statRow('공격 종족값', a.go.atk, b.go.atk)}
+            ${statRow('방어 종족값', a.go.def, b.go.def)}
+            ${statRow('체력 종족값', a.go.sta, b.go.sta)}
+            ${statRow('실효 공격 (L40)', Math.round(d.sa.atk), Math.round(d.sb.atk))}
+            ${statRow('실효 방어 (L40)', Math.round(d.sa.def), Math.round(d.sb.def))}
+            ${statRow('실효 체력 (L40)', d.sa.hp, d.sb.hp)}
+            ${statRow('상대에게 주는 DPS', d.atkA.dps, d.atkB.dps)}
+            ${statRow('최고 상성 배율', effA, effB, { fmt: UI.multText })}
+            ${statRow('쓰러뜨리는 시간', d.ttkA, d.ttkB, { unit: '초', lowerIsBetter: true })}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pgo-why" style="margin-top:.9rem">
+        ${attackLine(d.atkA, a, b)}
+        ${attackLine(d.atkB, b, a)}
+      </div>`;
+
+    // 상성표 강조를 이 비교 기준으로 바꾼다
+    cur = d;
+    highlightMatrix();
+  }
+
   // ── 상성표 (문제에 나온 타입 강조) ───────────────────────────
   function renderMatrix() {
     const types = P.types;
@@ -289,6 +386,21 @@
       answered = true;
       renderAnswer(p);
     });
+
+    // 직접 비교 — 검색 가능한 선택기
+    leftPicker = UI.mountPicker($('leftPick'), {
+      placeholder: '왼쪽 포켓몬 검색', onSelect: renderCompare,
+    });
+    rightPicker = UI.mountPicker($('rightPick'), {
+      placeholder: '오른쪽 포켓몬 검색', onSelect: renderCompare,
+    });
+    $('swap').addEventListener('click', () => {
+      const a = leftPicker.get(), b = rightPicker.get();
+      if (a) rightPicker.set(a); else rightPicker.clear();
+      if (b) leftPicker.set(b); else leftPicker.clear();
+      renderCompare();
+    });
+    renderCompare();
 
     $('next').addEventListener('click', renderQuestion);
     ['level', 'pool'].forEach(id => $(id).addEventListener('change', renderQuestion));
