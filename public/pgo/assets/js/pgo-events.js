@@ -20,7 +20,9 @@
     ticket:    { ko: '유료 티켓', color: '#8fa6d8', icon: 'T' },
     sale:      { ko: '할인 · 무료', color: '#ffd166', icon: '%' },
     research:  { ko: '리서치', color: '#7dd3fc', icon: 'R' },
-    max:       { ko: '맥스 배틀', color: '#c084fc', icon: 'X' },
+    max:       { ko: '맥스 먼데이', color: '#c084fc', icon: 'X' },
+    maxday:    { ko: '맥스 배틀 데이', color: '#a855f7', icon: 'X' },
+    wild:      { ko: '와일드 에리어', color: '#7aa2c9', icon: 'W' },
     spotlight: { ko: '스포트라이트', color: '#94a3b8', icon: '·' },
     gbl:       { ko: '배틀 리그', color: '#64748b', icon: 'L' },
     season:    { ko: '시즌', color: '#475569', icon: '—' },
@@ -111,6 +113,16 @@
   // 페이지에서 resolver 를 주입받는다.
   let tierOf = () => null;          // (pokemonKey) -> tier id (0 필수보유 ~ 3 버림)
   function setTierResolver(fn) { tierOf = fn; }
+  let classOf = () => null;         // (pokemonKey) -> 등급 코드 (0 일반 / 1 전설 / 2 환상 / 3 UB / 4 메가)
+  function setClassResolver(fn) { classOf = fn; }
+
+  /** 이벤트에 전설·환상·울트라비스트가 등장하는지 */
+  function hasSpecial(e) {
+    return (e.mons || []).some(k => {
+      const c = classOf(k);
+      return c === 1 || c === 2 || c === 3;
+    });
+  }
 
   const RAID_56 = ['legendary', 'mega'];              // 5성 전설 · 6성 메가
   const RAID_LIKE = ['legendary', 'mega', 'raidhour', 'raidday'];
@@ -144,17 +156,22 @@
   const MODES = {
     select: e => {
       if (PERK.includes(e.cat)) return true;
+      // 맥스 배틀 데이·기간틱스맥스는 단발 행사라 항상 포함.
+      // 매주 도는 맥스 먼데이는 전설·환상·UB 가 나올 때만 (전설의 새 다이맥스 등)
+      if (e.cat === 'maxday') return true;
+      if (e.cat === 'max') return hasSpecial(e);
       if (!RAID_LIKE.includes(e.cat)) return false;
       return passesSelect(e);
     },
     // 5성·메가 레이드 전부 (등급 무관) + 패스·할인·리서치
-    raids: e => PERK.includes(e.cat) || RAID_LIKE.includes(e.cat),
+    raids: e => PERK.includes(e.cat) || RAID_LIKE.includes(e.cat)
+      || e.cat === 'maxday' || (e.cat === 'max' && hasSpecial(e)),
     // 기존 '귀한 것' — 섀도우 레이드, 커뮤니티 데이, 페스티벌까지 포함
-    rare: e => !!e.rare,
+    rare: e => !!e.rare || e.cat === 'max' || e.cat === 'maxday',
     all: () => true,
   };
   const MODE_LABEL = {
-    select: '엄선 (5성은 C 제외 · 메가는 A 이상 · 섀도우 제외)',
+    select: '엄선 (5성 C 제외 · 메가 A 이상 · 전설 맥스배틀 포함 · 섀도우 제외)',
     raids: '5성 · 메가 레이드 전체',
     rare: '귀한 것 전체 (섀도우·커뮤데이 포함)',
     all: '전체 일정',
@@ -297,7 +314,8 @@
 
   global.PGOEvents = {
     CAT, load, refresh, label,
-    MODES, MODE_LABEL, RAID_56, RAID_LIKE, PERK, setTierResolver, bestTier, match,
+    MODES, MODE_LABEL, RAID_56, RAID_LIKE, PERK,
+    setTierResolver, setClassResolver, hasSpecial, bestTier, match,
     raidGroups, raidTier, isShadowRaid,
     get db() { return DB; },
     all, raids, forDay, forMonth, upcoming,

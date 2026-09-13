@@ -226,6 +226,7 @@
   function boot() {
     // 이벤트 필터가 보유 등급을 쓸 수 있게 도감 데이터를 연결한다
     E.setTierResolver(k => { const p = byKey(k); return p ? p.tier : null; });
+    E.setClassResolver(k => { const p = byKey(k); return p ? p.c : null; });
 
     E.load().then(() => {
       renderAll();

@@ -47,7 +47,12 @@ function classify(e) {
   if (type === 'raid-hour') return { cat: 'raidhour', rare: true };
   if (type === 'raid-day') return { cat: 'raidday', rare: true };
   if (type === 'go-pass') return { cat: 'pass', rare: true };
-  if (type === 'max-mondays' || type === 'max-battles') return { cat: 'max', rare: false };
+  // 맥스 배틀 데이 · 기간틱스맥스는 단발성 큰 행사라 항상 챙긴다.
+  // 매주 도는 맥스 먼데이는 등장 포켓몬이 전설급일 때만 의미가 있어, 등급 판단은
+  // 도감 데이터를 가진 런타임(pgo-events.js)에서 한다.
+  if (type === 'max-battles') return { cat: 'maxday', rare: true };
+  if (type === 'max-mondays') return { cat: 'max', rare: false };
+  if (type === 'wild-area') return { cat: 'wild', rare: false };
   if (type === 'community-day') return { cat: 'commday', rare: true };
   if (type === 'pokemon-go-fest') return { cat: 'fest', rare: true };
   if (type === 'pokemon-spotlight-hour') return { cat: 'spotlight', rare: false };

@@ -266,6 +266,7 @@
 
   function boot() {
     E.setTierResolver(k => { const p = byKey(k); return p ? p.tier : null; });
+    E.setClassResolver(k => { const p = byKey(k); return p ? p.c : null; });
 
     E.load().then(() => {
       renderHeader();
