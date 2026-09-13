@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>배틀 퀴즈 · 사라님을 위한 포켓몬 쓸모분석</title>
+  <meta name="description" content="둘 중 누가 이길지 맞히는 퀴즈 — 정답 이유를 타입 상성으로 설명" />
+  <link rel="stylesheet" href="/pgo/assets/css/pgo.css" />
+</head>
+<body class="pgo">
+  <header class="pgo-header">
+    <div class="pgo-header-inner">
+      <a class="pgo-brand" href="/pgo/">
+        <span class="pgo-brand-mark"></span>사라님을 위한 포켓몬 쓸모분석
+      </a>
+      <nav class="pgo-nav">
+        <a href="/pgo/">도감</a>
+        <a href="/pgo/battle.html" aria-current="page">배틀 퀴즈</a>
+        <a href="/pgo/today.html">오늘의 일정</a>
+        <a href="/pgo/schedule.html">일정 캘린더</a>
+        <a href="/pgo/rank.html">계열별 순위</a>
+        <a href="/pgo/hundo.html">4성 판별</a>
+        <a href="/pgo/iv.html">CP · IV 계산</a>
+        <a href="/pgo/counter.html">카운터 분석</a>
+        <a href="/pgo/types.html">타입 상성</a>
+        <a href="/pgo/box.html">내 보관함</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pgo-main">
+    <div class="pgo-page-head">
+      <h1>배틀 퀴즈</h1>
+      <p>둘 중 <b>누가 이길지</b> 골라 보세요. 정답과 함께 <b>타입 상성으로 그 이유</b>를 풀어 드립니다.</p>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-quiz-bar">
+        <div class="pgo-score">
+          <span class="pgo-score-item"><b id="scoreRight">0</b><span>정답</span></span>
+          <span class="pgo-score-item"><b id="scoreTotal">0</b><span>문제</span></span>
+          <span class="pgo-score-item"><b id="scoreRate">—</b><span>정답률</span></span>
+          <span class="pgo-score-item streak"><b id="scoreStreak">0</b><span>연속</span></span>
+          <span class="pgo-score-item"><b id="scoreBest">0</b><span>최고 연속</span></span>
+        </div>
+        <div class="pgo-quiz-ctl">
+          <select class="pgo-select" id="level" style="width:auto">
+            <option value="easy">쉬움 — 상성이 확실한 대결</option>
+            <option value="normal" selected>보통 — 아무나</option>
+            <option value="hard">어려움 — 아슬아슬한 대결</option>
+          </select>
+          <select class="pgo-select" id="pool" style="width:auto">
+            <option value="famous">잘 알려진 포켓몬</option>
+            <option value="all">전부 (1,100종+)</option>
+            <option value="legend">전설 · 환상 · 메가</option>
+          </select>
+          <button class="pgo-btn ghost" id="reset" type="button">기록 초기화</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pgo-panel">
+      <div class="pgo-vs" id="vs"></div>
+      <div id="answer"></div>
+      <div style="text-align:center;margin-top:1.1rem">
+        <button class="pgo-btn" id="next" type="button" hidden>다음 문제 →</button>
+      </div>
+    </div>
+
+    <div class="pgo-panel">
+      <h2>상성표 <span style="font-weight:400;font-size:.8rem;color:var(--pgo-text-mute)">— 세로 공격 · 가로 방어</span></h2>
+      <div class="pgo-matrix-legend">
+        <span class="pgo-chip"><span class="pgo-mult x160">1.6x</span>&nbsp;공격 쪽 유리</span>
+        <span class="pgo-chip"><span class="pgo-mult x063">0.625x</span>&nbsp;<span class="pgo-mult x039">0.39x</span>&nbsp;방어 쪽 유리</span>
+        <span style="font-size:.76rem;color:var(--pgo-text-mute)">문제에 나온 타입은 노랗게 표시됩니다</span>
+      </div>
+      <div class="pgo-table-wrap">
+        <table class="pgo-matrix" id="matrix"></table>
+      </div>
+      <div style="margin-top:.8rem">
+        <a class="pgo-btn ghost" href="/pgo/types.html">타입별 자세히 보기 →</a>
+      </div>
+    </div>
+  </main>
+
+  <div class="pgo-modal-backdrop" id="pgoModal" hidden>
+    <div class="pgo-modal"></div>
+  </div>
+
+  <footer class="pgo-footer">
+    두 포켓몬 모두 레벨 40 · 개체값 15/15/15 · 최선의 기술 조합으로 동시에 싸운다고 보고,
+    상대를 먼저 쓰러뜨리는 쪽을 승자로 판정합니다. 실제 대전의 방어·교체·차지기 타이밍은 반영하지 않습니다.
+  </footer>
+
+  <script src="/pgo/assets/js/pgo-core.js"></script>
+  <script src="/pgo/assets/js/pgo-review.js"></script>
+  <script src="/pgo/assets/js/pgo-ui.js"></script>
+  <script src="/pgo/assets/js/pgo-battle.js"></script>
+</body>
+</html>

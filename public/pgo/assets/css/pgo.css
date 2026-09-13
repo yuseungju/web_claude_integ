@@ -818,3 +818,116 @@ body.pgo {
   .pgo-matrix .colhead .pgo-type, .pgo-matrix .rowhead .pgo-type,
   .pgo-matrix td.c { min-width: 2.7rem; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   배틀 퀴즈
+   ══════════════════════════════════════════════════════════════ */
+.pgo-quiz-bar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  justify-content: space-between;
+}
+.pgo-score { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.pgo-score-item {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--pgo-bg-soft); border-radius: var(--pgo-radius-sm);
+  padding: 0.35rem 0.7rem; min-width: 3.6rem;
+}
+.pgo-score-item b { font-family: var(--pgo-mono); font-size: 1.05rem; font-weight: 800; }
+.pgo-score-item span { font-size: 0.65rem; color: var(--pgo-text-mute); }
+.pgo-score-item.streak b { color: var(--pgo-accent); }
+.pgo-quiz-ctl { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+
+/* ── 대결 카드 ───────────────────────────────────────────── */
+.pgo-vs {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.9rem;
+  align-items: center;
+}
+.pgo-vs-mark {
+  font-family: var(--pgo-mono); font-size: 1.2rem; font-weight: 900;
+  color: var(--pgo-text-mute); letter-spacing: -1px;
+}
+.pgo-fighter {
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  padding: 1.1rem 0.8rem; width: 100%;
+  background: var(--pgo-bg-soft); border: 2px solid var(--pgo-border);
+  border-radius: var(--pgo-radius);
+  font: inherit; color: inherit; cursor: pointer;
+  transition: border-color .15s, transform .1s, background .15s;
+}
+.pgo-fighter:hover { border-color: var(--pgo-accent-2); transform: translateY(-2px); }
+.pgo-fighter-img { width: 92px; height: 92px; object-fit: contain; image-rendering: pixelated; }
+.pgo-fighter-name { font-size: 1.05rem; font-weight: 800; text-align: center; line-height: 1.25; }
+.pgo-fighter-types { display: flex; gap: 0.25rem; flex-wrap: wrap; justify-content: center; }
+.pgo-fighter-stats {
+  display: flex; gap: 0.55rem; font-size: 0.72rem; color: var(--pgo-text-mute);
+  margin-top: 0.15rem;
+}
+.pgo-fighter-stats b { font-family: var(--pgo-mono); color: var(--pgo-text); }
+
+.pgo-fighter.win  { border-color: var(--pgo-accent); background: rgba(255,203,5,.09); }
+.pgo-fighter.lose { opacity: .55; }
+.pgo-fighter.chosen::after {
+  content: '내 선택'; font-size: 0.62rem; font-weight: 800;
+  background: var(--pgo-accent-2); color: #fff;
+  padding: 0.1rem 0.45rem; border-radius: 4px; margin-top: 0.2rem;
+}
+
+/* ── 정답 ────────────────────────────────────────────────── */
+.pgo-verdict {
+  display: flex; align-items: center; gap: 0.8rem;
+  margin-top: 1.2rem; padding: 0.9rem 1rem;
+  border: 2px solid var(--pgo-border); border-radius: var(--pgo-radius);
+}
+.pgo-verdict.ok { border-color: #3fcf8e88; background: rgba(63,207,142,.07); }
+.pgo-verdict.ng { border-color: #ee6b6b66; background: rgba(238,107,107,.06); }
+.pgo-verdict-mark {
+  width: 40px; height: 40px; flex: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; font-weight: 900;
+}
+.pgo-verdict.ok .pgo-verdict-mark { background: rgba(63,207,142,.2); color: var(--pgo-green); }
+.pgo-verdict.ng .pgo-verdict-mark { background: rgba(238,107,107,.18); color: #ff9b9b; }
+.pgo-verdict-title { font-size: 1rem; font-weight: 800; }
+.pgo-verdict-sub { font-size: 0.84rem; color: var(--pgo-text-dim); margin-top: 0.2rem; line-height: 1.6; }
+
+.pgo-why { display: grid; gap: 0.7rem; margin-top: 1rem; }
+.pgo-why-block {
+  background: var(--pgo-bg-soft); border-radius: var(--pgo-radius-sm);
+  padding: 0.7rem 0.85rem;
+}
+.pgo-why-head {
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+  font-size: 0.9rem; margin-bottom: 0.5rem;
+}
+.pgo-why-img { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
+.pgo-why-dps {
+  margin-left: auto; font-family: var(--pgo-mono); font-size: 0.8rem;
+  color: var(--pgo-text-dim);
+}
+.pgo-why-row {
+  display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
+  font-size: 0.8rem; padding: 0.22rem 0; line-height: 1.5;
+}
+.pgo-why-k {
+  font-size: 0.68rem; font-weight: 700; color: var(--pgo-text-mute);
+  min-width: 2.2rem;
+}
+.pgo-why-calc {
+  font-family: var(--pgo-mono); font-size: 0.76rem;
+  background: var(--pgo-surface-2); border-radius: 4px; padding: 0.05rem 0.4rem;
+}
+.pgo-stab {
+  font-size: 0.62rem; font-weight: 800; padding: 0.05rem 0.3rem; border-radius: 4px;
+  background: rgba(255,203,5,.2); color: var(--pgo-accent); margin-left: 0.2rem;
+}
+
+/* 문제에 나온 타입 강조 */
+.pgo-matrix .colhead.hl .pgo-type,
+.pgo-matrix .rowhead.hl .pgo-type { outline: 2px solid var(--pgo-accent); }
+.pgo-matrix td.c.hl-soft { background: rgba(255,203,5,.16); opacity: 1; }
+
+@media (max-width: 620px) {
+  .pgo-vs { grid-template-columns: 1fr; }
+  .pgo-vs-mark { text-align: center; }
+  .pgo-fighter-img { width: 72px; height: 72px; }
+}

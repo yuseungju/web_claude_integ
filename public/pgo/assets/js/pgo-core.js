@@ -185,14 +185,69 @@
    * 속공 1개 + 차지 1개 조합의 사이클 DPS.
    * 차지기 1회를 쓰기 위해 필요한 속공 횟수 n = ceil(소모에너지 / 획득에너지)
    */
-  function pairDps(fast, charged, atkEff, typeIds, targetTypes) {
+  function pairDps(fast, charged, atkEff, typeIds, targetTypes, targetDef) {
     if (!fast || !charged || !fast.e) return 0;
+    const def = targetDef || TARGET_DEF;
     const n = Math.ceil(charged.e / fast.e);
     const cycleTime = (n * fast.d + charged.d) / 1000;
     if (cycleTime <= 0) return 0;
-    const dmg = n * moveDamage(fast, atkEff, TARGET_DEF, typeIds, targetTypes)
-      + moveDamage(charged, atkEff, TARGET_DEF, typeIds, targetTypes);
+    const dmg = n * moveDamage(fast, atkEff, def, typeIds, targetTypes)
+      + moveDamage(charged, atkEff, def, typeIds, targetTypes);
     return dmg / cycleTime;
+  }
+
+  /** 레벨 40 · 개체값 15/15/15 기준 실효 능력치 */
+  function effStats(p) {
+    const m = CPM[RANK_LEVEL];
+    return {
+      atk: (p.s[0] + 15) * m,
+      def: (p.s[1] + 15) * m,
+      hp: Math.floor((p.s[2] + 15) * m),
+    };
+  }
+
+  /** 한쪽이 상대에게 낼 수 있는 최고 DPS 조합 (상대의 실제 방어력·타입 반영) */
+  function bestAgainst(p, target) {
+    const me = effStats(p);
+    const t = effStats(target);
+    let best = { dps: 0, fast: null, charged: null };
+    for (const fi of p.fm) {
+      const fast = DB.moves[fi];
+      for (const ci of p.cm) {
+        const charged = DB.moves[ci];
+        const dps = pairDps(fast, charged, me.atk, p.t, target.t, t.def);
+        if (dps > best.dps) best = { dps, fast, charged };
+      }
+    }
+    return Object.assign(best, {
+      eff: best.fast ? effectiveness(best.fast.t, target.t) : 1,
+      effCharged: best.charged ? effectiveness(best.charged.t, target.t) : 1,
+      stab: best.fast ? p.t.includes(best.fast.t) : false,
+    });
+  }
+
+  /**
+   * 1:1 대결 판정 — 서로 최선의 기술로 동시에 때린다고 보고,
+   * 상대를 먼저 쓰러뜨리는 쪽이 이긴다. (레벨 40 · 개체값 15/15/15 동일 조건)
+   */
+  function duel(a, b) {
+    const sa = effStats(a), sb = effStats(b);
+    const atkA = bestAgainst(a, b);
+    const atkB = bestAgainst(b, a);
+
+    // 상대를 쓰러뜨리는 데 걸리는 시간 (초). DPS 가 0이면 영원히 못 이긴다.
+    const ttkA = atkA.dps > 0 ? sb.hp / atkA.dps : Infinity;
+    const ttkB = atkB.dps > 0 ? sa.hp / atkB.dps : Infinity;
+
+    let winner = null;
+    if (ttkA < ttkB) winner = a;
+    else if (ttkB < ttkA) winner = b;
+
+    // 승패 여유 — 시간 차가 클수록 일방적이다
+    const margin = (ttkA === Infinity || ttkB === Infinity) ? 1
+      : Math.abs(ttkA - ttkB) / Math.max(ttkA, ttkB);
+
+    return { a, b, sa, sb, atkA, atkB, ttkA, ttkB, winner, margin };
   }
 
   /**
@@ -422,7 +477,7 @@
     get totals() { return DB ? DB.totals : {}; },
     cp, hp, maxCp, solveIV, perfectCp,
     effectiveness, defenseProfile, bestStab,
-    combatRating, pairDps, moveDamage,
+    combatRating, pairDps, moveDamage, duel, bestAgainst, effStats,
     typeName, typeColor, className, classColor, tier,
     displayName, spriteUrl, matches,
   };
