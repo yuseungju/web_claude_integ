@@ -107,15 +107,91 @@
     return n;
   }
 
-  // ── 표시 범위 필터 ──────────────────────────────────────────
-  // 5성(전설)·6성(메가) 레이드가 핵심이고, 그중에서도 보유 등급이 좋은 것만 보고 싶다는
-  // 요구가 있어 등급 기준 필터를 둔다. 등급 판정은 도감 데이터가 필요하므로
-  // 페이지에서 resolver 를 주입받는다.
-  let tierOf = () => null;          // (pokemonKey) -> tier id (0 필수보유 ~ 3 버림)
-  function setTierResolver(fn) { tierOf = fn; }
-  let classOf = () => null;         // (pokemonKey) -> 등급 코드 (0 일반 / 1 전설 / 2 환상 / 3 UB / 4 메가)
-  function setClassResolver(fn) { classOf = fn; }
+  // ── 도감 연결 ───────────────────────────────────────────────
+  // 분류와 포켓몬 매칭에 도감이 필요하다. 페이지에서 setDex 로 넘겨준다.
+  let DEX = [];              // [{ k, en, tier, c }] — 영문명 긴 순
+  let byKeyMap = new Map();
+  function setDex(list) {
+    DEX = (list || [])
+      .filter(p => p.en)
+      .map(p => ({ k: p.k, en: p.en, tier: p.tier, c: p.c }))
+      .sort((a, b) => b.en.length - a.en.length);
+    byKeyMap = new Map(DEX.map(p => [p.k, p]));
+  }
+  const tierOf = k => { const p = byKeyMap.get(k); return p ? p.tier : null; };
+  const classOf = k => { const p = byKeyMap.get(k); return p ? p.c : null; };
 
+  /** 이벤트 이름에서 포켓몬을 뽑는다 (긴 이름부터 맞춰야 'Mega Gyarados'가 안 잘린다) */
+  function extract(text) {
+    if (!text || !DEX.length) return [];
+    const found = [];
+    let rest = ' ' + text + ' ';
+    for (const p of DEX) {
+      const esc = p.en.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp('(^|[^A-Za-z])' + esc + '([^A-Za-z]|$)', 'i');
+      if (re.test(rest)) {
+        found.push(p.k);
+        rest = rest.replace(re, ' ');
+      }
+      if (found.length >= 4) break;
+    }
+    return found;
+  }
+
+  /**
+   * 이벤트 분류 — 여기가 유일한 기준이다.
+   * 예전에는 빌드 때 계산해 번들에 굳혀뒀는데, 그러면 번들에 없는 새 이벤트가
+   * 전부 '일반 이벤트'로 떨어져 엄선에서 빠졌다. 이제 런타임에서 매번 분류한다.
+   */
+  function classify(name, type) {
+    const n = name || '', t = type || '';
+    const has = re => re.test(n);
+
+    if (t === 'raid-battles') {
+      if (/^Mega |Mega Raids/i.test(n)) return { cat: 'mega', rare: true };
+      if (/Shadow/i.test(n)) return { cat: 'shadow', rare: true };
+      if (/5-star|Elite Raids/i.test(n)) return { cat: 'legendary', rare: true };
+      return { cat: 'raid', rare: true };
+    }
+    if (t === 'raid-hour') return { cat: 'raidhour', rare: true };
+    if (t === 'raid-day') return { cat: 'raidday', rare: true };
+    if (t === 'go-pass') return { cat: 'pass', rare: true };
+    // 맥스 배틀 데이·기간틱스맥스는 단발성 큰 행사라 항상 챙긴다.
+    // 매주 도는 맥스 먼데이는 전설급이 나올 때만 의미가 있어 아래 필터에서 가른다.
+    if (t === 'max-battles') return { cat: 'maxday', rare: true };
+    if (t === 'max-mondays') return { cat: 'max', rare: false };
+    if (t === 'wild-area') return { cat: 'wild', rare: false };
+    if (t === 'community-day') return { cat: 'commday', rare: true };
+    if (t === 'pokemon-go-fest') return { cat: 'fest', rare: true };
+    if (t === 'pokemon-spotlight-hour') return { cat: 'spotlight', rare: false };
+    if (t === 'go-battle-league') return { cat: 'gbl', rare: false };
+    if (t === 'season') return { cat: 'season', rare: false };
+
+    if (has(/Timed Research|Special Research|Masterwork|Research Day/i)) return { cat: 'research', rare: true };
+    if (has(/ticket|Ticketed/i)) return { cat: 'ticket', rare: true };
+    if (has(/discount|sale|bundle|Free /i)) return { cat: 'sale', rare: true };
+    if (has(/Raid|Mega/i)) return { cat: 'event', rare: true };
+    return { cat: 'event', rare: false };
+  }
+
+  /** 원본 이벤트 1건 -> 내부 형식. mons 가 이미 있으면 재사용(빌드 때 계산된 캐시) */
+  function normalize(e, cachedMons) {
+    const c = classify(e.name, e.eventType || e.type);
+    const mons = (cachedMons && cachedMons.length) ? cachedMons : extract(e.name);
+    return {
+      id: e.eventID || e.id,
+      name: e.name,
+      type: e.eventType || e.type,
+      cat: c.cat,
+      rare: c.rare,
+      start: e.start,
+      end: e.end || e.start,
+      link: e.link,
+      mons,
+    };
+  }
+
+  // ── 표시 범위 필터 ──────────────────────────────────────────
   /** 이벤트에 전설·환상·울트라비스트가 등장하는지 */
   function hasSpecial(e) {
     return (e.mons || []).some(k => {
@@ -124,7 +200,7 @@
     });
   }
 
-  const RAID_56 = ['legendary', 'mega'];              // 5성 전설 · 6성 메가
+  const RAID_56 = ['legendary', 'mega'];                // 5성 전설 · 6성 메가
   const RAID_LIKE = ['legendary', 'mega', 'raidhour', 'raidday'];
   const PERK = ['pass', 'sale', 'research', 'ticket'];  // 패스 · 할인 · 리서치
 
@@ -144,7 +220,6 @@
    *   5성(전설): 등장 자체가 드무니 '버림(C)' 등급만 뺀다
    *   메가(6성): 자주 돌아오니 '보유(A)' 이상만 남긴다
    *   섀도우: 상시로 도는 편이라 기본에서는 제외
-   * 레이드 아워·데이는 그 보스가 위 기준을 통과할 때만 남긴다.
    */
   function passesSelect(e) {
     const t = bestTier(e);
@@ -156,17 +231,14 @@
   const MODES = {
     select: e => {
       if (PERK.includes(e.cat)) return true;
-      // 맥스 배틀 데이·기간틱스맥스는 단발 행사라 항상 포함.
-      // 매주 도는 맥스 먼데이는 전설·환상·UB 가 나올 때만 (전설의 새 다이맥스 등)
+      // 맥스 배틀 데이는 항상, 맥스 먼데이는 전설·환상·UB 가 나올 때만
       if (e.cat === 'maxday') return true;
       if (e.cat === 'max') return hasSpecial(e);
       if (!RAID_LIKE.includes(e.cat)) return false;
       return passesSelect(e);
     },
-    // 5성·메가 레이드 전부 (등급 무관) + 패스·할인·리서치
     raids: e => PERK.includes(e.cat) || RAID_LIKE.includes(e.cat)
       || e.cat === 'maxday' || (e.cat === 'max' && hasSpecial(e)),
-    // 기존 '귀한 것' — 섀도우 레이드, 커뮤니티 데이, 페스티벌까지 포함
     rare: e => !!e.rare || e.cat === 'max' || e.cat === 'maxday',
     all: () => true,
   };
@@ -178,6 +250,7 @@
   };
 
   const match = (e, mode) => (MODES[mode] || MODES.select)(e);
+
 
   // ── 질의 ────────────────────────────────────────────────────
   const all = () => (DB ? DB.events : []);
@@ -242,7 +315,7 @@
 
   /**
    * 현재 보스를 티어별로 묶는다.
-   * @param opts.valuableOnly 보유 등급 A 이상만 (등급 판정은 setTierResolver 필요)
+   * @param opts.valuableOnly 보유 등급 A 이상만 (등급 판정은 setDex 필요)
    */
   function raidGroups(opts) {
     const valuableOnly = opts && opts.valuableOnly;
@@ -270,7 +343,12 @@
         if (!r.ok) throw new Error(`일정 데이터를 불러오지 못했습니다 (HTTP ${r.status})`);
         return r.json();
       })
-      .then(json => { DB = json; return DB; });
+      .then(json => {
+        DB = json;
+        // 번들에 굳어 있던 분류를 지금 기준으로 다시 매긴다 (규칙이 바뀌어도 재빌드 불필요)
+        DB.events = (DB.events || []).map(e => normalize(e, e.mons));
+        return DB;
+      });
     return loadPromise;
   }
 
@@ -284,22 +362,12 @@
       .then(r => (r.ok ? r.json() : null))
       .then(raw => {
         if (!Array.isArray(raw) || !raw.length) return false;
-        // 번들본과 같은 형태로 맞춘다 (분류/포켓몬 매칭은 빌드 때 계산된 것을 재사용)
-        const known = new Map(DB.events.map(e => [e.eventID || e.id, e]));
-        const merged = raw.filter(e => e.start).map(e => {
-          const old = known.get(e.eventID);
-          return {
-            id: e.eventID,
-            name: e.name,
-            type: e.eventType,
-            cat: old ? old.cat : 'event',
-            rare: old ? old.rare : false,
-            start: e.start,
-            end: e.end || e.start,
-            link: e.link,
-            mons: old ? old.mons : [],
-          };
-        }).sort((a, b) => a.start.localeCompare(b.start));
+        // 번들에 없던 새 이벤트도 같은 규칙으로 분류한다.
+        // (예전에는 번들에 없으면 전부 '일반 이벤트'로 떨어져 엄선에서 빠졌다)
+        const known = new Map(DB.events.map(e => [e.id, e]));
+        const merged = raw.filter(e => e.start)
+          .map(e => normalize(e, (known.get(e.eventID) || {}).mons))
+          .sort((a, b) => a.start.localeCompare(b.start));
 
         const changed = merged.length !== DB.events.length
           || merged.some((e, i) => !DB.events[i] || e.id !== DB.events[i].id || e.start !== DB.events[i].start);
@@ -315,7 +383,7 @@
   global.PGOEvents = {
     CAT, load, refresh, label,
     MODES, MODE_LABEL, RAID_56, RAID_LIKE, PERK,
-    setTierResolver, setClassResolver, hasSpecial, bestTier, match,
+    setDex, classify, extract, hasSpecial, bestTier, match,
     raidGroups, raidTier, isShadowRaid,
     get db() { return DB; },
     all, raids, forDay, forMonth, upcoming,

@@ -30,8 +30,11 @@ function get(url) {
 }
 
 /**
- * 이벤트 분류 — cat(표시 카테고리) + rare(귀한 것인지)
- * 사용자가 보는 캘린더는 기본적으로 rare 만 띄운다.
+ * 이벤트 분류 — 번들에 넣어두는 참고값.
+ *
+ * 실제 판정은 런타임(public/pgo/assets/js/pgo-events.js 의 classify)이 다시 한다.
+ * 번들에 없는 새 이벤트도 제대로 분류되어야 하기 때문이다. 여기 값은 데이터를
+ * 눈으로 확인할 때 쓰는 참고용이므로, 규칙을 바꿀 일이 생기면 런타임 쪽을 고친다.
  */
 function classify(e) {
   const name = e.name || '';
