@@ -22,6 +22,33 @@
 
   var state = { rows: [], prices: [] };     // 화면이 들고 있는 현재 자료
 
+  /**
+   * 아래쪽 계산(합계·정산·지시문)은 표에서 고른 것이 기준이다.
+   * 체크나 기간이 바뀌면 그 결과가 낡은 것이 되므로, 자동으로 다시 계산하지 않고
+   * "다시 누르세요" 라고 알린 뒤 버튼을 살려 둔다. 누르면 계산하고 그 버튼만 잠근다.
+   *
+   * 안내 문구는 한 번이라도 계산해 본 뒤에만 띄운다.
+   * 처음 열었을 때부터 "바뀌었습니다" 라고 하면 이상하기 때문이다.
+   */
+  var PANELS = { price: ['price-save', 'price-stale'], cal: ['cal-make', 'cal-stale'] };
+
+  function stale(which) {
+    Object.keys(PANELS).forEach(function (k) {
+      if (which && k !== which) return;
+      var btn = $(PANELS[k][0]);
+      var note = $(PANELS[k][1]);
+      if (btn) btn.disabled = false;
+      if (note) note.classList.toggle('hidden', note.dataset.used !== '1');
+    });
+  }
+
+  function done(which) {
+    var btn = $(PANELS[which][0]);
+    var note = $(PANELS[which][1]);
+    if (btn) btn.disabled = true;
+    if (note) { note.dataset.used = '1'; note.classList.add('hidden'); }
+  }
+
   function api(path, opts) {
     opts = opts || {};
     var body = opts.body || {};
@@ -219,8 +246,10 @@
           return { hour: Number(p.start_hour), price: Number(p.price) };
         });
         renderPrices();
-        renderReservations();          // 금액 열까지 다시 그린다
-        msg($('price-msg'), '저장했습니다.');
+        renderReservations();          // 금액 열까지 다시 그린다 (여기서 stale 이 켜진다)
+        renderSummary();               // 합계·정산은 이 버튼을 눌렀을 때만 계산한다
+        done('price');
+        msg($('price-msg'), '저장했습니다. 아래 합계와 정산을 다시 계산했습니다.');
       })
       .catch(function (e) { msg($('price-msg'), e.message, true); });
   }
@@ -263,7 +292,7 @@
     if (!box) return;
     if (!list.length) {
       box.innerHTML = '<p class="resv-empty">아직 수집한 내역이 없습니다.</p>';
-      renderSummary();
+      stale();
       return;
     }
     // 모든 계정의 내역을 한 표로 합치고, 어느 계정으로 잡은 건지는 맨 뒤에 붙인다
@@ -294,10 +323,9 @@
       }).join('') +
       '</tbody></table>';
 
-    refreshPrompt(false);        // 펼쳐져 있으면 체크 변경을 따라간다
     var all = $('chk-all');
-    if (all) all.checked = list.every(function (r) { return r.checked !== false; });
-    renderSummary();
+    if (all) all.checked = list.length > 0 && list.every(function (r) { return r.checked !== false; });
+    stale();                     // 아래 계산은 이제 낡았다
   }
 
   /* ── 정산 ─────────────────────────────────────────────── */
@@ -520,11 +548,9 @@
     return lines.join('\n');
   }
 
-  /** 지시문 내용을 다시 만든다. 이미 펼쳐져 있으면 체크를 바꿀 때마다 따라간다. */
-  function refreshPrompt(force) {
+  function refreshPrompt() {
     var box = $('cal-out');
     if (!box) return null;
-    if (!force && box.classList.contains('hidden')) return null;   // 아직 안 펼쳤으면 가만히 둔다
 
     var from = ($('f-from') || {}).value || '';
     var to = ($('f-to') || {}).value || '';
@@ -548,10 +574,11 @@
   }
 
   function makePrompt() {
-    var r = refreshPrompt(true);
+    var r = refreshPrompt();
     if (!r) return;
     if (r.error) return msg($('cal-msg'), r.error, true);
-    msg($('cal-msg'), '아래 내용을 복사해 클로드에게 붙여넣으세요. 체크를 바꾸면 자동으로 다시 만들어집니다.');
+    done('cal');
+    msg($('cal-msg'), '아래 내용을 복사해 클로드에게 붙여넣으세요.');
   }
 
   function copyPrompt() {
@@ -593,6 +620,8 @@
     if (savePrice) savePrice.addEventListener('click', savePrices);
 
     var priceBox = $('price-list');
+    // 단가 값을 고치면 다시 저장할 수 있어야 한다
+    if (priceBox) priceBox.addEventListener('input', function () { stale('price'); });
     if (priceBox) priceBox.addEventListener('click', function (e) {
       if (!e.target.classList.contains('price-del')) return;
       state.prices = readPrices();

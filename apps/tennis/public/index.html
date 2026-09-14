@@ -344,6 +344,24 @@ div>
         </div>
 
         <div class="field-card">
+          <div class="field-label">
+            모든 계정 예약완료 내역
+            <span id="resv-count" class="step-tip"></span>
+          </div>
+          <div class="filter-row">
+            <label for="f-from">기간</label>
+            <input type="date" id="f-from">
+            <span class="price-sep">~</span>
+            <input type="date" id="f-to">
+            <button type="button" id="f-next">차월</button>
+            <button type="button" id="f-all">전체</button>
+          </div>
+          <div id="resv-table" class="resv-wrap">
+            <p class="step-desc">아직 수집한 내역이 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="field-card">
           <div class="field-label">시작 시간대별 단가</div>
           <p class="step-desc">
             체크된 예약의 <strong>시작 시각</strong>을 보고 금액을 매깁니다.
@@ -355,6 +373,7 @@ div>
             <button type="button" id="price-add">＋ 시간대 추가</button>
             <button type="button" id="price-save" class="run-btn">단가 저장 후 계산</button>
           </div>
+          <div id="price-stale" class="stale-note hidden">체크나 기간이 바뀌었습니다. 다시 계산하세요.</div>
           <div id="price-msg" class="error-msg hidden"></div>
         </div>
 
@@ -381,23 +400,6 @@ div>
         </div>
 
 
-        <div class="field-card">
-          <div class="field-label">
-            모든 계정 예약완료 내역
-            <span id="resv-count" class="step-tip"></span>
-          </div>
-          <div class="filter-row">
-            <label for="f-from">기간</label>
-            <input type="date" id="f-from">
-            <span class="price-sep">~</span>
-            <input type="date" id="f-to">
-            <button type="button" id="f-next">차월</button>
-            <button type="button" id="f-all">전체</button>
-          </div>
-          <div id="resv-table" class="resv-wrap">
-            <p class="step-desc">아직 수집한 내역이 없습니다.</p>
-          </div>
-        </div>
 
 
         <div class="field-card">
@@ -410,6 +412,7 @@ div>
           </p>
 
           <button type="button" id="cal-make" class="run-btn">클로드 지시문 만들기</button>
+          <div id="cal-stale" class="stale-note hidden">체크나 기간이 바뀌었습니다. 지시문을 다시 만드세요.</div>
           <div id="cal-msg" class="error-msg hidden"></div>
 
           <div id="cal-out" class="cal-out hidden">
