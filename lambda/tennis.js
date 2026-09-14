@@ -276,13 +276,20 @@ async function inspectBookingForm(cookie, { type, year, month }) {
   const app = await request('GET', appPath, { cookie });
 
   const form = (app.html.match(/<form[^>]*>[\s\S]*?<\/form>/i) || [])[0] || '';
+  // 이 폼에는 사이트가 미리 채워 둔 이름·연락처·이메일이 들어 있다.
+  // 구조를 보는 게 목적이므로 값은 마스킹해서 내보낸다.
+  const PII = /user_name|hphone|phone|email|addr/i;
   const inputs = [...form.matchAll(/<(input|select|textarea)[^>]*>/gi)]
-    .map(m => ({
-      tag: m[1],
-      name: (m[0].match(/name=["']([^"']+)/) || [])[1] || null,
-      type: (m[0].match(/type=["']([^"']+)/) || [])[1] || null,
-      value: (m[0].match(/value=["']([^"']*)/) || [])[1] || null,
-    }))
+    .map(m => {
+      const name = (m[0].match(/name=["']([^"']+)/) || [])[1] || null;
+      const value = (m[0].match(/value=["']([^"']*)/) || [])[1] || null;
+      return {
+        tag: m[1],
+        name,
+        type: (m[0].match(/type=["']([^"']+)/) || [])[1] || null,
+        value: name && PII.test(name) ? (value ? '(개인정보 — 가림)' : '') : value,
+      };
+    })
     .filter(x => x.name);
 
   return {
