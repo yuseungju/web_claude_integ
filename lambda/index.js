@@ -9,7 +9,7 @@
  *   DB_HOST DB_NAME DB_USER DB_PASSWORD [DB_PORT]  — 필수
  *   JWT_SECRET ANTHROPIC_API_KEY                   — 필수
  *   S3_BUCKET                                      — 동영상 제작(파일 업로드)에만 필요
- *   GMAIL_USER GMAIL_PASS FRONTEND_URL             — 이메일 인증/비밀번호 재발급에만 필요
+ *   GMAIL_USER GMAIL_PASS                          — 이메일 인증/임시비밀번호 발송에만 필요
  */
 const { Client, Pool } = require('pg');
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand, ListObjectsV2Command, CopyObjectCommand } = require('@aws-sdk/client-s3');
@@ -43,8 +43,6 @@ async function getClient() {
 
 const REGION = 'ap-southeast-2';
 const JWT_SECRET = process.env.JWT_SECRET;
-const FRONTEND_URL = process.env.FRONTEND_URL || '';
-const API_BASE = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 
 const HEADERS = {
   'Content-Type': 'application/json',
