@@ -1,6 +1,6 @@
 /* 화면 설계서 — 드래그 캔버스 에디터 */
 
-const SD_API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const SD_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 const projectId = parseInt(new URLSearchParams(window.location.search).get('id')) || 0;
 
 let allNodes = [];

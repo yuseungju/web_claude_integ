@@ -7,7 +7,7 @@ let scheduleData  = planData;
 let nextId        = 1;
 
 /* ── 버전 공유 State ───────────────────────────────────── */
-const SCHED_API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const SCHED_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 let currentVersionId   = null;   // null=신규모드, number=수정모드(user_saves.id)
 let currentVersionMeta = null;   // { id, title, created_at, updated_at, user_id, creator_name }
 let collabMode      = null;      // null | 'view' | 'collab'

@@ -1,6 +1,6 @@
 /* 동영상 제작 — 계층 노드 작업공간 */
 
-const VM_API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const VM_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 const projectId = parseInt(new URLSearchParams(window.location.search).get('id')) || 0;
 
 let allNodes = [];

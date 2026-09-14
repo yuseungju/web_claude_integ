@@ -1,4 +1,4 @@
-const API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 
 let conversation           = [];
 let isSending              = false;

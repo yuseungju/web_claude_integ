@@ -1,6 +1,6 @@
 /* 동영상 제작 — 목록 페이지 (게시판 형식) */
 
-const VM_API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const VM_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 function getToken() { return localStorage.getItem('token'); }
 function getUser()  { return JSON.parse(localStorage.getItem('user') || 'null'); }
 function escHtml(s) {

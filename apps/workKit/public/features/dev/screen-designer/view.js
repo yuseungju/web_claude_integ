@@ -1,6 +1,6 @@
 /* 화면 설계서 — 공개 뷰어 */
 
-const SD_API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const SD_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 const params = new URLSearchParams(window.location.search);
 const projectId = parseInt(params.get('id')) || 0;
 const initNodeId = parseInt(params.get('node')) || 0;

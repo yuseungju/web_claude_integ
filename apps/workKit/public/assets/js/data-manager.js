@@ -3,7 +3,7 @@
 //   window.getMenuData()  → returns serializable state object
 //   window.setMenuData(d) → restores state from object d
 
-const DM_API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const DM_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 
 const DM_MENU_KEY = (() => {
   const m = window.location.pathname.match(/\/features\/(?:[^/]+)\/([^/]+)\//);

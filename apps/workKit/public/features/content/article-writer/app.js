@@ -1,4 +1,4 @@
-const API_BASE = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const API_BASE = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 
 function getToken() { return localStorage.getItem('token'); }
 function getUser()  { return JSON.parse(localStorage.getItem('user') || 'null'); }

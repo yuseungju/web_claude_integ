@@ -33,3 +33,33 @@ CREATE TABLE IF NOT EXISTS nw_nodes (
 );
 CREATE INDEX IF NOT EXISTS idx_nw_nodes_novel  ON nw_nodes(novel_id);
 CREATE INDEX IF NOT EXISTS idx_nw_nodes_parent ON nw_nodes(parent_id);
+
+-- ============================================================
+-- 협업(반응 · 댓글)
+--
+-- 예전 novel_reactions / novel_comments / novel_comment_reactions 를
+-- nw_ 접두사로 통일했다. 컬럼명(novel_id)은 API 호환을 위해 유지한다.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS nw_reactions (
+  novel_id INTEGER     NOT NULL REFERENCES nw_projects(id) ON DELETE CASCADE,
+  user_id  INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reaction VARCHAR(10) NOT NULL CHECK (reaction IN ('like', 'dislike')),
+  PRIMARY KEY (novel_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS nw_comments (
+  id         SERIAL      PRIMARY KEY,
+  novel_id   INTEGER     NOT NULL REFERENCES nw_projects(id) ON DELETE CASCADE,
+  user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content    TEXT        NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_nw_comments_novel ON nw_comments(novel_id);
+
+CREATE TABLE IF NOT EXISTS nw_comment_reactions (
+  comment_id INTEGER     NOT NULL REFERENCES nw_comments(id) ON DELETE CASCADE,
+  user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reaction   VARCHAR(10) NOT NULL CHECK (reaction IN ('like', 'dislike')),
+  PRIMARY KEY (comment_id, user_id)
+);

@@ -31,3 +31,45 @@ CREATE TABLE IF NOT EXISTS aw_sections (
   PRIMARY KEY (issue_id, section_no)
 );
 CREATE INDEX IF NOT EXISTS idx_aw_sections_issue ON aw_sections(issue_id);
+
+-- ============================================================
+-- 협업(공동편집자 · 반응 · 댓글)
+--
+-- 예전에는 같은 기능이 issue_section_editors / issue_reactions /
+-- comments / comment_reactions 라는 접두사 없는 이름으로 있었다.
+-- 앱이 늘어나면 이름이 겹치기 쉬워 aw_ 접두사로 통일했다.
+-- 컬럼명(issue_id)은 API 호환을 위해 그대로 둔다.
+-- ============================================================
+
+-- 섹션별 공동편집자 — 한 섹션은 한 사람이 잡는다
+CREATE TABLE IF NOT EXISTS aw_section_editors (
+  issue_id   INTEGER  NOT NULL REFERENCES aw_projects(id) ON DELETE CASCADE,
+  section_no SMALLINT NOT NULL CHECK (section_no BETWEEN 1 AND 5),
+  user_id    INTEGER  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  PRIMARY KEY (issue_id, section_no)
+);
+CREATE INDEX IF NOT EXISTS idx_aw_section_editors_user ON aw_section_editors(user_id);
+
+-- 좋아요 / 싫어요 — 한 사람당 하나
+CREATE TABLE IF NOT EXISTS aw_reactions (
+  issue_id INTEGER     NOT NULL REFERENCES aw_projects(id) ON DELETE CASCADE,
+  user_id  INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reaction VARCHAR(10) NOT NULL CHECK (reaction IN ('like', 'dislike')),
+  PRIMARY KEY (issue_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS aw_comments (
+  id         SERIAL      PRIMARY KEY,
+  issue_id   INTEGER     NOT NULL REFERENCES aw_projects(id) ON DELETE CASCADE,
+  user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  content    TEXT        NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_aw_comments_issue ON aw_comments(issue_id);
+
+CREATE TABLE IF NOT EXISTS aw_comment_reactions (
+  comment_id INTEGER     NOT NULL REFERENCES aw_comments(id) ON DELETE CASCADE,
+  user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reaction   VARCHAR(10) NOT NULL CHECK (reaction IN ('like', 'dislike')),
+  PRIMARY KEY (comment_id, user_id)
+);

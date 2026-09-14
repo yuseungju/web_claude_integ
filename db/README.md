@@ -7,14 +7,14 @@
 ```
 db/
 ├── common/          모든 앱이 공유 (users, access_logs, user_saves,
-│                    user_current_shares, user_section_*)
+│                    user_current_shares)
 ├── nol/             SAP 업무 활용 정리 — 현재 전용 스키마 없음
 ├── pgo/             포켓몬 쓸모분석 (pgo_* 테이블)
 ├── workkit/         Work Kit — 분류/메뉴 구조를 그대로 유지
-│   ├── content/       기사작성 · 웹소설 · 동영상
-│   ├── dev/           화면 설계
+│   ├── content/       기사작성(aw_*) · 웹소설(nw_*) · 동영상(vm_*)
+│   ├── dev/           화면 설계(sd_*)
 │   ├── general/       일정 공유 · 링크 보관함
-│   └── other/         claude-chat
+│   └── other/         claude-chat(ai_*)
 ├── _archive/        실행하지 않는 옛 스키마 보관 (밑줄로 시작하면 빌드에서 제외)
 ├── build-schema.js  위 파일들을 schema_all.sql 로 병합
 ├── migrate.js       schema_all.sql 을 RDS 에 반영 (배포 시 자동 실행)
@@ -85,5 +85,7 @@ npm run db:build          # schema_all.sql 재생성
 DB_HOST=... DB_NAME=... DB_USER=... DB_PASSWORD=... node db/migrate.js
 ```
 
-빈 스키마에서 전체가 한 번에 생성되는지는 아래로 확인했다 — 39개 테이블 생성 성공,
-FK 순서 문제 없음.
+빈 스키마에서 전체가 한 번에 생성되는지 확인했다 — 27개 테이블 생성 성공, FK 순서 문제 없음.
+
+스키마에 정의된 테이블과 `lambda/` 가 실제로 쓰는 테이블은 일치해야 한다 (현재 27 : 27).
+안 쓰는 테이블을 남겨두면 새 DB 를 만들 때마다 따라다닌다.

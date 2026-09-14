@@ -1,7 +1,7 @@
 // Auth header injection for feature pages.
 // Provides login/register UI identical to the main page.
 
-const AH_API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+const AH_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
 let _ahEmailChecked = false;
 
 document.addEventListener('DOMContentLoaded', () => {

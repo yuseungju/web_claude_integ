@@ -45,25 +45,3 @@ CREATE TABLE IF NOT EXISTS pgo_box (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pgo_box_trainer ON pgo_box(trainer_id, created_at DESC);
-
--- ────────────────────────────────────────────
--- 즐겨찾기 — 도감에서 관심 포켓몬 표시
--- ────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS pgo_favorite (
-  trainer_id INTEGER     NOT NULL REFERENCES pgo_trainer(id) ON DELETE CASCADE,
-  poke_key   TEXT        NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (trainer_id, poke_key)
-);
-
--- ────────────────────────────────────────────
--- 카운터 분석 조회 로그 — 어떤 보스를 많이 찾는지 집계용 (개인정보 없음)
--- ────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS pgo_lookup_log (
-  id         SERIAL      PRIMARY KEY,
-  poke_key   TEXT        NOT NULL,
-  kind       VARCHAR(20) NOT NULL,          -- 'counter' | 'detail' | 'iv'
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_pgo_lookup_poke ON pgo_lookup_log(poke_key, created_at DESC);
