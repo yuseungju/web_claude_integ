@@ -1,12 +1,5 @@
 -- ============================================================
--- [컨텐츠작성 / 동영상 제작] 스키마
---
--- ★ 단독 실행 가능 (users 테이블이 없으면 아래 공통 블록이 먼저 생성)
--- ★ 재설치 시 DROP 쿼리를 먼저 실행하세요 (아래 주석 해제):
---   DROP TABLE IF EXISTS vm_nodes CASCADE;
---   DROP TABLE IF EXISTS vm_projects CASCADE;
---   DROP TABLE IF EXISTS video_maker_settings CASCADE;
---   DROP TABLE IF EXISTS users CASCADE;
+-- [Work Kit / 컨텐츠작성 / 동영상 제작] 스키마
 --
 -- S3 파일 경로 규칙:
 --   vm-objects/{userId}/{nodeId}/{objId}-{filename}
@@ -14,36 +7,13 @@
 -- ============================================================
 
 -- ============================================================
--- [공통 선행 조건] 로그인·인증 테이블 (없을 때만 생성)
+-- [공통 선행 조건] 로그인·인증 테이블
+--
+-- users / access_logs / user_saves / user_current_shares 는 여러 앱이 공유한다.
+-- 정의는 db/common/common_schema.sql 이 단독으로 소유하며, 통합 스키마에서
+-- common 이 항상 먼저 실행되므로(build-schema.js 의 APP_ORDER) 여기서는
+-- 다시 만들지 않고 참조만 한다.
 -- ============================================================
-
-CREATE TABLE IF NOT EXISTS users (
-  id            SERIAL       PRIMARY KEY,
-  email         VARCHAR(255) NOT NULL,
-  password_hash TEXT,
-  name          VARCHAR(100) NOT NULL DEFAULT '',
-  provider      VARCHAR(20)  NOT NULL DEFAULT 'email',
-  provider_id   VARCHAR(255),
-  save_limit    INTEGER      NOT NULL DEFAULT 5,
-  writing_style   TEXT         DEFAULT '',
-  article_style   TEXT         DEFAULT '',
-  section_guides  JSONB        DEFAULT '["","","","",""]',
-  section_labels  JSONB        DEFAULT '["","","","",""]',
-  created_at      TIMESTAMPTZ  DEFAULT NOW()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email    ON users(email);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id) WHERE provider_id IS NOT NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS section_guides JSONB DEFAULT '["","","","",""]';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS section_labels JSONB DEFAULT '["","","","",""]';
-
-CREATE TABLE IF NOT EXISTS access_logs (
-  id           SERIAL      PRIMARY KEY,
-  user_id      INTEGER     REFERENCES users(id) ON DELETE SET NULL,
-  email        VARCHAR(255),
-  login_method VARCHAR(20),
-  ip_address   INET,
-  created_at   TIMESTAMPTZ DEFAULT NOW()
-);
 
 -- ============================================================
 -- [동영상 제작] 전용 테이블

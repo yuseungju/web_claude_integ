@@ -31,6 +31,8 @@ function findSqlFiles(dir) {
 
 const parts = [];
 const problems = [];
+const owner = new Map();   // 테이블명 -> 그 테이블을 정의한 파일
+const dupes = [];
 
 for (const app of APP_ORDER) {
   const dir = path.join(DB_DIR, app);
@@ -42,6 +44,15 @@ for (const app of APP_ORDER) {
     const code = content.replace(/--[^\n]*/g, '');
     const hit = code.match(DESTRUCTIVE);
     if (hit) problems.push(rel + ' — "' + hit[0] + '"');
+
+    // 한 테이블은 한 파일만 정의한다. 앱이 늘어날수록 이름이 겹치기 쉬운데,
+    // CREATE TABLE IF NOT EXISTS 는 조용히 넘어가므로 여기서 잡아야 한다.
+    for (const m of code.matchAll(/\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"?(\w+)"?/gi)) {
+      const name = m[1].toLowerCase();
+      if (owner.has(name)) dupes.push(name + ' — ' + owner.get(name) + ' / ' + rel);
+      else owner.set(name, rel);
+    }
+
     parts.push('-- ===== ' + rel + ' =====\n' + content.trimEnd() + '\n');
   }
 }
@@ -50,6 +61,14 @@ if (problems.length) {
   console.error('배포 시 실행되는 스키마에 파괴적 구문이 있습니다. 중단합니다:');
   problems.forEach(p => console.error('  - ' + p));
   console.error('데이터를 지우는 구문은 db/_archive/ 로 옮기고 수동으로 실행하세요.');
+  process.exit(1);
+}
+
+if (dupes.length) {
+  console.error('같은 테이블을 두 곳에서 정의하고 있습니다. 중단합니다:');
+  dupes.forEach(d => console.error('  - ' + d));
+  console.error('여러 앱이 공유하는 테이블이면 db/common/ 한 곳에만 두고,');
+  console.error('서로 다른 테이블인데 이름만 같은 것이면 앱 접두사로 이름을 나누세요.');
   process.exit(1);
 }
 

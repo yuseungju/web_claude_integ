@@ -4,7 +4,7 @@
 --
 -- 배포할 때 db/migrate.js 가 이 파일을 RDS에 실행합니다.
 -- 모든 구문은 여러 번 실행해도 안전해야 합니다 (CREATE ... IF NOT EXISTS).
--- 생성: 2026-09-14T05:55:46.915Z
+-- 생성: 2026-09-14T06:26:51.697Z
 -- ============================================================
 
 -- ===== common/common_schema.sql =====
@@ -81,6 +81,34 @@ CREATE TABLE IF NOT EXISTS user_current_shares (
   UNIQUE(user_id, menu_key)
 );
 
+-- ===== common/user_section_schema.sql =====
+-- ============================================================
+-- [공통] 사용자별 섹션 가이드·라벨 (mypage)
+--
+-- 운영 RDS 에 이미 존재하던 정의를 그대로 옮긴 것이다.
+-- lambda/index.js 가 사용하므로 새 DB 를 만들 때도 반드시 함께 생성돼야 한다.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS user_section_guides (
+  user_id    INTEGER NOT NULL,
+  section_no SMALLINT NOT NULL,
+  guide      TEXT DEFAULT ''::text,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (user_id, section_no),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CHECK (((section_no >= 1) AND (section_no <= 5)))
+);
+
+CREATE TABLE IF NOT EXISTS user_section_labels (
+  user_id    INTEGER NOT NULL,
+  section_no SMALLINT NOT NULL,
+  label      TEXT DEFAULT ''::text,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (user_id, section_no),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CHECK (((section_no >= 1) AND (section_no <= 5)))
+);
+
 -- ===== pgo/pgo_schema.sql =====
 -- ============================================================
 -- PGO 분석기(/pgo/) 전용 테이블
@@ -152,6 +180,95 @@ CREATE TABLE IF NOT EXISTS pgo_lookup_log (
 
 CREATE INDEX IF NOT EXISTS idx_pgo_lookup_poke ON pgo_lookup_log(poke_key, created_at DESC);
 
+-- ===== workkit/content/article-writer/article_issue_schema.sql =====
+-- ============================================================
+-- [Work Kit / 컨텐츠작성 / 기사작성] 이슈·협업·댓글 스키마
+--
+-- 운영 RDS 에 이미 존재하던 정의를 그대로 옮긴 것이다.
+-- lambda/index.js 가 사용하므로 새 DB 를 만들 때도 반드시 함께 생성돼야 한다.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS issues (
+  id              SERIAL,
+  user_id         INTEGER NOT NULL,
+  title           CHARACTER VARYING(200) NOT NULL,
+  category        CHARACTER VARYING(50) DEFAULT '문화'::character varying,
+  is_draft        BOOLEAN DEFAULT true,
+  article_content TEXT DEFAULT ''::text,
+  view_count      INTEGER DEFAULT 0,
+  reference_links JSONB DEFAULT '[]'::jsonb,
+  created_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at      TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_issues_created_at ON issues USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_issues_user_id ON issues USING btree (user_id);
+
+CREATE TABLE IF NOT EXISTS issue_sections (
+  issue_id   INTEGER NOT NULL,
+  section_no SMALLINT NOT NULL,
+  content    TEXT DEFAULT ''::text,
+  guide      TEXT DEFAULT ''::text,
+  ai_content TEXT DEFAULT ''::text,
+  label      TEXT DEFAULT ''::text,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (issue_id, section_no),
+  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+  CHECK (((section_no >= 1) AND (section_no <= 5)))
+);
+CREATE INDEX IF NOT EXISTS idx_issue_sections_issue ON issue_sections USING btree (issue_id);
+
+CREATE TABLE IF NOT EXISTS issue_section_editors (
+  issue_id   INTEGER NOT NULL,
+  section_no SMALLINT NOT NULL,
+  user_id    INTEGER NOT NULL,
+  PRIMARY KEY (issue_id, section_no),
+  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_issue_editors_user ON issue_section_editors USING btree (user_id);
+
+CREATE TABLE IF NOT EXISTS issue_views (
+  issue_id INTEGER NOT NULL,
+  user_id  INTEGER NOT NULL,
+  PRIMARY KEY (issue_id, user_id),
+  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS issue_reactions (
+  issue_id INTEGER NOT NULL,
+  user_id  INTEGER NOT NULL,
+  reaction CHARACTER VARYING(10) NOT NULL,
+  PRIMARY KEY (issue_id, user_id),
+  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CHECK (((reaction)::text = ANY ((ARRAY['like'::character varying, 'dislike'::character varying])::text[])))
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+  id         SERIAL,
+  issue_id   INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  content    TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id),
+  FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_comments_issue ON comments USING btree (issue_id);
+
+CREATE TABLE IF NOT EXISTS comment_reactions (
+  comment_id INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  reaction   CHARACTER VARYING(10) NOT NULL,
+  PRIMARY KEY (comment_id, user_id),
+  FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CHECK (((reaction)::text = ANY ((ARRAY['like'::character varying, 'dislike'::character varying])::text[])))
+);
+
 -- ===== workkit/content/article-writer/article_writer_schema.sql =====
 -- ============================================================
 -- [컨텐츠작성 / 기사작성] 스키마
@@ -186,6 +303,115 @@ CREATE TABLE IF NOT EXISTS aw_sections (
   PRIMARY KEY (issue_id, section_no)
 );
 CREATE INDEX IF NOT EXISTS idx_aw_sections_issue ON aw_sections(issue_id);
+
+-- ===== workkit/content/novel-writer/novel_collab_schema.sql =====
+-- ============================================================
+-- [Work Kit / 컨텐츠작성 / 웹소설] 작품·회차·협업·댓글 스키마
+--
+-- 운영 RDS 에 이미 존재하던 정의를 그대로 옮긴 것이다.
+-- lambda/index.js 가 사용하므로 새 DB 를 만들 때도 반드시 함께 생성돼야 한다.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS novels (
+  id           SERIAL,
+  user_id      INTEGER NOT NULL,
+  title        CHARACTER VARYING(200) NOT NULL,
+  genre        CHARACTER VARYING(50) DEFAULT '판타지'::character varying,
+  synopsis     TEXT DEFAULT ''::text,
+  is_published BOOLEAN DEFAULT false,
+  view_count   INTEGER DEFAULT 0,
+  created_at   TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at   TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  ref_info     JSONB DEFAULT '{}'::jsonb,
+  ref_summary  TEXT DEFAULT ''::text,
+  PRIMARY KEY (id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_novels_user_id ON novels USING btree (user_id);
+
+CREATE TABLE IF NOT EXISTS novel_nodes (
+  id         SERIAL,
+  novel_id   INTEGER NOT NULL,
+  parent_id  INTEGER,
+  position   INTEGER NOT NULL DEFAULT 0,
+  title      CHARACTER VARYING(200) DEFAULT '새 메뉴'::character varying,
+  content    TEXT DEFAULT ''::text,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  is_visible BOOLEAN DEFAULT false,
+  ai_content TEXT DEFAULT ''::text,
+  node_ref   JSONB DEFAULT '{}'::jsonb,
+  PRIMARY KEY (id),
+  FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_id) REFERENCES novel_nodes(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_novel_nodes_novel ON novel_nodes USING btree (novel_id);
+CREATE INDEX IF NOT EXISTS idx_novel_nodes_parent ON novel_nodes USING btree (parent_id);
+
+CREATE TABLE IF NOT EXISTS novel_episodes (
+  id         SERIAL,
+  novel_id   INTEGER NOT NULL,
+  episode_no INTEGER NOT NULL,
+  title      CHARACTER VARYING(200) DEFAULT ''::character varying,
+  content    TEXT DEFAULT ''::text,
+  ai_content TEXT DEFAULT ''::text,
+  is_draft   BOOLEAN DEFAULT true,
+  view_count INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id),
+  UNIQUE (novel_id, episode_no),
+  FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_novel_episodes_novel ON novel_episodes USING btree (novel_id);
+
+CREATE TABLE IF NOT EXISTS novel_episode_editors (
+  novel_id   INTEGER NOT NULL,
+  episode_no INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  PRIMARY KEY (novel_id, episode_no),
+  FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS novel_comments (
+  id         SERIAL,
+  novel_id   INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  content    TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id),
+  FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS novel_comment_reactions (
+  comment_id INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  reaction   CHARACTER VARYING(10) NOT NULL,
+  PRIMARY KEY (comment_id, user_id),
+  FOREIGN KEY (comment_id) REFERENCES novel_comments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CHECK (((reaction)::text = ANY ((ARRAY['like'::character varying, 'dislike'::character varying])::text[])))
+);
+
+CREATE TABLE IF NOT EXISTS novel_reactions (
+  novel_id INTEGER NOT NULL,
+  user_id  INTEGER NOT NULL,
+  reaction CHARACTER VARYING(10) NOT NULL,
+  PRIMARY KEY (novel_id, user_id),
+  FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CHECK (((reaction)::text = ANY ((ARRAY['like'::character varying, 'dislike'::character varying])::text[])))
+);
+
+CREATE TABLE IF NOT EXISTS novel_views (
+  novel_id INTEGER NOT NULL,
+  user_id  INTEGER NOT NULL,
+  PRIMARY KEY (novel_id, user_id),
+  FOREIGN KEY (novel_id) REFERENCES novels(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
 -- ===== workkit/content/novel-writer/novel_writer_schema.sql =====
 -- ============================================================
@@ -226,14 +452,7 @@ CREATE INDEX IF NOT EXISTS idx_nw_nodes_parent ON nw_nodes(parent_id);
 
 -- ===== workkit/content/video-maker/video_maker_schema.sql =====
 -- ============================================================
--- [컨텐츠작성 / 동영상 제작] 스키마
---
--- ★ 단독 실행 가능 (users 테이블이 없으면 아래 공통 블록이 먼저 생성)
--- ★ 재설치 시 DROP 쿼리를 먼저 실행하세요 (아래 주석 해제):
---   DROP TABLE IF EXISTS vm_nodes CASCADE;
---   DROP TABLE IF EXISTS vm_projects CASCADE;
---   DROP TABLE IF EXISTS video_maker_settings CASCADE;
---   DROP TABLE IF EXISTS users CASCADE;
+-- [Work Kit / 컨텐츠작성 / 동영상 제작] 스키마
 --
 -- S3 파일 경로 규칙:
 --   vm-objects/{userId}/{nodeId}/{objId}-{filename}
@@ -241,36 +460,13 @@ CREATE INDEX IF NOT EXISTS idx_nw_nodes_parent ON nw_nodes(parent_id);
 -- ============================================================
 
 -- ============================================================
--- [공통 선행 조건] 로그인·인증 테이블 (없을 때만 생성)
+-- [공통 선행 조건] 로그인·인증 테이블
+--
+-- users / access_logs / user_saves / user_current_shares 는 여러 앱이 공유한다.
+-- 정의는 db/common/common_schema.sql 이 단독으로 소유하며, 통합 스키마에서
+-- common 이 항상 먼저 실행되므로(build-schema.js 의 APP_ORDER) 여기서는
+-- 다시 만들지 않고 참조만 한다.
 -- ============================================================
-
-CREATE TABLE IF NOT EXISTS users (
-  id            SERIAL       PRIMARY KEY,
-  email         VARCHAR(255) NOT NULL,
-  password_hash TEXT,
-  name          VARCHAR(100) NOT NULL DEFAULT '',
-  provider      VARCHAR(20)  NOT NULL DEFAULT 'email',
-  provider_id   VARCHAR(255),
-  save_limit    INTEGER      NOT NULL DEFAULT 5,
-  writing_style   TEXT         DEFAULT '',
-  article_style   TEXT         DEFAULT '',
-  section_guides  JSONB        DEFAULT '["","","","",""]',
-  section_labels  JSONB        DEFAULT '["","","","",""]',
-  created_at      TIMESTAMPTZ  DEFAULT NOW()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email    ON users(email);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id) WHERE provider_id IS NOT NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS section_guides JSONB DEFAULT '["","","","",""]';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS section_labels JSONB DEFAULT '["","","","",""]';
-
-CREATE TABLE IF NOT EXISTS access_logs (
-  id           SERIAL      PRIMARY KEY,
-  user_id      INTEGER     REFERENCES users(id) ON DELETE SET NULL,
-  email        VARCHAR(255),
-  login_method VARCHAR(20),
-  ip_address   INET,
-  created_at   TIMESTAMPTZ DEFAULT NOW()
-);
 
 -- ============================================================
 -- [동영상 제작] 전용 테이블
@@ -342,67 +538,49 @@ CREATE TABLE IF NOT EXISTS sd_nodes (
 CREATE INDEX IF NOT EXISTS idx_sd_nodes_project ON sd_nodes(project_id);
 CREATE INDEX IF NOT EXISTS idx_sd_nodes_parent  ON sd_nodes(parent_id);
 
+-- ===== workkit/general/bookmark/bookmark_schema.sql =====
+-- ============================================================
+-- [Work Kit / 일반업무 / 링크 보관함] 폴더·북마크 스키마
+--
+-- 운영 RDS 에 이미 존재하던 정의를 그대로 옮긴 것이다.
+-- lambda/index.js 가 사용하므로 새 DB 를 만들 때도 반드시 함께 생성돼야 한다.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS link_folders (
+  id         SERIAL,
+  user_id    INTEGER NOT NULL,
+  name       CHARACTER VARYING(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS link_bookmarks (
+  id         SERIAL,
+  folder_id  INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  title      TEXT DEFAULT ''::text,
+  url        TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  PRIMARY KEY (id),
+  FOREIGN KEY (folder_id) REFERENCES link_folders(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_link_bookmarks_folder ON link_bookmarks USING btree (folder_id);
+
 -- ===== workkit/general/schedule/schedule_share_schema.sql =====
 -- ============================================================
--- [일반업무 / 일정관리] 스키마
+-- [Work Kit / 일반업무 / 일정관리] 스키마
+-- ============================================================
+
+-- ============================================================
+-- [공통 선행 조건] 로그인·인증 테이블
 --
--- ★ 단독 실행 가능 (users/user_saves 테이블이 없으면 공통 블록이 먼저 생성)
+-- users / access_logs / user_saves / user_current_shares 는 여러 앱이 공유한다.
+-- 정의는 db/common/common_schema.sql 이 단독으로 소유하며, 통합 스키마에서
+-- common 이 항상 먼저 실행되므로(build-schema.js 의 APP_ORDER) 여기서는
+-- 다시 만들지 않고 참조만 한다.
 -- ============================================================
-
--- ============================================================
--- [공통 선행 조건] 로그인·인증·버전저장 테이블 (없을 때만 생성)
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS users (
-  id            SERIAL       PRIMARY KEY,
-  email         VARCHAR(255) NOT NULL,
-  password_hash TEXT,
-  name          VARCHAR(100) NOT NULL DEFAULT '',
-  provider      VARCHAR(20)  NOT NULL DEFAULT 'email',
-  provider_id   VARCHAR(255),
-  save_limit    INTEGER      NOT NULL DEFAULT 5,
-  writing_style   TEXT         DEFAULT '',
-  article_style   TEXT         DEFAULT '',
-  section_guides  JSONB        DEFAULT '["","","","",""]',
-  section_labels  JSONB        DEFAULT '["","","","",""]',
-  created_at      TIMESTAMPTZ  DEFAULT NOW()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email    ON users(email);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id) WHERE provider_id IS NOT NULL;
-
-CREATE TABLE IF NOT EXISTS access_logs (
-  id           SERIAL      PRIMARY KEY,
-  user_id      INTEGER     REFERENCES users(id) ON DELETE SET NULL,
-  email        VARCHAR(255),
-  login_method VARCHAR(20),
-  ip_address   INET,
-  created_at   TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS user_saves (
-  id                 SERIAL       PRIMARY KEY,
-  user_id            INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  menu_key           VARCHAR(50)  NOT NULL,
-  title              VARCHAR(200) DEFAULT '',
-  data               TEXT,
-  created_at         TIMESTAMPTZ  DEFAULT NOW(),
-  updated_at         TIMESTAMPTZ  DEFAULT NOW(),
-  collab_share_token VARCHAR(64),
-  share_token        VARCHAR(64)
-);
-CREATE INDEX IF NOT EXISTS idx_user_saves_user_menu ON user_saves(user_id, menu_key);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_saves_share_token ON user_saves(share_token) WHERE share_token IS NOT NULL;
-ALTER TABLE user_saves ADD COLUMN IF NOT EXISTS share_token VARCHAR(64);
-
-CREATE TABLE IF NOT EXISTS user_current_shares (
-  id          SERIAL      PRIMARY KEY,
-  user_id     INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  menu_key    VARCHAR(50) NOT NULL,
-  data        TEXT,
-  share_token VARCHAR(64) UNIQUE,
-  updated_at  TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, menu_key)
-);
 
 -- ============================================================
 -- [일정관리] 협업공유 참조 테이블

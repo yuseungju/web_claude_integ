@@ -1,16 +1,19 @@
 # DB 스키마
 
 앱별로 디렉토리를 나눠 관리하고, 배포할 때 하나로 합쳐 RDS 에 반영한다.
+**이 저장소의 스키마가 DB 의 정의 그 자체다** — 빈 DB 에 `schema_all.sql` 만 돌리면
+서비스가 쓰는 테이블이 전부 만들어진다.
 
 ```
 db/
-├── common/          모든 앱이 공유 (users 등)
+├── common/          모든 앱이 공유 (users, access_logs, user_saves,
+│                    user_current_shares, user_section_*)
 ├── nol/             SAP 업무 활용 정리 — 현재 전용 스키마 없음
 ├── pgo/             포켓몬 쓸모분석 (pgo_* 테이블)
 ├── workkit/         Work Kit — 분류/메뉴 구조를 그대로 유지
 │   ├── content/       기사작성 · 웹소설 · 동영상
 │   ├── dev/           화면 설계
-│   ├── general/       일정 공유
+│   ├── general/       일정 공유 · 링크 보관함
 │   └── other/         claude-chat
 ├── _archive/        실행하지 않는 옛 스키마 보관 (밑줄로 시작하면 빌드에서 제외)
 ├── build-schema.js  위 파일들을 schema_all.sql 로 병합
@@ -23,6 +26,18 @@ db/
 **모든 구문은 여러 번 실행해도 안전해야 한다.** 배포할 때마다 돌기 때문이다.
 `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
 만 쓴다.
+
+**한 테이블은 한 파일만 정의한다.** 앱이 늘어날수록 이름이 겹치기 쉬운데
+`CREATE TABLE IF NOT EXISTS` 는 조용히 넘어가 버려서, 먼저 실행된 쪽 정의가 이기고
+나중 앱은 자기가 기대한 컬럼이 없는 테이블을 쓰게 된다. 그래서 `build-schema.js` 가
+같은 테이블명이 두 곳에 나오면 **빌드를 실패시킨다.** 겹치면 둘 중 하나로 정리한다.
+
+- 여러 앱이 **같은 테이블을 공유**하는 것이면 → `db/common/` 한 곳에만 두고 앱 파일에서는 지운다
+- **서로 다른 테이블인데 이름만 같은** 것이면 → 앱 접두사로 이름을 나눈다
+  (`pgo_`, `aw_`, `nw_`, `vm_`, `sd_` 처럼)
+
+`common` 은 항상 가장 먼저 실행되므로(`APP_ORDER`) 앱 스키마에서 `users(id)` 같은
+외래키를 바로 걸 수 있다.
 
 `DROP TABLE` · `TRUNCATE` · `DELETE FROM` 이 들어가면 **빌드가 실패한다**
 (`build-schema.js` 와 `migrate.js` 양쪽에서 막는다). 데이터를 지우는 작업이 꼭 필요하면
@@ -60,3 +75,15 @@ db/
 빌드 로그에 `[migrate] 건너뜁니다` 가 찍히면 환경 변수를 확인하면 된다.
 
 적용은 한 트랜잭션으로 이뤄지고, 실패하면 롤백한 뒤 빌드를 중단한다.
+
+## 새 DB 를 처음부터 만들 때
+
+DB 만 비어 있으면 되고, 별도 순서나 수작업이 필요 없다.
+
+```bash
+npm run db:build          # schema_all.sql 재생성
+DB_HOST=... DB_NAME=... DB_USER=... DB_PASSWORD=... node db/migrate.js
+```
+
+빈 스키마에서 전체가 한 번에 생성되는지는 아래로 확인했다 — 39개 테이블 생성 성공,
+FK 순서 문제 없음.
