@@ -1,5 +1,5 @@
 {
-  "name": "article-lambda",
+  "name": "web-claude-integ-lambda",
   "version": "1.0.0",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

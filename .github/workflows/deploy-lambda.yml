@@ -18,8 +18,11 @@ jobs:
         run: cd lambda && npm install --omit=dev
 
       - name: Zip Lambda
-        run: cd lambda && zip -r /tmp/article-lambda.zip .
+        run: cd lambda && zip -r /tmp/lambda.zip .
 
+      # article-generate 는 AWS 에 실제로 존재하는 함수 이름이다.
+      # 저장소 이름과 무관하며, 바꾸려면 Lambda 를 새로 만들고
+      # API Gateway 통합도 다시 걸어야 하므로 그대로 둔다.
       - name: Deploy to Lambda
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -28,4 +31,4 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name article-generate \
-            --zip-file fileb:///tmp/article-lambda.zip
+            --zip-file fileb:///tmp/lambda.zip
