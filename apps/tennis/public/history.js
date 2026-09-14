@@ -451,19 +451,34 @@
     });
   }
 
-  /* ── 구글 캘린더 ──────────────────────────────────────── */
-  function calLog(line) {
-    var box = $('cal-log');
-    if (!box) return;
-    box.classList.remove('hidden');
-    var cls = /✓/.test(line) ? 'ok' : (/✗/.test(line) ? 'fail' : '');
-    box.innerHTML += (cls ? '<span class="' + cls + '">' + esc(line) + '</span>' : esc(line)) + '<br>';
-    box.scrollTop = box.scrollHeight;
+  /* ── 클로드에게 시킬 지시문 ───────────────────────────────
+   * 회사 구글 계정이라 OAuth 클라이언트를 만들 수 없어서, 캘린더 API 를
+   * 직접 부르는 대신 사람이 읽고 그대로 실행할 수 있는 지시문을 만든다.
+   * 구글 캘린더에 로그인된 브라우저에서 클로드에게 붙여넣으면 된다.
+   *
+   * 지시문은 앞뒤 맥락 없이 처음 보는 클로드도 알아들을 수 있어야 한다.
+   * 그래서 대상 캘린더 · 삭제 규칙 · 공통 설정 · 건별 정보를 모두 적는다.
+   */
+  var DOW = '일월화수목금토';
+
+  /** "테니스장 - A코트" 에서 "A코트" 만 뽑는다 */
+  function courtOf(facility) {
+    var m = String(facility || '').match(/([A-Z]\s*코트)/);
+    if (m) return m[1].replace(/\s/g, '');
+    var parts = String(facility || '').split(/\s*-\s*/);
+    return (parts[parts.length - 1] || '').trim();
+  }
+
+  /** "19:00~21:00" → ["19:00","21:00"] */
+  function timeRange(useTime) {
+    var m = String(useTime || '').match(/(\d{1,2}):(\d{2})\s*[~\-–]\s*(\d{1,2}):(\d{2})/);
+    if (!m) return null;
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return [pad(m[1]) + ':' + m[2], pad(m[3]) + ':' + m[4]];
   }
 
   function calSettings() {
     return {
-      clientId: (($('cal-client') || {}).value || '').trim(),
       titlePrefix: (($('cal-title') || {}).value || '').trim() || '테니슈웅 (대치유수지)',
       guests: (($('cal-guests') || {}).value || '')
         .split(/[,\s]+/).map(function (x) { return x.trim(); })
@@ -475,42 +490,87 @@
     var c = calSettings();
     msg($('cal-msg'), '저장 중...');
     api('/tennis/settings', { method: 'POST', body: { settings: {
-      cal_client: c.clientId, cal_title: c.titlePrefix, cal_guests: c.guests.join(','),
+      cal_title: c.titlePrefix, cal_guests: c.guests.join(','),
     } } })
       .then(function () { msg($('cal-msg'), '저장했습니다.'); })
       .catch(function (e) { msg($('cal-msg'), e.message, true); });
   }
 
-  function runCalendar() {
+  function buildPrompt(rows, c, from, to) {
+    var lines = [];
+    lines.push('구글 캘린더에 테니스 예약 일정을 정리해 줘. 지금 이 브라우저는 구글 캘린더에 로그인돼 있어.');
+    lines.push('');
+    lines.push('대상: https://calendar.google.com/calendar/u/0/r  (기본 캘린더)');
+    lines.push('기간: ' + from + ' ~ ' + to);
+    lines.push('');
+    lines.push('[1단계] 위 기간에서 제목에 "(AI작성)" 이 들어간 일정을 모두 삭제해 줘.');
+    lines.push('        "(AI작성)" 이 없는 일정은 절대 건드리지 마. 손으로 만든 일정이야.');
+    lines.push('');
+    lines.push('[2단계] 아래 ' + rows.length + '건을 새로 만들어 줘.');
+    lines.push('');
+    lines.push('모든 일정 공통:');
+    lines.push('  - 공개 설정: 비공개');
+    lines.push('  - 알림: 10분 전 팝업');
+    lines.push('  - 시간대: 한국 시간(KST)');
+    if (c.guests.length) {
+      lines.push('  - 참석자: ' + c.guests.join(', '));
+      lines.push('  - 참석자에게 초대 메일은 보내지 마.');
+    } else {
+      lines.push('  - 참석자: 없음');
+    }
+    lines.push('');
+
+    rows.forEach(function (r, i) {
+      var d = String(r.use_date).slice(0, 10);
+      var t = timeRange(r.use_time);
+      var dow = DOW.charAt(new Date(d + 'T00:00:00').getDay());
+      var cells = (r.raw && r.raw.cells) || [];
+      var desc = cells.length ? cells.join('  ')
+        : [r.reserve_no, r.facility, d + ' (' + r.use_time + ')', r.team,
+           (r.people || '') + '명', r.status].filter(Boolean).join('  ');
+      lines.push((i + 1) + ') 제목: ' + c.titlePrefix + '-' + courtOf(r.facility) + ' (AI작성)');
+      lines.push('   일시: ' + d + '(' + dow + ') ' + (t ? t[0] + ' ~ ' + t[1] : r.use_time));
+      lines.push('   설명: ' + desc);
+      lines.push('');
+    });
+
+    lines.push('[확인] 끝나면 삭제한 일정 수와 새로 만든 일정 수를 알려 줘.');
+    return lines.join('\n');
+  }
+
+  function makePrompt() {
     var c = calSettings();
     var from = ($('f-from') || {}).value || '';
     var to = ($('f-to') || {}).value || '';
     if (!from || !to) return msg($('cal-msg'), '기간을 먼저 지정하세요.', true);
-    if (!c.clientId) return msg($('cal-msg'), '구글 클라이언트 ID 를 입력하고 설정을 저장하세요.', true);
 
-    // 캘린더에 넣을 건 화면에서 보고 있는 그대로 — 기간 + 체크된 예약완료
-    var rows = filtered().filter(function (r) { return r.checked !== false && r.use_date; });
+    // 화면에서 보고 있는 그대로 — 기간 안의 체크된 예약완료 건
+    var rows = filtered().filter(function (r) {
+      return r.checked !== false && r.use_date && timeRange(r.use_time);
+    });
     if (!rows.length) return msg($('cal-msg'), '기간 안에 체크된 예약이 없습니다.', true);
 
-    var btn = $('cal-run');
-    if (btn) { btn.disabled = true; btn.textContent = '추가 중...'; }
-    var box = $('cal-log');
-    if (box) { box.innerHTML = ''; box.classList.remove('hidden'); }
-    msg($('cal-msg'), '');
-    calLog(from + ' ~ ' + to + '  대상 ' + rows.length + '건');
+    var text = buildPrompt(rows, c, from, to);
+    var box = $('cal-out');
+    if (box) box.classList.remove('hidden');
+    if ($('cal-text')) $('cal-text').value = text;
+    if ($('cal-out-info')) $('cal-out-info').textContent = rows.length + '건 · ' + text.length + '자';
+    msg($('cal-msg'), '아래 내용을 복사해 클로드에게 붙여넣으세요.');
+  }
 
-    window.TennisCal.sync(rows, {
-      clientId: c.clientId, titlePrefix: c.titlePrefix, guests: c.guests,
-      from: from, to: to, log: calLog,
-    }).then(function (r) {
-      calLog('끝났습니다 — ' + r.created + '/' + r.total + '건 추가');
-      msg($('cal-msg'), r.created + '건을 캘린더에 넣었습니다.');
-    }).catch(function (e) {
-      calLog('✗ ' + e.message);
-      msg($('cal-msg'), e.message, true);
-    }).then(function () {
-      if (btn) { btn.disabled = false; btn.textContent = '캘린더에 추가하기'; }
-    });
+  function copyPrompt() {
+    var field = $('cal-text');
+    if (!field || !field.value) return;
+    var done = function () { msg($('cal-msg'), '복사했습니다. 클로드에게 붙여넣으세요.'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(field.value).then(done, function () {
+        field.select();
+        msg($('cal-msg'), '복사가 막혀 있습니다. 선택된 내용을 Ctrl+C 로 복사하세요.', true);
+      });
+    } else {
+      field.select();
+      done();
+    }
   }
 
   /* ── 연결 ─────────────────────────────────────────────── */
@@ -593,8 +653,10 @@
 
     var calSave = $('cal-save');
     if (calSave) calSave.addEventListener('click', saveCalSettings);
-    var calRun = $('cal-run');
-    if (calRun) calRun.addEventListener('click', runCalendar);
+    var calMake = $('cal-make');
+    if (calMake) calMake.addEventListener('click', makePrompt);
+    var calCopy = $('cal-copy');
+    if (calCopy) calCopy.addEventListener('click', copyPrompt);
 
     var table = $('resv-table');
     if (table) table.addEventListener('change', function (e) {
@@ -609,7 +671,6 @@
       .then(function (d) {
         var st = d.settings || {};
         if (st.headcount && $('settle-people')) $('settle-people').value = st.headcount;
-        if (st.cal_client && $('cal-client')) $('cal-client').value = st.cal_client;
         if (st.cal_title && $('cal-title')) $('cal-title').value = st.cal_title;
         if (st.cal_guests && $('cal-guests')) $('cal-guests').value = st.cal_guests;
       })

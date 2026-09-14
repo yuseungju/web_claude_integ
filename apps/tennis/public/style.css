@@ -734,3 +734,38 @@ body.wide-tab .container { max-width: 1400px; }
 #cal-log .fail { color: #f85149; }
 
 @media (max-width: 640px) { .cal-grid { grid-template-columns: 1fr; } }
+
+/* ── 클로드 지시문 ── */
+.cal-out { margin-top: 16px; }
+.cal-out-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cal-out-head button {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: #e6edf3;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.cal-out-head button:hover { border-color: #58a6ff; color: #58a6ff; }
+#cal-text {
+  width: 100%;
+  min-height: 320px;
+  padding: 14px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  resize: vertical;
+  white-space: pre;
+  overflow-x: auto;
+}
+#cal-text:focus { outline: none; border-color: #58a6ff; }
