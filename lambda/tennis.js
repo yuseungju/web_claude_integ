@@ -153,36 +153,44 @@ function parseReservations(html, pageNo) {
     const joined = cells.join(' ');
     if (!/예약\s*완료/.test(joined)) continue;      // 완료 건만
 
+    // 실제 표 한 줄의 생김새 (2026-09 기준):
+    //   순번 | 접수번호              | 시설            | 일시                     | 단체 | 인원 | 상태
+    //   358  | 20260914090010_5061  | 테니스장 - C코트 | 2026-10-22 (19:00~21:00) | sap  | 5명  | 예약완료
+    // 열 위치를 고정하지 않고 내용으로 찾는다. 사이트가 열을 늘려도 버티게 하려는 것이다.
     const date = (joined.match(/(20\d{2})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})/) || []);
     const useDate = date.length
       ? `${date[1]}-${String(date[2]).padStart(2, '0')}-${String(date[3]).padStart(2, '0')}`
       : null;
     const time = (joined.match(/\d{1,2}:\d{2}\s*(?:~|-|–)\s*\d{1,2}:\d{2}/) || [])[0] || '';
-    const amount = (joined.match(/([\d,]{3,})\s*원/) || [])[1];
-    // 예약번호로 볼 만한 것: 6자리 이상 숫자 또는 영문+숫자 조합
-    // 예약번호는 사이트마다 형태가 달라 여러 갈래로 찾는다.
-    //   1) 링크·onclick 파라미터에 실린 번호 (가장 확실하다)
-    //   2) 칸 하나가 통째로 숫자/영문+숫자인 경우
-    //   3) 본문 어디든 6자리 이상 숫자
-    // 그래도 못 찾으면 계정·날짜·시간·시설로 만든 지문을 대신 쓴다.
-    // 예전에는 여기서 포기하고 행을 통째로 버려서 "예약번호를 못 읽은 N건 제외"가 났다.
-    const fromLink = (tr.match(/(?:rno|rsv_no|reserve_no|reserv_no|idx|seq|no)=["']?([A-Za-z0-9_-]{4,})/i) || [])[1];
-    const fromCell = cells.find(c => /^[A-Za-z]{0,4}[-]?\d{4,}$/.test(c.replace(/\s/g, '')));
-    const fromText = (joined.match(/\b([A-Z]{0,3}\d{6,})\b/) || [])[1];
-    const no = fromLink || (fromCell && fromCell.replace(/\s/g, '')) || fromText || null;
+    const amount = (joined.match(/([\d,]{3,})\s*원/) || [])[1];   // 이 표엔 금액 칸이 없다
 
-    // 번호가 없어도 같은 예약을 두 번 저장하지 않도록 지문을 만든다
+    // 접수번호는 "20260914090010_5061" 처럼 시각 + 밑줄 + 일련번호다.
+    // 링크 파라미터에 실려 있을 수도 있어 그쪽도 함께 본다.
+    const fromCell = cells.find(c => /^\d{8,14}_\d{2,8}$/.test(c.replace(/\s/g, '')));
+    const fromLink = (tr.match(/(?:rno|rsv_no|reserve_no|reserv_no|idx|seq)=["']?([A-Za-z0-9_-]{4,})/i) || [])[1];
+    const fromText = (joined.match(/\b(\d{8,14}_\d{2,8})\b/) || [])[1];
+    const no = (fromCell && fromCell.replace(/\s/g, '')) || fromLink || fromText || null;
+
+    // 접수번호를 못 읽어도 행을 버리지 않는다. 중복만 막으면 되므로 지문으로 대신한다.
     const fingerprint = 'X-' + crypto.createHash('sha1')
       .update([useDate, time, cells.join('|')].join('~')).digest('hex').slice(0, 16);
+
+    const people = (joined.match(/(\d+)\s*명/) || [])[1];
+    const facility = cells.find(c => /코트|구장|체육|테니스|풋살|농구|배드민턴|수영/.test(c)) || '';
+    // 단체명 — 숫자·상태·시설·접수번호가 아닌 짧은 칸
+    const team = cells.find(c => c && c !== facility
+      && !/^\d/.test(c) && !/예약|취소|대기|완료/.test(c) && !/명$/.test(c) && c.length <= 30) || '';
 
     rows.push({
       reserve_no: no || fingerprint,
       no_from: no ? 'site' : 'fingerprint',
-      facility: cells.find(c => /코트|구장|체육|테니스|풋살|농구|배드민턴/.test(c)) || cells[1] || '',
+      facility,
       use_date: useDate,
       use_time: time,
       status: '예약완료',
       amount: amount ? Number(amount.replace(/,/g, '')) : null,
+      team,
+      people: people ? Number(people) : null,
       page_no: pageNo,
       raw: { cells },
     });
@@ -326,13 +334,15 @@ async function route(ctx, event, method, path) {
     for (const r of result.rows) {
       const q = await pool.query(
         `INSERT INTO tn_reservations
-           (user_id, account_id, reserve_no, facility, use_date, use_time, status, amount, page_no, raw)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           (user_id, account_id, reserve_no, facility, use_date, use_time, status, amount, team, people, page_no, raw)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
          ON CONFLICT (account_id, reserve_no) DO UPDATE
            SET facility=EXCLUDED.facility, use_date=EXCLUDED.use_date, use_time=EXCLUDED.use_time,
-               status=EXCLUDED.status, amount=EXCLUDED.amount, raw=EXCLUDED.raw, collected_at=NOW()
+               status=EXCLUDED.status, amount=EXCLUDED.amount, team=EXCLUDED.team,
+               people=EXCLUDED.people, raw=EXCLUDED.raw, collected_at=NOW()
          RETURNING (xmax = 0) AS inserted`,
-        [uid, acc.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount, r.page_no, r.raw]);
+        [uid, acc.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
+         r.team, r.people, r.page_no, r.raw]);
       if (q.rows[0].inserted) saved++;
     }
 
@@ -357,7 +367,7 @@ async function route(ctx, event, method, path) {
   if (path === '/tennis/reservations' && method === 'GET') {
     const { rows } = await pool.query(
       `SELECT r.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
-              r.collected_at, a.login_id, a.label
+              r.team, r.people, r.collected_at, a.login_id, a.label
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id
         WHERE r.user_id = $1

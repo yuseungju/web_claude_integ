@@ -544,3 +544,5 @@ footer strong { color: #6e7681; }
   .acc-actions { width: 100%; }
   .acc-actions button { flex: 1; }
 }
+
+.resv-dow { color: #8b949e; text-align: center; width: 1%; }

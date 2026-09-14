@@ -4,7 +4,7 @@
 --
 -- 배포할 때 db/migrate.js 가 이 파일을 RDS에 실행합니다.
 -- 모든 구문은 여러 번 실행해도 안전해야 합니다 (CREATE ... IF NOT EXISTS).
--- 생성: 2026-09-14T08:39:34.314Z
+-- 생성: 2026-09-14T09:03:42.028Z
 -- ============================================================
 
 -- ===== common/common_schema.sql =====
@@ -480,6 +480,8 @@ CREATE TABLE IF NOT EXISTS tn_reservations (
   use_time     TEXT         NOT NULL DEFAULT '',
   status       TEXT         NOT NULL DEFAULT '',
   amount       INTEGER,
+  team         TEXT         NOT NULL DEFAULT '',
+  people       SMALLINT,
   page_no      SMALLINT,
   raw          JSONB        NOT NULL DEFAULT '{}',
   collected_at TIMESTAMPTZ  DEFAULT NOW(),
@@ -487,3 +489,9 @@ CREATE TABLE IF NOT EXISTS tn_reservations (
 );
 CREATE INDEX IF NOT EXISTS idx_tn_reservations_user ON tn_reservations(user_id, use_date DESC);
 CREATE INDEX IF NOT EXISTS idx_tn_reservations_acct ON tn_reservations(account_id);
+
+-- 처음 만들 때는 위 CREATE TABLE 로 충분하지만, 이미 만들어진 DB 에는
+-- 컬럼이 없다. CREATE TABLE IF NOT EXISTS 는 기존 테이블을 고치지 않으므로
+-- 아래로 보강한다. (이 컬럼을 참조하는 인덱스는 없다)
+ALTER TABLE tn_reservations ADD COLUMN IF NOT EXISTS team   TEXT NOT NULL DEFAULT '';
+ALTER TABLE tn_reservations ADD COLUMN IF NOT EXISTS people SMALLINT;

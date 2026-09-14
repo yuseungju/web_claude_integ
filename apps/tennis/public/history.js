@@ -178,15 +178,20 @@
     // 모든 계정의 내역을 한 표로 합치고, 어느 계정으로 잡은 건지는 맨 뒤에 붙인다
     box.innerHTML =
       '<table class="resv-table"><thead><tr>' +
-      '<th>#</th><th>이용일</th><th>시간</th><th>시설</th><th>금액</th><th>예약번호</th><th>계정</th>' +
+      '<th>#</th><th>이용일</th><th>요일</th><th>시간</th><th>시설</th>' +
+      '<th>단체</th><th>인원</th><th>접수번호</th><th>계정</th>' +
       '</tr></thead><tbody>' +
       list.map(function (r, i) {
+        var d = r.use_date ? String(r.use_date).slice(0, 10) : '';
+        var dow = d ? '일월화수목금토'.charAt(new Date(d + 'T00:00:00').getDay()) : '';
         return '<tr>' +
           '<td class="resv-idx">' + (i + 1) + '</td>' +
-          '<td>' + esc(r.use_date ? String(r.use_date).slice(0, 10) : '-') + '</td>' +
+          '<td>' + esc(d || '-') + '</td>' +
+          '<td class="resv-dow">' + esc(dow) + '</td>' +
           '<td>' + esc(r.use_time || '-') + '</td>' +
           '<td>' + esc(r.facility || '-') + '</td>' +
-          '<td class="resv-amt">' + (r.amount != null ? Number(r.amount).toLocaleString('ko-KR') + '원' : '-') + '</td>' +
+          '<td>' + esc(r.team || '-') + '</td>' +
+          '<td class="resv-amt">' + (r.people != null ? r.people + '명' : '-') + '</td>' +
           '<td class="resv-no">' + esc(/^X-/.test(r.reserve_no) ? '—' : r.reserve_no) + '</td>' +
           '<td class="resv-acct">' + esc(r.login_id) +
             (r.label ? '<span class="acc-tag">' + esc(r.label) + '</span>' : '') + '</td>' +
