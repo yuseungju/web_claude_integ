@@ -247,6 +247,57 @@ async function collect(cookie, firstPage) {
   return { rows: all, diag, pageParam };
 }
 
+/* ── 예약 신청 폼 구조 확인 (제출하지 않는다) ─────────────────
+ * 자동예약을 서버에서 하려면 신청 폼이 어떤 필드를 요구하는지 알아야 한다.
+ * 캘린더에서 빈 칸 하나를 찾아 신청 페이지를 "열어보기만" 한다.
+ * POST 를 하지 않으므로 실제 예약은 잡히지 않는다.
+ */
+async function inspectBookingForm(cookie, { type, year, month }) {
+  const calPath = `/?act=reservation.reservation_list&type=${type}&cyear=${year}&cmonth=${month}`;
+  const cal = await request('GET', calPath, { cookie });
+  if (isLoginRedirect(cal.html)) return { ok: false, message: '세션이 끊겼습니다.' };
+
+  // 예약 가능한 칸은 <a class="_rev" data-date data-time data-type> 로 나온다
+  const slots = [...cal.html.matchAll(/<a[^>]*class=["'][^"']*_rev[^"']*["'][^>]*>/gi)]
+    .map(tag => ({
+      date: (tag[0].match(/data-date=["']([^"']+)/) || [])[1],
+      time: (tag[0].match(/data-time=["']([^"']+)/) || [])[1],
+      type: (tag[0].match(/data-type=["']([^"']+)/) || [])[1],
+    }))
+    .filter(s => s.date && s.time);
+
+  if (!slots.length) {
+    return { ok: false, message: '이 달에 예약 가능한 칸이 없습니다.', calendarBytes: cal.html.length };
+  }
+
+  const first = slots[0];
+  const appPath = '/?act=reservation.reservation_application'
+    + `&rdate=${first.date}&rtime=${first.time}&rtype=${first.type}&setupCode=`;
+  const app = await request('GET', appPath, { cookie });
+
+  const form = (app.html.match(/<form[^>]*>[\s\S]*?<\/form>/i) || [])[0] || '';
+  const inputs = [...form.matchAll(/<(input|select|textarea)[^>]*>/gi)]
+    .map(m => ({
+      tag: m[1],
+      name: (m[0].match(/name=["']([^"']+)/) || [])[1] || null,
+      type: (m[0].match(/type=["']([^"']+)/) || [])[1] || null,
+      value: (m[0].match(/value=["']([^"']*)/) || [])[1] || null,
+    }))
+    .filter(x => x.name);
+
+  return {
+    ok: true,
+    slots: slots.length,
+    sampleSlot: first,
+    calendarBytes: cal.html.length,
+    appBytes: app.html.length,
+    formTag: (form.match(/<form[^>]*>/i) || [''])[0],
+    inputs,
+    submitHints: [...app.html.matchAll(/(?:onclick|action)=["']([^"']{0,120})["']/gi)]
+      .map(m => m[1]).filter(v => /reserv|submit|act=/i.test(v)).slice(0, 8),
+  };
+}
+
 /* ── 라우팅 ────────────────────────────────────────────────── */
 async function route(ctx, event, method, path) {
   const { pool, resp, getBody, verifyToken } = ctx;
@@ -360,6 +411,25 @@ async function route(ctx, event, method, path) {
       reserve_no: r.reserve_no, no_from: r.no_from, use_date: r.use_date,
       use_time: r.use_time, facility: r.facility, amount: r.amount, cells: r.raw.cells,
     }));
+    return resp(200, out);
+  }
+
+  /* 예약 신청 폼 구조 확인 — 조회만 하고 제출은 하지 않는다 */
+  if (path === '/tennis/inspect' && method === 'POST') {
+    const { rows: accs } = await pool.query(
+      'SELECT id, login_id, password_enc FROM tn_accounts WHERE id=$1 AND user_id=$2',
+      [body.account_id, uid]);
+    if (!accs.length) return resp(404, { error: '계정을 찾을 수 없습니다.' });
+
+    const session = await login(accs[0].login_id, decrypt(accs[0].password_enc));
+    if (!session.ok) return resp(200, { ok: false, message: session.message });
+
+    const now = new Date();
+    const out = await inspectBookingForm(session.cookie, {
+      type: body.type || 8,
+      year: body.year || now.getFullYear(),
+      month: body.month || (now.getMonth() + 2),   // 보통 다음 달이 열려 있다
+    });
     return resp(200, out);
   }
 
