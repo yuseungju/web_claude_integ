@@ -383,28 +383,13 @@ div>
         <div class="field-card">
           <div class="field-label">구글 캘린더에 추가</div>
           <p class="step-desc">
-            위 <strong>기간</strong>에 걸린 <strong>체크된 예약완료</strong> 건으로
-            클로드에게 시킬 지시문을 만듭니다.
+            위 <strong>기간</strong>에 걸린 <strong>체크된 예약완료</strong> 건으로 지시문을 만듭니다.
             <strong>구글 캘린더가 열려 있는 브라우저</strong>에서 클로드에게 붙여넣으면
             기존 <code>(AI작성)</code> 일정을 지우고 새로 만들어 줍니다.
+            제목과 참석자는 고정이라 따로 넣을 것이 없습니다.
           </p>
 
-          <div class="cal-grid">
-            <div class="input-wrap">
-              <label for="cal-title">제목 앞부분</label>
-              <input type="text" id="cal-title" placeholder="테니슈웅 (대치유수지)" maxlength="40">
-            </div>
-            <div class="input-wrap">
-              <label for="cal-guests">참석자 <span class="step-tip">쉼표로 구분</span></label>
-              <input type="text" id="cal-guests" autocomplete="off"
-                     placeholder="a@example.com, b@example.com">
-            </div>
-          </div>
-
-          <div class="cal-actions">
-            <button type="button" id="cal-save">설정 저장</button>
-            <button type="button" id="cal-make" class="run-btn">클로드 지시문 만들기</button>
-          </div>
+          <button type="button" id="cal-make" class="run-btn">클로드 지시문 만들기</button>
           <div id="cal-msg" class="error-msg hidden"></div>
 
           <div id="cal-out" class="cal-out hidden">

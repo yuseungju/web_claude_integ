@@ -477,26 +477,11 @@
     return [pad(m[1]) + ':' + m[2], pad(m[3]) + ':' + m[4]];
   }
 
-  function calSettings() {
-    return {
-      titlePrefix: (($('cal-title') || {}).value || '').trim() || '테니슈웅 (대치유수지)',
-      guests: (($('cal-guests') || {}).value || '')
-        .split(/[,\s]+/).map(function (x) { return x.trim(); })
-        .filter(function (x) { return x.indexOf('@') > 0; }),
-    };
-  }
+  // 제목과 참석자는 늘 같다. 건마다 달라지는 건 코트명과 예약 상세뿐이다.
+  var TITLE_PREFIX = '테니슈웅 (대치유수지)';
+  var GUESTS = ['이길환', '한사라', '홍석기', '이태인'];
 
-  function saveCalSettings() {
-    var c = calSettings();
-    msg($('cal-msg'), '저장 중...');
-    api('/tennis/settings', { method: 'POST', body: { settings: {
-      cal_title: c.titlePrefix, cal_guests: c.guests.join(','),
-    } } })
-      .then(function () { msg($('cal-msg'), '저장했습니다.'); })
-      .catch(function (e) { msg($('cal-msg'), e.message, true); });
-  }
-
-  function buildPrompt(rows, c, from, to) {
+  function buildPrompt(rows, from, to) {
     var lines = [];
     lines.push('구글 캘린더에 테니스 예약 일정을 정리해 줘. 지금 이 브라우저는 구글 캘린더에 로그인돼 있어.');
     lines.push('');
@@ -512,12 +497,8 @@
     lines.push('  - 공개 설정: 비공개');
     lines.push('  - 알림: 10분 전 팝업');
     lines.push('  - 시간대: 한국 시간(KST)');
-    if (c.guests.length) {
-      lines.push('  - 참석자: ' + c.guests.join(', '));
-      lines.push('  - 참석자에게 초대 메일은 보내지 마.');
-    } else {
-      lines.push('  - 참석자: 없음');
-    }
+    lines.push('  - 참석자: ' + GUESTS.join(', ') + ' (조직 주소록에서 이름으로 찾아 추가)');
+    lines.push('  - 참석자에게 초대 메일은 보내지 마.');
     lines.push('');
 
     rows.forEach(function (r, i) {
@@ -528,7 +509,7 @@
       var desc = cells.length ? cells.join('  ')
         : [r.reserve_no, r.facility, d + ' (' + r.use_time + ')', r.team,
            (r.people || '') + '명', r.status].filter(Boolean).join('  ');
-      lines.push((i + 1) + ') 제목: ' + c.titlePrefix + '-' + courtOf(r.facility) + ' (AI작성)');
+      lines.push((i + 1) + ') 제목: ' + TITLE_PREFIX + '-' + courtOf(r.facility) + ' (AI작성)');
       lines.push('   일시: ' + d + '(' + dow + ') ' + (t ? t[0] + ' ~ ' + t[1] : r.use_time));
       lines.push('   설명: ' + desc);
       lines.push('');
@@ -539,7 +520,6 @@
   }
 
   function makePrompt() {
-    var c = calSettings();
     var from = ($('f-from') || {}).value || '';
     var to = ($('f-to') || {}).value || '';
     if (!from || !to) return msg($('cal-msg'), '기간을 먼저 지정하세요.', true);
@@ -550,7 +530,7 @@
     });
     if (!rows.length) return msg($('cal-msg'), '기간 안에 체크된 예약이 없습니다.', true);
 
-    var text = buildPrompt(rows, c, from, to);
+    var text = buildPrompt(rows, from, to);
     var box = $('cal-out');
     if (box) box.classList.remove('hidden');
     if ($('cal-text')) $('cal-text').value = text;
@@ -651,8 +631,6 @@
       renderReservations();
     });
 
-    var calSave = $('cal-save');
-    if (calSave) calSave.addEventListener('click', saveCalSettings);
     var calMake = $('cal-make');
     if (calMake) calMake.addEventListener('click', makePrompt);
     var calCopy = $('cal-copy');
@@ -671,8 +649,6 @@
       .then(function (d) {
         var st = d.settings || {};
         if (st.headcount && $('settle-people')) $('settle-people').value = st.headcount;
-        if (st.cal_title && $('cal-title')) $('cal-title').value = st.cal_title;
-        if (st.cal_guests && $('cal-guests')) $('cal-guests').value = st.cal_guests;
       })
       .catch(function () { /* 없으면 기본값을 쓴다 */ })
       .then(function () { return loadPrices(); })
