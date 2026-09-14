@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>예산 분배 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="../../../index.html" class="back-btn">← 메뉴</a>
+        <h1 class="page-title">💰 예산 분배</h1>
+      </div>
+
+      <!-- ① 총예산 입력 -->
+      <div class="budget-input-card card">
+        <div class="card-header">총 예산 설정</div>
+        <div class="budget-input-body">
+          <div class="budget-input-wrap">
+            <span class="currency-label">₩</span>
+            <input
+              type="text"
+              id="totalBudget"
+              class="budget-input"
+              placeholder="0"
+              inputmode="numeric"
+              autocomplete="off"
+            />
+            <span class="currency-unit">원</span>
+          </div>
+          <div class="budget-hint" id="budgetHint">총예산을 입력하면 자동으로 금액이 산출됩니다</div>
+        </div>
+      </div>
+
+      <!-- ② 진행률 바 -->
+      <div class="progress-card card">
+        <div class="progress-row">
+          <div class="bar-track">
+            <div class="bar-fill" id="barFill"></div>
+          </div>
+          <span class="pct-status" id="pctStatus">0%</span>
+        </div>
+        <div class="progress-meta">
+          <span>배분율 합계: <strong id="summaryPct">0.00%</strong></span>
+          <span>배분 금액 합계: <strong id="summaryAmount">0원</strong></span>
+          <span id="remainInfo" class="remain-info"></span>
+        </div>
+      </div>
+
+      <!-- ③ Excel 업로드 / 다운로드 툴바 -->
+      <div class="excel-toolbar">
+        <label class="excel-btn" title="엑셀 업로드 — 1열: 예산항목, 2열: 금액">
+          <svg class="xl-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="18" height="18" rx="3" fill="rgba(255,255,255,0.22)"/>
+            <text x="2" y="13" fill="white" font-family="Arial" font-size="11" font-weight="900">↑</text>
+          </svg>
+          업로드
+          <input type="file" id="excelUpload" accept=".xlsx,.xls,.csv" hidden />
+        </label>
+
+        <button class="excel-btn secondary" id="dlTemplateBtn" title="입력 양식 엑셀 다운로드">
+          <svg class="xl-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="18" height="18" rx="3" fill="rgba(255,255,255,0.22)"/>
+            <text x="3" y="13" fill="white" font-family="Arial" font-size="10" font-weight="900">XL</text>
+          </svg>
+          양식 다운로드
+        </button>
+
+        <button class="excel-btn" id="dlResultBtn" title="현재 분배 결과 엑셀 다운로드">
+          <svg class="xl-icon" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="18" height="18" rx="3" fill="rgba(255,255,255,0.22)"/>
+            <text x="2" y="13" fill="white" font-family="Arial" font-size="11" font-weight="900">↓</text>
+          </svg>
+          결과 다운로드
+        </button>
+
+        <span class="excel-upload-name" id="uploadName"></span>
+      </div>
+
+      <!-- ④ 배분 입력 테이블 -->
+      <div class="card">
+        <div class="card-header">
+          <span>예산 항목</span>
+          <div class="header-actions">
+            <button class="action-btn accent" id="distRemainBtn" title="선택된 행은 현재 비율 고정, 나머지 행에 잔여 % 균등 분배">선택 고정·나머지 균등</button>
+            <button class="action-btn" id="equalBtn" title="모든 항목에 균등 분배">전체 균등</button>
+            <button class="action-btn" id="addRowBtn">+ 행 추가</button>
+            <button class="action-btn danger" id="resetBtn">↺ 초기화</button>
+          </div>
+        </div>
+
+        <div class="table-scroll">
+          <table class="alloc-table">
+            <thead>
+              <tr>
+                <th class="drag-handle-th"></th>
+                <th class="col-check"><input type="checkbox" id="checkAll" title="전체 선택/해제" /></th>
+                <th class="col-num">#</th>
+                <th class="col-item">예산 항목</th>
+                <th class="col-pct">비율 (%)</th>
+                <th class="col-amount">금액 (원)</th>
+                <th class="col-del"></th>
+              </tr>
+            </thead>
+            <tbody id="allocBody"></tbody>
+            <tfoot>
+              <tr class="summary-row">
+                <td></td>
+                <td></td>
+                <td></td>
+                <td class="summary-label">합계</td>
+                <td class="summary-pct" id="footPct">0.00%</td>
+                <td class="summary-amount" id="footAmount">0원</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit</p></footer>
+  </div>
+
+  <script src="../../../assets/js/common.js"></script>
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="../../../assets/js/data-manager.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

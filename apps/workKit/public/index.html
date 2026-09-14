@@ -1,0 +1,652 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkKit</title>
+  <link rel="stylesheet" href="assets/css/common.css" />
+  <style>
+    /* ── Menu ───────────────────────────────────────────── */
+    .menu-hero { text-align: center; padding: 2.5rem 0 2rem; }
+    .menu-hero h2 { font-size: 1.7rem; font-weight: 700; color: var(--text-primary); }
+    .menu-hero p  { margin-top: 0.4rem; color: var(--text-secondary); font-size: 0.95rem; }
+    .menu-category { margin-bottom: 2rem; }
+    .menu-category-title {
+      font-size: 1.05rem; font-weight: 700; color: var(--text-primary);
+      margin-bottom: 0.9rem; padding-left: 0.6rem;
+      border-left: 4px solid var(--primary);
+    }
+    .menu-grid {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      gap: 1.25rem; padding-bottom: 0.5rem;
+    }
+    @media (max-width: 1000px) { .menu-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width:  600px) { .menu-grid { grid-template-columns: repeat(2, 1fr); } }
+    .menu-card {
+      background: var(--bg-card); border-radius: var(--radius-md);
+      padding: 1.75rem 1rem 1.5rem; text-align: center;
+      border: 1.5px solid var(--border); text-decoration: none;
+      color: inherit; display: block; transition: all 0.2s; position: relative;
+    }
+    .menu-card.active { cursor: pointer; box-shadow: var(--shadow-sm); }
+    .menu-card.active:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 28px rgba(79,70,229,.18);
+      border-color: var(--primary);
+    }
+    .menu-card.locked { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .menu-icon { font-size: 2.4rem; margin-bottom: 0.8rem; display: block; }
+    .menu-name { font-weight: 700; font-size: 0.88rem; color: var(--text-primary); line-height: 1.4; }
+    .menu-badge {
+      display: inline-block; margin-top: 0.6rem;
+      padding: 0.15rem 0.6rem; font-size: 0.68rem;
+      border-radius: 100px; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .badge-open   { background: #d1fae5; color: #065f46; }
+    .badge-locked { background: #f1f5f9; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <div class="header-logo">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </div>
+        </div>
+        <div id="authArea">
+          <button class="auth-btn" onclick="openModal('login')">로그인</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="menu-hero">
+        <h2>메뉴 선택</h2>
+        <p>사용할 기능을 선택하세요</p>
+      </div>
+      <section class="menu-category">
+        <h3 class="menu-category-title">일반 업무</h3>
+        <div class="menu-grid">
+          <a href="features/general/excel-compare/index.html" class="menu-card active">
+            <span class="menu-icon">⚖️</span>
+            <div class="menu-name">표 비교</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+          <a href="features/general/schedule/index.html" class="menu-card active">
+            <span class="menu-icon">📅</span>
+            <div class="menu-name">일정관리</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+          <a href="features/general/budget-allocation/index.html" class="menu-card active">
+            <span class="menu-icon">💰</span>
+            <div class="menu-name">예산 분배</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+          <a href="features/general/file-converter/index.html" class="menu-card active">
+            <span class="menu-icon">🔄</span>
+            <div class="menu-name">파일 변환</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="menu-category">
+        <h3 class="menu-category-title">개발 업무</h3>
+        <div class="menu-grid">
+          <a href="features/dev/sql-generator/index.html" class="menu-card active">
+            <span class="menu-icon">🗄️</span>
+            <div class="menu-name">SQL 생성기</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+          <a href="features/dev/screen-designer/index.html" class="menu-card active">
+            <span class="menu-icon">🖥️</span>
+            <div class="menu-name">화면 설계서</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="menu-category">
+        <h3 class="menu-category-title">컨텐츠작성</h3>
+        <div class="menu-grid">
+          <a href="features/content/article-writer/index.html" class="menu-card active">
+            <span class="menu-icon">📋</span>
+            <div class="menu-name">기사 작성</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+          <a href="features/content/novel-writer/index.html" class="menu-card active">
+            <span class="menu-icon">📖</span>
+            <div class="menu-name">웹소설 작성</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+          <a href="features/content/video-maker/index.html" class="menu-card active">
+            <span class="menu-icon">🎬</span>
+            <div class="menu-name">동영상 제작</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="menu-category">
+        <h3 class="menu-category-title">기타</h3>
+        <div class="menu-grid">
+          <a href="features/other/claude-chat/index.html" class="menu-card active">
+            <span class="menu-icon">🤖</span>
+            <div class="menu-name">AI 대화</div>
+            <span class="menu-badge badge-open">사용 가능</span>
+          </a>
+          <div class="menu-card locked">
+            <span class="menu-icon">📊</span>
+            <div class="menu-name">통계 분석</div>
+            <span class="menu-badge badge-locked">오픈 대기중</span>
+          </div>
+          <div class="menu-card locked">
+            <span class="menu-icon">📤</span>
+            <div class="menu-name">내보내기</div>
+            <span class="menu-badge badge-locked">오픈 대기중</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ── 비밀번호 찾기 모달 ─────────────────────────────── -->
+    <div class="modal-overlay" id="forgotPwModal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">비밀번호 찾기</span>
+          <button class="modal-close" onclick="closeForgotPw()">×</button>
+        </div>
+        <div id="fpMsg" class="modal-msg"></div>
+
+        <!-- Step 1: 이메일 입력 -->
+        <div id="fpStep1">
+          <p style="font-size:0.82rem;color:#6b7280;margin-bottom:0.75rem">
+            가입한 이메일로 인증코드를 발송합니다.
+          </p>
+          <div class="input-wrap" style="margin-bottom:0.6rem">
+            <input type="email" id="fpEmail" placeholder="이메일" required />
+          </div>
+          <button class="modal-submit" id="fpSendBtn" onclick="sendForgotCode()">인증코드 발송</button>
+        </div>
+
+        <!-- Step 2: 인증코드 입력 -->
+        <div id="fpStep2" style="display:none">
+          <p style="font-size:0.82rem;color:#6b7280;margin-bottom:0.75rem">
+            이메일로 발송된 4자리 인증코드를 입력하세요.
+          </p>
+          <div class="email-row" style="margin-bottom:0.6rem">
+            <div class="input-wrap">
+              <input type="text" id="fpCode" placeholder="인증코드 4자리" maxlength="4" inputmode="numeric" />
+            </div>
+            <button type="button" class="btn-check-email" id="fpVerifyBtn" onclick="verifyForgotCode()">확인</button>
+          </div>
+        </div>
+
+        <!-- Step 3: 완료 -->
+        <div id="fpStep3" style="display:none;text-align:center;padding:0.5rem 0">
+          <div style="font-size:2rem;margin-bottom:0.5rem">✅</div>
+          <p style="font-size:0.88rem;font-weight:600">임시 비밀번호가 이메일로 전송됐습니다.</p>
+          <p style="font-size:0.8rem;color:#6b7280;margin-top:0.3rem">받은 임시 비밀번호로 로그인 후<br>비밀번호를 변경해주세요.</p>
+          <button class="modal-submit" style="margin-top:1rem" onclick="closeForgotPw();openModal('login')">로그인하기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 비밀번호 변경 모달 ─────────────────────────────── -->
+    <div class="modal-overlay" id="changePwModal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">비밀번호 변경</span>
+          <button class="modal-close" onclick="closeChangePw()">×</button>
+        </div>
+        <div id="cpMsg" class="modal-msg"></div>
+        <form class="modal-form" onsubmit="doChangePw(event)">
+          <div class="input-wrap">
+            <input type="password" id="cpCurrent" placeholder="현재 비밀번호" required />
+          </div>
+          <div class="input-wrap">
+            <input type="password" id="cpNew" placeholder="새 비밀번호" required oninput="updateCpPwRules()" />
+          </div>
+          <div class="pw-rules" id="cpPwRules">
+            <span class="pw-rule" id="cp-rule-len">8자 이상</span>
+            <span class="pw-rule" id="cp-rule-upper">대문자</span>
+            <span class="pw-rule" id="cp-rule-lower">소문자</span>
+            <span class="pw-rule" id="cp-rule-num">숫자</span>
+            <span class="pw-rule" id="cp-rule-special">특수문자</span>
+          </div>
+          <div class="input-wrap">
+            <input type="password" id="cpConfirm" placeholder="새 비밀번호 확인" required oninput="checkCpMatch()" />
+          </div>
+          <div class="input-hint" id="cpMatchHint"></div>
+          <button type="submit" class="modal-submit" id="cpBtn">변경</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 로그인/회원가입 모달 -->
+    <div class="modal-overlay" id="authModal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title" id="modalTitle">계정</span>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-tabs">
+          <div class="modal-tab active" id="tabLogin" onclick="switchTab('login')">로그인</div>
+          <div class="modal-tab" id="tabRegister" onclick="switchTab('register')">회원가입</div>
+        </div>
+        <div id="msgBox" class="modal-msg"></div>
+
+        <!-- 로그인 폼 -->
+        <form class="modal-form" id="loginForm" onsubmit="doLogin(event)">
+          <div class="input-wrap">
+            <input type="email" id="loginEmail" placeholder="이메일" required />
+          </div>
+          <div class="input-wrap">
+            <input type="password" id="loginPw" placeholder="비밀번호" required />
+          </div>
+          <button type="submit" class="modal-submit" id="loginBtn">로그인</button>
+          <div style="text-align:right;margin-top:0.2rem">
+            <button type="button" class="link-btn" onclick="openForgotPw()">비밀번호를 잊으셨나요?</button>
+          </div>
+        </form>
+
+        <!-- 회원가입 폼 -->
+        <form class="modal-form" id="registerForm" style="display:none" onsubmit="doRegister(event)">
+          <div class="input-wrap">
+            <input type="text" id="regName" placeholder="이름" required />
+          </div>
+          <div class="email-row">
+            <div class="input-wrap">
+              <input type="email" id="regEmail" placeholder="이메일 (아이디)" required oninput="resetEmailCheck()" />
+            </div>
+            <button type="button" class="btn-check-email" onclick="checkEmailDup()">중복확인</button>
+          </div>
+          <div class="input-hint" id="emailHint"></div>
+          <button type="button" class="modal-submit" id="btnSendCode" style="display:none;background:#eff6ff;color:#1d4ed8;border:1.5px solid #93c5fd" onclick="sendVerifyCode(this)">📧 인증코드 전송</button>
+          <div class="email-row" id="verifyCodeRow" style="display:none">
+            <div class="input-wrap">
+              <input type="text" id="regVerifyCode" placeholder="인증코드 4자리" maxlength="4" inputmode="numeric" autocomplete="one-time-code" />
+            </div>
+            <button type="button" class="btn-check-email" id="btnVerifyCode" onclick="checkVerifyCode(this)">인증 확인</button>
+          </div>
+          <div class="input-hint" id="verifyHint"></div>
+          <div class="input-wrap">
+            <input type="password" id="regPw" placeholder="비밀번호" required oninput="updatePwRules()" />
+          </div>
+          <div class="pw-rules" id="pwRules">
+            <span class="pw-rule" id="rule-len">8자 이상</span>
+            <span class="pw-rule" id="rule-upper">대문자</span>
+            <span class="pw-rule" id="rule-lower">소문자</span>
+            <span class="pw-rule" id="rule-num">숫자</span>
+            <span class="pw-rule" id="rule-special">특수문자</span>
+          </div>
+          <div class="input-wrap">
+            <input type="password" id="regPwConfirm" placeholder="비밀번호 확인" required oninput="checkPwMatch()" />
+          </div>
+          <div class="input-hint" id="pwMatchHint"></div>
+          <button type="submit" class="modal-submit" id="regBtn">회원가입</button>
+        </form>
+
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p>
+      <p style="margin-top:0.35rem;font-size:0.78rem;color:var(--text-muted)">오류 문의 · 유승주 · <a href="mailto:5213ysj@gmail.com" style="color:inherit">5213ysj@gmail.com</a></p>
+    </footer>
+  </div>
+
+  <script>
+    const API = 'https://nynhvk2xl3.execute-api.ap-southeast-2.amazonaws.com';
+    let emailChecked  = false;
+    let codeVerified  = false;
+    let _verifyToken  = null;
+
+    // ── Modal ─────────────────────────────────────────────
+    function openModal(tab) {
+      document.getElementById('authModal').classList.add('open');
+      switchTab(tab || 'login');
+      clearMsg();
+    }
+    function closeModal() {
+      document.getElementById('authModal').classList.remove('open');
+      clearMsg();
+    }
+    function switchTab(tab) {
+      const isLogin = tab === 'login';
+      document.getElementById('loginForm').style.display = isLogin ? '' : 'none';
+      document.getElementById('registerForm').style.display = isLogin ? 'none' : '';
+      document.getElementById('tabLogin').classList.toggle('active', isLogin);
+      document.getElementById('tabRegister').classList.toggle('active', !isLogin);
+      clearMsg();
+    }
+    function showMsg(text, type) {
+      const el = document.getElementById('msgBox');
+      el.textContent = text; el.className = 'modal-msg ' + type;
+    }
+    function clearMsg() {
+      const el = document.getElementById('msgBox');
+      el.textContent = ''; el.className = 'modal-msg';
+    }
+
+    // ── Password rules ───────────────────────────────────
+    function updatePwRules() {
+      const pw = document.getElementById('regPw').value;
+      document.getElementById('pwRules').classList.toggle('show', pw.length > 0);
+      const rules = {
+        'rule-len':     pw.length >= 8,
+        'rule-upper':   /[A-Z]/.test(pw),
+        'rule-lower':   /[a-z]/.test(pw),
+        'rule-num':     /[0-9]/.test(pw),
+        'rule-special': /[!@#$%^&*()_+\-=\[\]{}|;':",.<>?/`~]/.test(pw),
+      };
+      Object.entries(rules).forEach(([id, pass]) => {
+        document.getElementById(id).classList.toggle('pass', pass);
+      });
+      checkPwMatch();
+    }
+    function checkPwMatch() {
+      const pw = document.getElementById('regPw').value;
+      const c  = document.getElementById('regPwConfirm').value;
+      const hint = document.getElementById('pwMatchHint');
+      if (!c) { hint.className = 'input-hint'; hint.textContent = ''; return; }
+      if (pw === c) {
+        hint.className = 'input-hint show ok'; hint.textContent = '비밀번호가 일치합니다.';
+        document.getElementById('regPwConfirm').className = 'input-ok';
+      } else {
+        hint.className = 'input-hint show err'; hint.textContent = '비밀번호가 일치하지 않습니다.';
+        document.getElementById('regPwConfirm').className = 'input-err';
+      }
+    }
+
+    // ── Email duplicate check ────────────────────────────
+    function resetEmailCheck() {
+      emailChecked = false; codeVerified = false; _verifyToken = null;
+      const hint = document.getElementById('emailHint');
+      hint.className = 'input-hint'; hint.textContent = '';
+      document.getElementById('regEmail').className = '';
+      document.getElementById('btnSendCode').style.display = 'none';
+      document.getElementById('verifyCodeRow').style.display = 'none';
+      document.getElementById('verifyHint').className = 'input-hint';
+      document.getElementById('verifyHint').textContent = '';
+      document.getElementById('regVerifyCode').value = '';
+      document.getElementById('regVerifyCode').disabled = false;
+      const vBtn = document.getElementById('btnVerifyCode');
+      if (vBtn) { vBtn.style.display = ''; vBtn.disabled = false; vBtn.textContent = '인증 확인'; }
+    }
+    async function checkEmailDup() {
+      const email = document.getElementById('regEmail').value.trim();
+      const hint = document.getElementById('emailHint');
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        hint.className = 'input-hint show err'; hint.textContent = '올바른 이메일을 입력하세요.'; return;
+      }
+      try {
+        const res = await fetch(API + '/auth/check-email', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          hint.className = 'input-hint show err'; hint.textContent = data.error || '확인 중 오류가 발생했습니다.'; return;
+        }
+        if (data.available) {
+          emailChecked = true;
+          hint.className = 'input-hint show ok'; hint.textContent = '사용 가능한 이메일입니다.';
+          document.getElementById('regEmail').className = 'input-ok';
+          const sendBtn = document.getElementById('btnSendCode');
+          sendBtn.style.display = '';
+          sendVerifyCode(sendBtn);
+        } else {
+          emailChecked = false;
+          hint.className = 'input-hint show err'; hint.textContent = '이미 사용 중인 이메일입니다.';
+          document.getElementById('regEmail').className = 'input-err';
+        }
+      } catch { hint.className = 'input-hint show err'; hint.textContent = '확인 중 오류가 발생했습니다.'; }
+    }
+
+    // ── Login ────────────────────────────────────────────
+    async function doLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true; btn.textContent = '로그인 중...';
+      try {
+        const res = await fetch(API + '/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPw').value }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showMsg(data.error || '로그인 실패', 'error'); return; }
+        saveLogin(data.token, data.user);
+        closeModal(); updateAuthUI();
+      } catch { showMsg('서버 연결 오류', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '로그인'; }
+    }
+
+    // ── Email Verification ───────────────────────────────
+    async function sendVerifyCode(btn) {
+      const email = document.getElementById('regEmail').value.trim();
+      btn.disabled = true; btn.textContent = '전송 중...';
+      try {
+        const res = await fetch(API + '/auth/send-verify-code', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showMsg(data.error || '전송 실패', 'error'); return; }
+        _verifyToken = data.verifyToken;
+        document.getElementById('verifyCodeRow').style.display = '';
+        const vHint = document.getElementById('verifyHint');
+        vHint.className = 'input-hint show ok';
+        vHint.textContent = `${email}로 인증코드가 전송됐습니다. (10분 유효)`;
+        document.getElementById('regVerifyCode').focus();
+      } catch { showMsg('서버 연결 오류', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '📧 인증코드 재전송'; }
+    }
+
+    async function checkVerifyCode(btn) {
+      const code = document.getElementById('regVerifyCode').value.trim();
+      const hint = document.getElementById('verifyHint');
+      if (!code || !/^\d{4}$/.test(code)) {
+        hint.className = 'input-hint show err'; hint.textContent = '4자리 숫자를 입력하세요.'; return;
+      }
+      if (!_verifyToken) { hint.className = 'input-hint show err'; hint.textContent = '먼저 인증코드를 전송해주세요.'; return; }
+      btn.disabled = true; btn.textContent = '확인 중...';
+      try {
+        const res = await fetch(API + '/auth/verify-code', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ verifyToken: _verifyToken, code }),
+        });
+        const data = await res.json();
+        if (!res.ok) { hint.className = 'input-hint show err'; hint.textContent = data.error || '인증 실패'; codeVerified = false; return; }
+        _verifyToken = data.verifiedToken;
+        codeVerified = true;
+        hint.className = 'input-hint show ok'; hint.textContent = '✓ 이메일 인증 완료';
+        document.getElementById('regVerifyCode').disabled = true;
+        btn.style.display = 'none';
+      } catch { hint.className = 'input-hint show err'; hint.textContent = '서버 연결 오류'; }
+      finally { if (!codeVerified) { btn.disabled = false; btn.textContent = '인증 확인'; } }
+    }
+
+    // ── Register ─────────────────────────────────────────
+    async function doRegister(e) {
+      e.preventDefault();
+      if (!emailChecked) { showMsg('이메일 중복확인을 해주세요.', 'error'); return; }
+      if (!codeVerified)  { showMsg('이메일 인증을 완료해주세요.', 'error'); return; }
+      const pw  = document.getElementById('regPw').value;
+      const pw2 = document.getElementById('regPwConfirm').value;
+      if (pw !== pw2) { showMsg('비밀번호가 일치하지 않습니다.', 'error'); return; }
+      const btn = document.getElementById('regBtn');
+      btn.disabled = true; btn.textContent = '처리 중...';
+      try {
+        const res = await fetch(API + '/auth/register', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: document.getElementById('regEmail').value, password: pw, name: document.getElementById('regName').value, verifiedToken: _verifyToken }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showMsg(data.error || '회원가입 실패', 'error'); return; }
+        showMsg('회원가입 성공! 로그인해주세요.', 'success');
+        setTimeout(() => switchTab('login'), 1500);
+      } catch { showMsg('서버 연결 오류', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '회원가입'; }
+    }
+
+    // ── Auth state ────────────────────────────────────────
+    function saveLogin(token, user) {
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+    function logout() {
+      localStorage.removeItem('token'); localStorage.removeItem('user');
+      updateAuthUI();
+    }
+    function updateAuthUI() {
+      const area = document.getElementById('authArea');
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      if (user) {
+        const initial = (user.name || user.email || '?')[0].toUpperCase();
+        area.innerHTML = `<div class="auth-user"><div class="auth-avatar">${initial}</div><span class="auth-name">${user.name || user.email}</span><button class="auth-pw-change" onclick="openChangePw()" title="비밀번호 변경">🔑</button><button class="auth-logout" onclick="logout()">로그아웃</button></div>`;
+      } else {
+        area.innerHTML = `<button class="auth-btn" onclick="openModal('login')">로그인</button>`;
+      }
+    }
+
+    // ── OAuth callback 처리 (URL params) ──────────────────
+    (function handleOAuthCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      const userStr = params.get('user');
+      const authError = params.get('auth_error');
+      if (token && userStr) {
+        try {
+          saveLogin(token, JSON.parse(decodeURIComponent(userStr)));
+          window.history.replaceState({}, '', window.location.pathname);
+        } catch (e) { console.error(e); }
+      } else if (authError) {
+        window.history.replaceState({}, '', window.location.pathname);
+        openModal('login');
+        setTimeout(() => showMsg(decodeURIComponent(authError), 'error'), 100);
+      }
+    })();
+
+    updateAuthUI();
+
+    // ── 비밀번호 찾기 ─────────────────────────────────────
+    let _fpToken = null;
+
+    function openForgotPw() {
+      closeModal();
+      ['fpStep1','fpStep2','fpStep3'].forEach((s,i) => document.getElementById(s).style.display = i===0?'':'none');
+      document.getElementById('fpEmail').value = '';
+      document.getElementById('fpCode').value  = '';
+      document.getElementById('fpMsg').className = 'modal-msg';
+      document.getElementById('fpMsg').textContent = '';
+      document.getElementById('forgotPwModal').classList.add('open');
+      setTimeout(() => document.getElementById('fpEmail').focus(), 50);
+    }
+    function closeForgotPw() { document.getElementById('forgotPwModal').classList.remove('open'); }
+
+    function showFpMsg(text, type) {
+      const el = document.getElementById('fpMsg'); el.textContent = text; el.className = 'modal-msg ' + type;
+    }
+
+    async function sendForgotCode() {
+      const email = document.getElementById('fpEmail').value.trim();
+      if (!email) { showFpMsg('이메일을 입력하세요.', 'error'); return; }
+      const btn = document.getElementById('fpSendBtn');
+      btn.disabled = true; btn.textContent = '발송 중...';
+      try {
+        const res  = await fetch(API + '/auth/forgot-password', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email})
+        });
+        const data = await res.json();
+        if (!res.ok) { showFpMsg(data.error || '오류', 'error'); return; }
+        _fpToken = data.verifyToken;
+        document.getElementById('fpStep1').style.display = 'none';
+        document.getElementById('fpStep2').style.display = '';
+        showFpMsg('인증코드를 이메일로 발송했습니다.', 'success');
+        setTimeout(() => document.getElementById('fpCode').focus(), 50);
+      } catch { showFpMsg('서버 연결 오류', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '인증코드 발송'; }
+    }
+
+    async function verifyForgotCode() {
+      const code = document.getElementById('fpCode').value.trim();
+      if (!code || !/^\d{4}$/.test(code)) { showFpMsg('4자리 코드를 입력하세요.', 'error'); return; }
+      if (!_fpToken) { showFpMsg('먼저 인증코드를 발송해주세요.', 'error'); return; }
+      const btn = document.getElementById('fpVerifyBtn');
+      btn.disabled = true; btn.textContent = '확인 중...';
+      try {
+        const res  = await fetch(API + '/auth/reset-password', {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({verifyToken:_fpToken, code})
+        });
+        const data = await res.json();
+        if (!res.ok) { showFpMsg(data.error || '인증 실패', 'error'); return; }
+        document.getElementById('fpStep2').style.display = 'none';
+        document.getElementById('fpStep3').style.display = '';
+        document.getElementById('fpMsg').className = 'modal-msg';
+        document.getElementById('fpMsg').textContent = '';
+      } catch { showFpMsg('서버 연결 오류', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '확인'; }
+    }
+
+    // ── 비밀번호 변경 ─────────────────────────────────────
+    function openChangePw() {
+      ['cpCurrent','cpNew','cpConfirm'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('cpMsg').className = 'modal-msg';
+      document.getElementById('cpMsg').textContent = '';
+      document.getElementById('cpMatchHint').className = 'input-hint';
+      document.getElementById('cpMatchHint').textContent = '';
+      document.getElementById('cpPwRules').classList.remove('show');
+      document.getElementById('changePwModal').classList.add('open');
+      setTimeout(() => document.getElementById('cpCurrent').focus(), 50);
+    }
+    function closeChangePw() { document.getElementById('changePwModal').classList.remove('open'); }
+
+    function showCpMsg(text, type) {
+      const el = document.getElementById('cpMsg'); el.textContent = text; el.className = 'modal-msg ' + type;
+    }
+    function updateCpPwRules() {
+      const pw = document.getElementById('cpNew').value;
+      document.getElementById('cpPwRules').classList.toggle('show', pw.length > 0);
+      const rules = {
+        'cp-rule-len': pw.length >= 8, 'cp-rule-upper': /[A-Z]/.test(pw),
+        'cp-rule-lower': /[a-z]/.test(pw), 'cp-rule-num': /[0-9]/.test(pw),
+        'cp-rule-special': /[!@#$%^&*()_+\-=\[\]{}|;':",.<>?/`~]/.test(pw)
+      };
+      Object.entries(rules).forEach(([id, pass]) => document.getElementById(id).classList.toggle('pass', pass));
+      checkCpMatch();
+    }
+    function checkCpMatch() {
+      const pw = document.getElementById('cpNew').value;
+      const c  = document.getElementById('cpConfirm').value;
+      const hint = document.getElementById('cpMatchHint');
+      if (!c) { hint.className = 'input-hint'; hint.textContent = ''; return; }
+      if (pw === c) { hint.className='input-hint show ok'; hint.textContent='비밀번호가 일치합니다.'; }
+      else          { hint.className='input-hint show err'; hint.textContent='비밀번호가 일치하지 않습니다.'; }
+    }
+    async function doChangePw(e) {
+      e.preventDefault();
+      const current = document.getElementById('cpCurrent').value;
+      const pw      = document.getElementById('cpNew').value;
+      const confirm = document.getElementById('cpConfirm').value;
+      if (pw !== confirm) { showCpMsg('새 비밀번호가 일치하지 않습니다.', 'error'); return; }
+      const btn = document.getElementById('cpBtn');
+      btn.disabled = true; btn.textContent = '변경 중...';
+      try {
+        const res  = await fetch(API + '/auth/change-password', {
+          method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},
+          body: JSON.stringify({currentPassword: current, newPassword: pw})
+        });
+        const data = await res.json();
+        if (!res.ok) { showCpMsg(data.error || '변경 실패', 'error'); return; }
+        showCpMsg('비밀번호가 변경됐습니다.', 'success');
+        setTimeout(() => closeChangePw(), 1500);
+      } catch { showCpMsg('서버 연결 오류', 'error'); }
+      finally { btn.disabled = false; btn.textContent = '변경'; }
+    }
+  </script>
+</body>
+</html>

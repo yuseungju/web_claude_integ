@@ -7,3 +7,4 @@ lambda-deploy.zip
 .vscode/
 server.log
 *.log
+dist/

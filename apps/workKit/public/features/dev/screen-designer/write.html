@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>화면 설계서 편집 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="sd-editor-page">
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span><span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div class="sd-workspace-wrap">
+      <!-- 작업 헤더 -->
+      <div class="ws-header">
+        <a href="index.html" class="ws-back" onclick="return confirmGoBack()">← 목록</a>
+        <input id="projTitle" class="ws-title-input" placeholder="설계서 제목" maxlength="200" />
+        <button class="btn primary" id="saveDraftBtn" onclick="saveAll()">💾 저장</button>
+        <span id="publishBadge" class="publish-badge" style="display:none">게시됨</span>
+        <button class="ws-publish-btn" id="publishBtn" onclick="togglePublish()" style="display:none">📢 게시</button>
+      </div>
+
+      <div class="sd-workspace">
+        <!-- 노드 트리 사이드바 -->
+        <div class="sd-sidebar" id="sdSidebar">
+          <div class="sidebar-top">
+            <button class="sidebar-add-btn" onclick="addNode(null)">+ 화면 추가</button>
+          </div>
+          <div id="nodeTree" class="node-tree">
+            <div class="node-tree-loading">불러오는 중...</div>
+          </div>
+        </div>
+        <div class="sidebar-resize" id="sdSidebarResize"></div>
+
+        <!-- 캔버스 + 속성 패널 -->
+        <div class="sd-center">
+
+          <!-- 비어있을 때 -->
+          <div id="nodeEmpty" class="node-empty-state">
+            <span class="node-empty-icon">🖥️</span>
+            <p>왼쪽에서 화면을 선택하거나<br>+ 화면 추가를 눌러 시작하세요</p>
+          </div>
+
+          <!-- 편집 패널 -->
+          <div id="nodePanel" class="sd-node-panel" style="display:none">
+
+            <!-- 화면 이름 + 화면 링크 표시 -->
+            <div class="sd-panel-header">
+              <input id="nodeTitle" class="node-title-input" placeholder="화면 이름" maxlength="200" oninput="markDirty()" />
+              <button class="btn" onclick="addNode(currentNodeId)">+ 하위 화면</button>
+              <button class="btn danger" onclick="deleteCurrentNode()">삭제</button>
+            </div>
+
+            <!-- 컴포넌트 팔레트 -->
+            <div class="sd-palette" id="sdPalette">
+              <span class="palette-label">컴포넌트:</span>
+              <button class="palette-btn" data-type="radio"    onclick="setPaletteType('radio')">🔘 라디오</button>
+              <button class="palette-btn" data-type="checkbox" onclick="setPaletteType('checkbox')">☑ 체크박스</button>
+              <button class="palette-btn" data-type="input"    onclick="setPaletteType('input')">📝 입력창</button>
+              <button class="palette-btn" data-type="button"   onclick="setPaletteType('button')">🔲 버튼</button>
+              <button class="palette-btn" data-type="dropdown" onclick="setPaletteType('dropdown')">📋 드롭다운</button>
+              <button class="palette-btn" data-type="popupBtn" onclick="setPaletteType('popupBtn')">↗ 팝업버튼</button>
+              <span class="palette-sep">|</span>
+              <button class="palette-btn" data-type="text"    onclick="setPaletteType('text')">🔤 텍스트</button>
+              <button class="palette-btn" data-type="section" onclick="setPaletteType('section')">🗂 섹션박스</button>
+              <button class="palette-btn" data-type="formRow" onclick="setPaletteType('formRow')">📋 폼행</button>
+              <button class="palette-btn" data-type="table"   onclick="setPaletteType('table')">📊 테이블</button>
+              <button class="palette-btn" data-type="toolbar" onclick="setPaletteType('toolbar')">⚙️ 툴바</button>
+              <button class="palette-btn active" id="palettePointer" onclick="setPaletteType(null)">↖ 선택</button>
+              <button class="palette-btn del-btn" onclick="deleteSelectedComp()" title="선택한 컴포넌트 삭제">🗑 삭제</button>
+            </div>
+
+            <!-- 캔버스 영역 + 속성 패널 -->
+            <div class="sd-canvas-row">
+
+              <!-- 캔버스 스크롤 영역 -->
+              <div class="sd-canvas-scroll" id="sdCanvasScroll">
+                <div class="sd-canvas" id="sdCanvas">
+                  <div id="sdRubberBand" class="sd-rubberband"></div>
+                </div>
+              </div>
+
+              <!-- 속성 패널 -->
+              <div class="sd-props" id="sdProps">
+                <div class="props-empty">컴포넌트를 선택하세요</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 미저장 변경 확인 모달 -->
+  <div id="sdConfirmModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+    <div style="background:var(--bg-card,#fff);border-radius:10px;padding:1.5rem 1.75rem;min-width:300px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+      <div style="font-size:.95rem;font-weight:700;color:var(--text-primary,#111);margin-bottom:1rem" id="sdConfirmMsg">저장하지 않은 변경사항이 있습니다.</div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button onclick="document.getElementById('sdConfirmModal')._resolveCancel()" style="padding:.4rem .85rem;border:1.5px solid var(--border,#ddd);border-radius:6px;background:transparent;cursor:pointer;font-size:.82rem">취소</button>
+        <button onclick="document.getElementById('sdConfirmModal')._resolveDiscard()" style="padding:.4rem .85rem;border:1.5px solid var(--border,#ddd);border-radius:6px;background:transparent;cursor:pointer;font-size:.82rem">저장 안 함</button>
+        <button onclick="document.getElementById('sdConfirmModal')._resolveSave()" style="padding:.4rem .85rem;border:none;border-radius:6px;background:var(--primary,#3b82f6);color:#fff;cursor:pointer;font-size:.82rem;font-weight:700">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="write.js"></script>
+</body>
+</html>

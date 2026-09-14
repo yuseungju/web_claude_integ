@@ -1,0 +1,658 @@
+/* ── 탭 네비게이션 ─────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.5rem;
+}
+.tab-btn {
+  padding: 0.55rem 1.25rem;
+  border: none;
+  background: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.tab-btn:hover  { color: var(--primary); }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* ── 업로드 행 ─────────────────────────────────────────────── */
+.upload-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.upload-col { flex: 1; min-width: 0; }
+
+/* ── VS 뱃지 ───────────────────────────────────────────────── */
+.vs-badge {
+  flex-shrink: 0;
+  margin-top: 3.2rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 엑셀 업로드 탭 안내 박스 ──────────────────────────────── */
+.upload-hint-box {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1rem;
+  font-size: 0.81rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.7;
+}
+.upload-hint-box strong { color: var(--text-primary); }
+.upload-hint-box em { font-style: normal; font-weight: 700; color: var(--primary); }
+
+/* ── 비교 결과 예시 ─────────────────────────────────────────── */
+.cmp-example-wrap {
+  margin-bottom: 1rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1rem 0.55rem;
+}
+.cmp-example-label {
+  font-size: 0.76rem; font-weight: 700; color: var(--text-secondary);
+  display: block; margin-bottom: 0.5rem;
+}
+.cmp-example-grid {
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.cmp-example-side { flex: 1; min-width: 0; }
+.cmp-ex-title {
+  font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.cmp-example-vs {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  font-size: 0.65rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.cmp-ex-table {
+  width: 100%; border-collapse: collapse; font-size: 0.74rem;
+}
+.cmp-ex-table thead tr { background: #f1f5f9; }
+.cmp-ex-table th {
+  padding: 0.2rem 0.4rem; text-align: left; font-weight: 700;
+  color: var(--text-secondary); border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.cmp-ex-table td {
+  padding: 0.22rem 0.4rem; border-bottom: 1px solid #f1f5f9; white-space: nowrap;
+}
+.cmp-ex-cnt-th { width: 52px; text-align: center !important; }
+.cmp-ex-cnt { text-align: center; font-weight: 700; }
+.cmp-ex-cnt.match { color: #1e40af; background: #dbeafe; }
+.cmp-ex-cnt.miss  { color: #991b1b; background: #fee2e2; }
+.cmp-ex-match td         { background: #eff6ff; }
+.cmp-ex-match td.cmp-ex-nonkey { background: #fff; color: #6b7280; }
+.cmp-ex-miss  td         { background: #fff1f2; }
+.cmp-example-legend {
+  font-size: 0.7rem; color: var(--text-muted); margin-top: 0.45rem;
+}
+.legend-match { color: #1e40af; font-weight: 700; }
+.legend-miss  { color: #991b1b; font-weight: 700; }
+
+/* ── 비교 열 입력 (단일) ───────────────────────────────────── */
+.col-key-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.38rem 0.75rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+}
+.col-key-row label { font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+
+/* ── 비교 열 입력 (다중, 최대 5개) ───────────────────────────── */
+.col-key-block {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.75rem 0.5rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.col-key-title {
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.col-and-badge {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  background: #e0e7ff;
+  color: #3730a3;
+  border-radius: 100px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.col-key-multi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+}
+.col-key-num {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* ── 열 모드 토글 ───────────────────────────────────────── */
+.col-mode-group {
+  display: inline-flex; border: 1.5px solid var(--border);
+  border-radius: 5px; overflow: hidden; margin-left: 0.4rem; vertical-align: middle;
+}
+.col-mode-btn {
+  padding: 0.08rem 0.5rem; border: none; background: #fff;
+  font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; transition: all 0.12s;
+}
+.col-mode-btn:not(:last-child) { border-right: 1.5px solid var(--border); }
+.col-mode-btn.active  { background: var(--primary); color: #fff; }
+.col-mode-btn:hover:not(.active) { background: #f1f5f9; color: var(--text-primary); }
+
+/* ── 범위 입력 ───────────────────────────────────────────── */
+.col-key-range {
+  display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;
+}
+.col-range-inp {
+  flex: 1; min-width: 0;
+  border: 1.5px solid var(--border); border-radius: 4px;
+  padding: 0.22rem 0.5rem; font-size: 0.82rem; font-weight: 600;
+  color: var(--primary); outline: none; transition: border-color 0.15s;
+}
+.col-range-inp:focus { border-color: var(--primary); }
+.col-range-inp::placeholder { font-weight: 400; color: var(--text-muted); }
+
+.col-key-inp {
+  width: 44px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  padding: 0.18rem 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.col-key-inp:focus { border-color: var(--primary); }
+.col-key-hint { font-size: 0.74rem; color: var(--text-muted); }
+
+/* ── 초기화·재비교 버튼 행 ─────────────────────────────────── */
+#resetRow {
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+/* ── 버튼 공통 ─────────────────────────────────────────────── */
+.reset-btn {
+  padding: 0.4rem 1rem;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.reset-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── 비교 그리드 ───────────────────────────────────────────── */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+/* ── 파일명 라벨 ───────────────────────────────────────────── */
+.file-label {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+/* ── 직접 입력 안내 박스 ───────────────────────────────────── */
+.manual-hint {
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.81rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.9rem;
+  line-height: 1.7;
+}
+.manual-hint strong { color: var(--text-primary); }
+.manual-hint ul { margin: 0.3rem 0 0 1.1rem; padding: 0; }
+.manual-hint li { margin-bottom: 0.1rem; }
+.hint-blue { color: #1d4ed8; font-weight: 700; }
+.hint-red  { color: #dc2626; font-weight: 700; }
+
+/* ── 엑셀 비교 컨트롤 바 ─────────────────────────────────────── */
+.excel-ctrl-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.excel-ctrl-btn {
+  height: 36px;
+  padding: 0 1.1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.excel-ctrl-btn:hover { border-color: var(--danger); color: var(--danger); }
+.excel-ctrl-btn.primary {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.excel-ctrl-btn.primary:hover { background: #4338ca; border-color: #4338ca; }
+.excel-ctrl-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.excel-ctrl-btn.dirty {
+  background: #fffbeb !important; color: #78350f !important; border-color: #f59e0b !important;
+  animation: compare-dirty-pulse 1.4s ease-in-out infinite;
+}
+.excel-ctrl-btn.dirty::after { content: ' ●'; color: #f59e0b; font-size: 0.65rem; vertical-align: middle; }
+
+/* ── 진행률 바 ──────────────────────────────────────────────── */
+.compare-progress-track {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+.compare-progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+.compare-progress-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* ── 직접 입력 탭 툴바 ─────────────────────────────────────── */
+.manual-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.add-row-btn {
+  padding: 0.22rem 0.7rem;
+  border: 1.5px solid #6ee7b7;
+  background: var(--success-light);
+  color: #065f46;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.add-row-btn:hover { background: #a7f3d0; }
+
+/* ── 직접 입력 테이블 ──────────────────────────────────────── */
+.manual-table {
+  table-layout: fixed;
+}
+.manual-table th,
+.manual-table td { padding: 0 !important; }
+
+.manual-table td {
+  max-width: none !important;
+  overflow: hidden !important;
+}
+
+.manual-table td input {
+  display: block;
+  width: 100%;
+  min-width: 40px;
+  border: none;
+  padding: 0.16rem 0.38rem;
+  font-size: 0.79rem;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: transparent;
+  outline: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.manual-table td input:focus { background: var(--primary-light); }
+.manual-table tr.row-missing td input { color: #991b1b; }
+
+/* 비교 열 강조 */
+.manual-table td.key-col  { background: #eef2ff !important; }
+.manual-table td.key-col input { font-weight: 600; }
+
+/* 헤더 셀 */
+.manual-th {
+  background: #f1f5f9 !important;
+  user-select: none;
+  vertical-align: top;
+  padding: 0 !important;
+  position: relative;
+  overflow: hidden;
+}
+.manual-th.key-col {
+  background: #eef2ff !important;
+  border-bottom: 2px solid var(--primary) !important;
+}
+
+/* 열 이름 영역 */
+.th-name-area {
+  display: flex;
+  align-items: center;
+  padding: 0.2rem 0.4rem 0.1rem;
+}
+
+.manual-hdr-inp {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  outline: none;
+  cursor: text;
+  padding: 0;
+}
+
+/* 비교열 선택 영역 (클릭 = 키열 토글) */
+.th-key-area {
+  padding: 0.1rem 0.4rem 0.14rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  border-top: 1px solid #e2e8f0;
+  transition: all 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.th-key-area:hover { background: #ede9fe; color: var(--primary); }
+.th-key-area.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+  border-top-color: var(--primary);
+}
+
+/* 일치 행 (파란색) */
+.manual-table tr.row-match td             { background: #dbeafe !important; }
+.manual-table tr.row-match td.key-col     { background: #bfdbfe !important; }
+.manual-table tr.row-match td input       { color: #1e3a8a; font-weight: 600; }
+
+/* 일치 행 내에서 값이 다른 셀 (셀 단위 빨간색) */
+.manual-table tr.row-match td.cell-diff,
+.manual-table tr.row-match td.key-col.cell-diff {
+  background: #fca5a5 !important;
+}
+.manual-table tr.row-match td.cell-diff input {
+  color: #7f1d1d !important;
+  font-weight: 700;
+}
+
+/* 불일치 행 (빨간색) */
+.manual-table tr.row-missing td           { background: var(--danger-light) !important; }
+.manual-table tr.row-missing td.key-col   { background: #fecaca !important; }
+.manual-table tr.row-missing td input     { color: #991b1b; }
+
+/* 삭제 열 (항상 오른쪽에 고정) */
+.del-col {
+  width: 32px !important;
+  min-width: 32px !important;
+  text-align: center !important;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: #fff;
+}
+.manual-table thead tr .del-col          { background: #f1f5f9; }
+.manual-table tr.row-match .del-col      { background: #dbeafe; }
+.manual-table tr.row-missing .del-col    { background: var(--danger-light); }
+
+.btn-del-row {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 3px;
+  transition: all 0.12s;
+}
+.btn-del-row:hover { color: var(--danger); background: var(--danger-light); }
+
+/* ── 일치건수 열 ─────────────────────────────────────────────── */
+.status-th {
+  min-width: 52px !important;
+  max-width: 52px !important;
+  text-align: center !important;
+  font-size: 0.75rem !important;
+  white-space: nowrap;
+}
+.status-cell {
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 0.3rem 0.4rem !important;
+  color: #111827 !important;
+}
+.status-cell.true  { color: #1e40af !important; }
+.status-cell.false { color: #991b1b !important; }
+
+/* ── 카드 헤더 액션 그룹 ────────────────────────────────────── */
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ── 다운로드 버튼 ──────────────────────────────────────────── */
+.download-btn {
+  padding: 0.22rem 0.7rem;
+  border: 1.5px solid #93c5fd;
+  background: #eff6ff;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.download-btn:hover { background: #dbeafe; border-color: #3b82f6; }
+
+/* ── 불일치만 필터 버튼 ─────────────────────────────────────── */
+.filter-btn {
+  padding: 0.22rem 0.7rem;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.filter-btn:hover { border-color: var(--danger); color: var(--danger); }
+.filter-btn.active {
+  background: var(--danger-light);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.filter-match-btn:hover { border-color: var(--primary); color: var(--primary); }
+.filter-match-btn.active {
+  background: #dbeafe;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ── 비교 결과 미리보기 ─────────────────────────────────────── */
+.cmp-preview-wrap {
+  margin-top: 0.75rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.cmp-preview-tabs {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.75rem; background: #f8fafc; border-bottom: 1px solid var(--border);
+}
+.cmp-tab {
+  padding: 0.2rem 0.75rem; border: 1.5px solid var(--border); background: #fff;
+  border-radius: 5px; font-size: 0.78rem; font-weight: 600;
+  color: var(--text-secondary); cursor: pointer; transition: all 0.12s;
+}
+.cmp-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.cmp-preview-note { margin-left: auto; font-size: 0.72rem; color: var(--text-muted); }
+.cmp-preview-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+.cmp-preview-scroll .data-table { border-collapse: collapse; }
+.cmp-preview-scroll .data-table th,
+.cmp-preview-scroll .data-table td { padding: 0.22rem 0.5rem; white-space: nowrap; }
+
+/* 미리보기 — 비교 열만 셀 단위 색상, 나머지는 흰색 */
+.cmp-preview-scroll .data-table thead th.preview-key-col {
+  background: #eff6ff;
+  font-weight: 700;
+}
+.cmp-preview-scroll .data-table td.preview-key-match { background: #dbeafe; }
+.cmp-preview-scroll .data-table td.preview-key-miss  { background: #fee2e2; }
+
+/* 일치 행 내에서 값이 다른 셀 */
+.cmp-preview-scroll .data-table td.cell-diff {
+  background: #fca5a5 !important;
+  color: #7f1d1d !important;
+  font-weight: 700;
+}
+
+/* ── 수기입력 테이블 스크롤 ─────────────────────────────────── */
+#manualLeft, #manualRight { overflow-x: auto; }
+
+/* ── 셀 범위 선택 하이라이트 ────────────────────────────────── */
+td.cell-range {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: -2px;
+}
+
+/* ── 수기입력 비교 실행 버튼 dirty 상태 ─────────────────────── */
+#manualCompareBtn.dirty {
+  background: #fffbeb !important;
+  color: #78350f !important;
+  border-color: #f59e0b !important;
+  animation: compare-dirty-pulse 1.4s ease-in-out infinite;
+}
+#manualCompareBtn.dirty::after { content: ' ●'; color: #f59e0b; font-size: 0.65rem; vertical-align: middle; }
+@keyframes compare-dirty-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,.55); }
+  50%       { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+}
+
+/* ── 열 너비 리사이즈 핸들 ──────────────────────────────────── */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 3;
+}
+.col-resize-handle:hover { background: rgba(99,102,241,.35); }
+.col-resize-handle.dragging { background: var(--primary); opacity: 0.6; }
+
+/* ── 행 번호 핸들 ────────────────────────────────────────── */
+.row-handle-th {
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
+  padding: 0.4rem 0.3rem !important;
+}
+.row-handle {
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: row-resize;
+  user-select: none;
+  background: #f8fafc;
+  padding: 0.3rem 0.1rem;
+}
+.data-table tr.row-selected td      { background: #bfdbfe !important; }
+.data-table tr.row-selected .row-handle { background: #93c5fd !important; color: #1e40af; font-weight: 700; }
+.manual-table tr.row-selected td.key-col { background: #bfdbfe !important; }
+.manual-table tr.row-selected .del-col   { background: #bfdbfe !important; }
+
+/* ── 복사 토스트 ────────────────────────────────────────── */
+.copy-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-90px);
+  background: #1d4ed8;
+  color: #fff;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,.18);
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1);
+}
+.copy-toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── 반응형 ────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .upload-row   { flex-direction: column; }
+  .vs-badge     { margin-top: 0; transform: rotate(90deg); }
+  .compare-grid { grid-template-columns: 1fr; }
+}

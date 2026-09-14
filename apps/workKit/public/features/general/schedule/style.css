@@ -1,0 +1,978 @@
+/* ── 붙여넣기 안내 ──────────────────────────────────────── */
+.paste-hint {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.3rem 0.9rem;
+  font-size: 0.74rem;
+  color: #166534;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.paste-hint strong { color: #14532d; }
+
+/* ── Tabs ──────────────────────────────────────────────── */
+.sched-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+.sched-tab {
+  padding: 0.55rem 1.4rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sched-tab:hover { color: var(--primary); }
+.sched-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+.tab-count {
+  margin-left: 0.25rem;
+  font-size: 0.78rem;
+  opacity: 0.85;
+}
+
+/* ── Filter Bar ────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+}
+.filter-input {
+  padding: 0.42rem 0.75rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-family: var(--font-sans);
+  outline: none;
+  min-width: 170px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.filter-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79,70,229,.09);
+}
+.btn-filter-clear {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  padding: 0.42rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-filter-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Controls Bar ──────────────────────────────────────── */
+.controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+
+.toggle-box {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.controls-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── 버전 메타 텍스트 (page-header) ────────────────────── */
+.version-meta-text {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: right;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+/* ── Buttons ───────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.32rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  text-decoration: none;
+  background: #fff;
+  color: var(--text-secondary);
+}
+.btn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+.btn-copy-rows {
+  background: #fff;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+.btn-copy-rows:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+.btn-upload {
+  background: #fff;
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+.btn-upload:hover { border-color: var(--primary); color: var(--primary); }
+
+.btn-download {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.btn-download:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+
+.btn-add {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  padding: 0.32rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-add:hover { border-color: #059669; color: #059669; }
+
+/* ── Section Card ──────────────────────────────────────── */
+.section-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-delete-selected {
+  background: #fff;
+  color: var(--danger);
+  border: 1.5px solid #fca5a5;
+  padding: 0.32rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-delete-selected:hover:not(:disabled) { background: var(--danger-light); border-color: var(--danger); }
+.btn-delete-selected:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.section-title {
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gantt-info {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── Editable Schedule Table ───────────────────────────── */
+.table-scroll { overflow-x: auto; }
+
+.sched-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  table-layout: fixed;
+  width: fit-content;
+  min-width: 800px;
+  border: 1px solid #cbd5e1;
+}
+
+.sched-table thead tr {
+  background: var(--primary);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* drag-handle(⠿) 열 고정 */
+.sched-table th.drag-handle-th {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--primary);
+}
+.sched-table td.drag-handle {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.sched-table thead th {
+  position: relative;
+  padding: 0.38rem 0.55rem;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  border-right: 1px solid rgba(255,255,255,.15);
+  overflow: hidden;
+}
+.sched-table thead th:last-child { border-right: none; }
+
+.sched-table thead th.sortable { cursor: pointer; user-select: none; }
+.sched-table thead th.sortable:hover { background: rgba(255,255,255,.12); }
+.sched-table thead th.sortable.sorted { background: rgba(255,255,255,.18); }
+.sort-ind { font-size: 0.7em; }
+
+.sched-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+.sched-table tbody tr:hover { background: #fafafe; }
+
+.sched-table tbody td {
+  padding: 1px 0.35rem;
+  border-right: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
+  vertical-align: middle;
+  overflow: hidden;
+  height: 22px;
+  line-height: 1;
+}
+.sched-table tbody td:last-child { border-right: none; text-align: center; }
+
+.sched-table input[type="text"],
+.sched-table textarea.cell-textarea {
+  width: 100%;
+  border: 1.5px solid transparent;
+  border-radius: 4px;
+  padding: 1px 0.35rem;
+  font-size: 0.82rem;
+  font-family: var(--font-sans);
+  background: transparent;
+  color: var(--text-primary);
+  outline: none;
+  line-height: 1.2;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.sched-table textarea.cell-textarea {
+  resize: none;
+  overflow: hidden;
+  display: block;
+}
+.sched-table input:hover,
+.sched-table textarea.cell-textarea:hover { border-color: var(--border); background: #fff; }
+.sched-table input:focus,
+.sched-table textarea.cell-textarea:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(79,70,229,.09);
+}
+
+.sched-table tbody td.cell-content {
+  height: auto;
+  overflow: visible;
+}
+
+.cell-creator, .cell-createdat {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-cell {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.btn-copy, .btn-delete, .btn-detail, .btn-move {
+  background: none;
+  border: 1.5px solid transparent;
+  font-size: 0.72rem;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 0.35rem;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.btn-copy   { color: var(--text-muted); }
+.btn-delete { color: var(--text-muted); }
+.btn-detail { color: var(--text-muted); }
+.btn-move   { color: var(--text-muted); }
+.btn-copy:hover   { color: var(--primary); border-color: var(--primary); background: var(--primary-light); }
+.btn-delete:hover { color: var(--danger);  border-color: var(--danger);  background: var(--danger-light); }
+.btn-detail:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-light); }
+.btn-detail.has-detail { color: #5b21b6; }
+.btn-move:hover   { color: #059669; border-color: #059669; background: var(--success-light); }
+
+/* ── 필터로 숨김 처리된 행 ─────────────────────────────────── */
+.row-hidden { display: none; }
+
+/* ── 참고 링크 입력 + 열기 버튼 ───────────────────────────── */
+.link-cell {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  height: 100%;
+}
+.link-cell input { flex: 1; min-width: 0; }
+.link-open-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.link-open-btn:hover { background: var(--primary-light); color: var(--primary); }
+
+/* ── 상세 내용 팝업 ───────────────────────────────────────── */
+#detailRowLabel {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.detail-textarea {
+  min-height: 280px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  line-height: 1.6;
+}
+
+/* ── 초기화 버튼 ───────────────────────────────────────── */
+.btn-reset {
+  background: #fff;
+  color: var(--text-muted);
+  border: 1.5px solid var(--border);
+}
+.btn-reset:hover { color: var(--danger); border-color: #fca5a5; background: var(--danger-light); }
+
+.btn-update {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  padding: 0.22rem 0.6rem;
+  font-size: 0.75rem;
+}
+.btn-update:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+.btn-update.dirty {
+  background: #fffbeb;
+  color: #78350f;
+  border-color: #f59e0b;
+  animation: gantt-dirty-pulse 1.4s ease-in-out infinite;
+}
+.btn-update.dirty::after { content: ' ●'; color: #f59e0b; font-size: 0.65rem; vertical-align: middle; }
+@keyframes gantt-dirty-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,.55); }
+  50%       { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+}
+
+.btn-today {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  padding: 0.22rem 0.6rem;
+  font-size: 0.75rem;
+}
+.btn-today:hover { border-color: var(--primary); color: var(--primary); }
+
+.btn-compact {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  padding: 0.22rem 0.6rem;
+  font-size: 0.75rem;
+}
+.btn-compact:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+.btn-compact.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.btn-compact.active::before { content: '✓ '; font-size: 0.72rem; }
+.btn-compact.active:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+
+/* ── 새로 만들기 버튼 ──────────────────────────────────── */
+.btn-newver {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+}
+.btn-newver:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+/* ── DB Save/Load Buttons ──────────────────────────────── */
+.btn-dbsave {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+}
+.btn-dbsave:hover { border-color: #059669; color: #059669; }
+
+.btn-dbload {
+  background: #fff;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+}
+.btn-dbload:hover { border-color: var(--primary); color: var(--primary-dark); }
+
+/* ── Schedule Modal ────────────────────────────────────── */
+.sched-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 2000;
+  align-items: center; justify-content: center;
+}
+.sched-overlay.open { display: flex; }
+
+.sched-modal {
+  background: #fff;
+  border-radius: var(--radius-md);
+  box-shadow: 0 20px 60px rgba(0,0,0,.18);
+  width: 100%; max-width: 420px;
+  padding: 1.5rem 1.75rem;
+  margin: 1rem;
+}
+.sched-modal.wide { max-width: 600px; }
+
+.sched-modal h3 {
+  font-size: 1rem; font-weight: 700;
+  color: var(--text-primary); margin-bottom: 1rem;
+}
+
+.sched-modal-input {
+  width: 100%; padding: 0.55rem 0.75rem;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 0.85rem; font-family: var(--font-sans);
+  outline: none; transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.sched-modal-input:focus { border-color: var(--primary); }
+
+.sched-modal-actions {
+  display: flex; justify-content: flex-end;
+  gap: 0.5rem; margin-top: 1rem;
+}
+.sched-modal-actions button {
+  padding: 0.45rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.83rem; font-weight: 600;
+  cursor: pointer; border: 1.5px solid var(--border);
+  background: #fff; color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.sched-modal-actions button.primary {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.sched-modal-actions button.primary:hover { background: var(--primary-dark); }
+.sched-modal-actions button:not(.primary):hover { border-color: var(--text-secondary); }
+
+.load-warning {
+  background: #fef3c7; border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem; font-size: 0.8rem;
+  color: #92400e; margin-bottom: 0.9rem;
+}
+
+.version-list { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+
+.version-item {
+  display: flex; align-items: center; flex-wrap: wrap;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  gap: 0.5rem;
+}
+.version-item-btns { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; flex-shrink: 0; }
+.version-item:last-child { border-bottom: none; }
+.version-title { flex: 1; font-size: 0.84rem; font-weight: 600; color: var(--text-primary); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.version-date  { font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; }
+
+.btn-load-ver {
+  padding: 0.18rem 0.5rem;
+  background: #fff; color: var(--text-secondary);
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: all 0.15s;
+}
+.btn-load-ver:hover { border-color: var(--primary); color: var(--primary-dark); background: var(--primary-light); }
+.btn-ver-collab { }
+.btn-ver-collab:hover { border-color: #059669; color: #059669; background: #f0fdf4; }
+
+.btn-del-ver {
+  padding: 0.18rem 0.5rem;
+  background: #fff; color: var(--text-muted);
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: all 0.15s;
+}
+.btn-del-ver:hover { color: var(--danger); border-color: #fca5a5; background: var(--danger-light); }
+
+.version-empty {
+  text-align: center; color: var(--text-muted);
+  padding: 2rem; font-size: 0.85rem;
+}
+
+.version-collab-badge {
+  display: inline-block;
+  background: #f8fafc; color: var(--text-secondary);
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 0.7rem; font-weight: 600;
+  padding: 0.1rem 0.4rem; white-space: nowrap;
+}
+
+/* ── 공유 종류 선택 ────────────────────────────────────── */
+.share-type-list {
+  display: flex; flex-direction: column; gap: 0.6rem;
+}
+.btn-share-type {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 0.2rem; width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  background: #fff; cursor: pointer; text-align: left;
+  transition: all 0.15s;
+}
+.btn-share-type:hover { border-color: var(--primary); background: var(--primary-light); }
+.btn-share-type strong { font-size: 0.86rem; color: var(--text-primary); }
+.btn-share-type span { font-size: 0.76rem; color: var(--text-muted); }
+
+/* ── 협업 배너 ─────────────────────────────────────────── */
+.collab-banner {
+  display: none;
+  align-items: center; justify-content: space-between; gap: 0.75rem;
+  flex-wrap: wrap;
+  background: #f5f3ff; color: #6d28d9;
+  border: 1.5px solid #c4b5fd; border-radius: var(--radius-sm);
+  font-size: 0.82rem; font-weight: 600;
+  padding: 0.55rem 1rem; margin-bottom: 1rem;
+}
+.collab-banner.show { display: flex; }
+.collab-banner .btn-save-original {
+  background: #6d28d9; color: #fff; border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.9rem; font-size: 0.8rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: background 0.15s;
+}
+.collab-banner .btn-save-original:hover { background: #5b21b6; }
+
+/* ── 협업모드: 행별 편집 가능 여부 색상 표시 ──────────────── */
+.data-row.row-editable td   { background: #eff6ff; }
+.data-row.row-uneditable td { background: #fef2f2; }
+
+/* ── 협업모드: 타인 행 읽기전용 ────────────────────────── */
+.data-row.row-readonly td input,
+.data-row.row-readonly td textarea {
+  pointer-events: none; opacity: 0.6; background: #f8fafc;
+}
+.data-row.row-readonly .drag-handle {
+  visibility: hidden;
+}
+
+/* ── Toast 오류 메시지 ─────────────────────────────────── */
+.sched-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-90px);
+  background: #dc2626;
+  color: #fff;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,.18);
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1);
+}
+.sched-toast.show { transform: translateX(-50%) translateY(0); }
+.sched-toast.success { background: #059669; }
+.sched-toast.info    { background: #4f46e5; }
+
+.add-row-bar {
+  margin-top: 0.45rem;
+  padding: 0 0.1rem;
+}
+
+.empty-row td {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2.5rem 1rem !important;
+  font-size: 0.85rem;
+}
+
+/* ── Row Handle (행 번호·드래그 선택) ─────────────────────── */
+.row-handle-th {
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
+  padding: 0.6rem 0.3rem !important;
+  position: sticky;
+  left: 26px;
+  z-index: 3;
+  background: var(--primary);
+  box-shadow: 2px 0 4px rgba(0,0,0,.10);
+}
+
+.row-handle {
+  width: 36px;
+  min-width: 36px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  cursor: row-resize;
+  user-select: none;
+  background: #f8fafc;
+  padding: 0 !important;
+  line-height: 22px;
+  position: sticky;
+  left: 26px;
+  z-index: 1;
+  box-shadow: 2px 0 4px rgba(0,0,0,.07);
+}
+
+.data-row.row-selected td              { background: #e0e7ff !important; }
+.data-row.row-selected .row-handle     { background: #c7d2fe !important; color: var(--primary); font-weight: 700; }
+.data-row.row-selected td input,
+.data-row.row-selected td textarea     { background: transparent !important; }
+
+/* ── Gantt Chart ───────────────────────────────────────── */
+.gantt-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2.5rem;
+  font-size: 0.85rem;
+}
+
+.gantt-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 1px solid #94a3b8;
+  border-radius: var(--radius-sm);
+}
+
+.gantt-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.77rem;
+  white-space: nowrap;
+}
+
+/* ── Gantt Header ──────────────────────────────────────── */
+.gth {
+  background: #f1f5f9;
+  color: #1e293b;
+  padding: 0.45rem 0.5rem;
+  font-weight: 600;
+  text-align: center;
+  border-right: 1px solid #94a3b8;
+  border-bottom: 2px solid #64748b;
+  vertical-align: middle;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.gth.fix-col { z-index: 5; }
+
+.month-th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-bottom: 1px solid #94a3b8;
+}
+
+.day-th {
+  width: 30px;
+  min-width: 30px;
+  max-width: 30px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.35;
+  padding: 0.28rem 0.15rem;
+}
+
+/* ── Gantt Sticky Fixed Columns ────────────────────────── */
+.fix-col {
+  position: sticky;
+  z-index: 2;
+  background: var(--bg-card);
+}
+
+.fix-shadow {
+  box-shadow: 4px 0 10px -2px rgba(0,0,0,.12);
+}
+
+/* ── Gantt Month Header (alternating by year) ──────────── */
+/* y0: 인디고, y1: 앰버, y2: 로즈 — 연도별 뚜렷한 구분 */
+.month-th-y0 { background: #e0e7ff; color: #312e81; }
+.month-th-y1 { background: #fef3c7; color: #78350f; }
+.month-th-y2 { background: #ffe4e6; color: #9f1239; }
+
+/* ── Gantt Day Header — year background ────────────────── */
+.day-th.day-y0 { background: #e0e7ff; }
+.day-th.day-y1 { background: #fef3c7; }
+.day-th.day-y2 { background: #ffe4e6; }
+
+/* ── Gantt Day Header ──────────────────────────────────── */
+.day-th.sat              { color: #be123c; font-weight: 700; }
+.day-th.sun              { color: #1d4ed8; font-weight: 700; }
+.gth.day-th.today {
+  background: #1d4ed8;
+  color: #fff;
+  font-weight: 700;
+  border-left:  2px solid #111;
+  border-right: 2px solid #111;
+}
+
+/* ── Gantt Fixed Column Data Cells ─────────────────────── */
+.gtd {
+  padding: 0 0.65rem;
+  height: 22px;
+  line-height: 22px;
+  border-right: 1px solid #94a3b8;
+  border-bottom: 1px solid #94a3b8;
+  vertical-align: middle;
+  background: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lv1-td {
+  background: #c7d2fe !important;
+  color: #1e1b4b !important;
+  font-weight: 700;
+  text-align: center;
+}
+
+.lv2-td {
+  background: #ede9fe !important;
+  color: #4c1d95 !important;
+  font-weight: 600;
+  text-align: center;
+}
+
+.content-td { color: #1e293b; background: #fff !important; }
+.mgr-td     { color: #475569; text-align: center; background: #fff !important; }
+
+/* ── Gantt Date Cells ──────────────────────────────────── */
+.gantt-cell {
+  width: 30px;
+  min-width: 30px;
+  max-width: 30px;
+  border-right: 1px solid #94a3b8;
+  border-bottom: 1px solid #94a3b8;
+  padding: 0;
+  background: #fff;
+}
+
+/* 주말 배경 (inactive 셀만) */
+.gantt-cell.sat:not(.active) { background: #fff5f5; }
+.gantt-cell.sun:not(.active) { background: #f0f9ff; }
+
+/* 현재일 열 - 테두리만 강조, 셀 색 변경 없음 */
+.gantt-cell.today {
+  border-left:  2px solid #111;
+  border-right: 2px solid #111;
+}
+
+/* 일정 활성 구간 — 연도별 색상 (active 셀은 주말 배경 무시) */
+.gantt-cell.active         { background: #ddd6fe; } /* fallback */
+.gantt-cell.active.day-y0  { background: #c7d2fe; } /* indigo */
+.gantt-cell.active.day-y1  { background: #fde68a; } /* amber */
+.gantt-cell.active.day-y2  { background: #fecdd3; } /* rose */
+
+/* ── Column Resize Handle ──────────────────────────────── */
+.col-resizer {
+  position: absolute;
+  top: 0; right: 0;
+  width: 5px; height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 10;
+}
+.col-resizer:hover  { background: rgba(255,255,255,0.45); }
+.col-resizer.active { background: rgba(255,255,255,0.75); }
+body.col-resizing,
+body.col-resizing * { cursor: col-resize !important; user-select: none !important; }
+
+/* ── Excel-like Cell Selection ───────────────────────────── */
+.xl-cell { cursor: default; outline: none; }
+.xl-cell input,
+.xl-cell textarea {
+  pointer-events: none;
+  cursor: default;
+  caret-color: transparent;
+}
+.xl-selected { background-color: #c7d2fe; }
+.xl-editing input,
+.xl-editing textarea {
+  pointer-events: auto;
+  cursor: text;
+  caret-color: auto;
+}
+.xl-editing.xl-selected { background-color: #fff; }
+
+/* 협업모드 행 색상(.row-editable/.row-uneditable)과 겹쳐도 선택 셀이 구분되도록 우선 적용 */
+.data-row.row-editable td.xl-selected,
+.data-row.row-uneditable td.xl-selected {
+  background-color: #c7d2fe;
+}
+.data-row.row-editable td.xl-editing.xl-selected,
+.data-row.row-uneditable td.xl-editing.xl-selected {
+  background-color: #fff;
+}
+
+/* 탐색 모드에서 input focus 시 테두리/배경 숨김 (TD의 xl-selected 강조만 보이도록) */
+.xl-cell:not(.xl-editing) input:focus,
+.xl-cell:not(.xl-editing) textarea:focus {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+/* 탐색 모드 Ctrl+C 시 inp.select() 시각적 flash 숨김 */
+.xl-cell:not(.xl-editing) input::selection,
+.xl-cell:not(.xl-editing) textarea::selection { background: transparent; }
+
+/* ── Gantt Compact Mode ──────────────────────────────────── */
+/* compact: inactive 주말만 흰색 (active 주말은 active 색 유지) */
+.gantt-compact .gantt-cell.sat:not(.active),
+.gantt-compact .gantt-cell.sun:not(.active) { background: #fff; }
+
+.gantt-compact .day-th {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  font-size: 0.6rem;
+  padding: 0.18rem 0.05rem;
+}
+.gantt-compact .gantt-cell {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+}
+
+/* ── Range Selection ─────────────────────────────────────── */
+.xl-range {
+  background-color: #dbeafe !important;
+  box-shadow: inset 0 0 0 1px #93c5fd;
+}
+
+
+/* ── Gantt Hover Tooltip ─────────────────────────────────── */
+#ganttTooltip {
+  display: none;
+  position: fixed;
+  z-index: 9996;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  min-width: 140px;
+  max-width: 300px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.10), 0 1px 6px rgba(0,0,0,.07);
+  pointer-events: none;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #1e293b;
+}
+.gtt-title {
+  font-weight: 600;
+  color: #1e293b;
+  white-space: normal;
+  word-break: break-word;
+  margin-bottom: 0.3rem;
+}
+.gtt-label {
+  font-weight: 500;
+  color: #334155;
+  white-space: normal;
+  word-break: break-word;
+}
+.gtt-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid #f1f5f9;
+}
+.gtt-meta { color: #64748b; font-size: 0.74rem; }
+
+/* ── Gantt Fix-Col Overflow Clip ─────────────────────────── */
+.gtd-clip {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gth.fix-col { overflow: hidden; white-space: nowrap; }
+
+/* ── Gantt Popup ─────────────────────────────────────────── */
+#ganttPopup {
+  display: none;
+  position: fixed;
+  z-index: 9998;
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 0.55rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  max-width: 380px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+  box-shadow: 0 4px 20px rgba(0,0,0,.28);
+  pointer-events: none;
+}

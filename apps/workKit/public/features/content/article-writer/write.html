@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>기사 작성 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="write.css" />
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="index.html" class="back-btn">← 목록</a>
+        <h1 class="page-title" id="pageTitle">이슈</h1>
+      </div>
+
+      <!-- 이슈 헤더 -->
+      <div class="issue-meta" id="issueMeta">
+        <div style="flex:1;min-width:0">
+          <div id="titleArea"></div>
+          <div class="issue-sub" id="issueSub"></div>
+          <div id="issueReactBar" style="display:none;margin-top:0.45rem;display:flex;gap:0.3rem;align-items:center"></div>
+        </div>
+        <div id="topActions" style="display:flex;gap:0.4rem;flex-shrink:0;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- 참고자료 패널 (편집 모드) -->
+      <div class="ref-panel" id="refPanel" style="display:none"></div>
+
+      <!-- 관련글 검색 패널 (편집 모드) -->
+      <div class="related-panel" id="relatedPanel" style="display:none"></div>
+
+      <!-- 첫 작성 가이드 -->
+      <div id="firstTimeGuide" style="display:none" class="guide-card">
+        <div class="guide-header">
+          📋 기사 작성 가이드
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label style="font-size:.68rem;font-weight:400;color:#a16207;display:flex;align-items:center;gap:.25rem;cursor:pointer">
+              <input type="checkbox" id="guideNeverCheck" style="cursor:pointer"> 다시보지않기
+            </label>
+            <button class="guide-close" onclick="dismissGuide()">✕ 닫기</button>
+          </div>
+        </div>
+        <ol class="guide-steps">
+          <li>제목 칸에 <strong>이 문단의 주제</strong>를 입력하고 Enter로 저장하세요</li>
+          <li>좌측 입력칸에 <strong>해당 주제의 내용을 직접 작성</strong>하세요</li>
+          <li><strong>✨ AI작성</strong>을 누르면 우측에 AI가 내용을 정리해줍니다<br>
+            <span style="font-size:.7rem;color:#a16207;margin-left:1.65rem">📋 복사 또는 ✅ 적용으로 좌측에 반영하세요</span>
+          </li>
+        </ol>
+        <div style="margin:.6rem 0 0;padding:.55rem .75rem;background:#fef3c7;border-radius:var(--radius-sm);font-size:.75rem;color:#92400e;line-height:1.85">
+          📌 문단이 더 필요하면 하단 <strong>+ 문단 추가</strong>로 추가하고, 주제와 내용을 작성하세요<br>
+          작성이 끝나면 <strong>📥 가져오기</strong>를 클릭해 위 문단들의 내용을 기사 본문으로 불러오세요<br>
+          <strong>🤖 AI로 다듬기</strong>를 누르면 가져온 내용을 기사처럼 자연스럽게 정리해줍니다
+        </div>
+      </div>
+
+      <!-- 섹션 툴바 (편집 모드) -->
+      <div id="sectionToolbar" style="display:none;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap"></div>
+
+      <!-- 섹션 안내 (편집 모드) -->
+      <div id="sectionNote" style="display:none;font-size:.72rem;color:var(--text-muted);background:#f8fafc;border:1px solid var(--border);border-radius:var(--radius-sm);padding:.4rem .85rem;margin-bottom:.5rem;line-height:1.6">
+        📝 여기에 작성한 내용은 <strong>하단 기사 전체 내용</strong>을 위한 참고 자료로 사용됩니다.<br>
+        섹션 내용은 기사로 직접 조회되지 않습니다 — 하단에서 가져오기 후 AI 다듬기로 완성하세요.
+      </div>
+
+      <!-- 섹션 -->
+      <div class="sections-wrap" id="sectionsWrap"></div>
+
+      <!-- 하단 액션바 -->
+      <div class="action-bar" id="actionBar" style="display:none"></div>
+
+      <!-- 기사 본문 -->
+      <div class="ai-panel" id="aiPanel">
+        <div class="ai-panel-header">
+          <span>✨ 기사 전체 내용(조회)</span>
+          <div id="aiBodyCounter" class="ai-body-counter" style="border:none;padding:0;background:transparent;margin-left:.5rem;flex-shrink:0">0자</div>
+          <div class="ai-panel-acts" id="aiPanelActs"></div>
+        </div>
+        <textarea id="aiBody" class="ai-panel-body" rows="30"
+          placeholder="AI로 정리하거나, 가져오기로 섹션 내용을 불러오거나, 직접 입력하세요."
+          oninput="updateAiBodyCounter()"></textarea>
+      </div>
+
+      <!-- 댓글 -->
+      <div class="comments-section" id="commentsSection" style="display:none">
+        <div class="comments-header">
+          💬 댓글
+          <span class="comment-count-badge" id="commentCountBadge">0</span>
+        </div>
+        <div id="commentList"></div>
+        <div id="commentFormWrap"></div>
+      </div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p></footer>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="write.js"></script>
+</body>
+</html>

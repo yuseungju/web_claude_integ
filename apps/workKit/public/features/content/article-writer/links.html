@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>참고 링크 보관함 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="index.html" class="back-btn">← 기사 작성</a>
+        <h1 class="page-title">🔗 참고 링크 보관함</h1>
+      </div>
+
+      <div id="pageContent" style="display:none">
+        <div class="sc">
+          <div class="sc-title">🔖 참고 링크 폴더</div>
+
+          <div class="folder-header">
+            <span style="font-size:.74rem;color:var(--text-muted)">폴더를 만들고 참고 링크를 저장하세요</span>
+            <button class="btn-new-folder" onclick="showNewFolderRow()">+ 폴더 만들기</button>
+          </div>
+
+          <div id="newFolderRow" style="display:none" class="new-folder-row">
+            <input type="text" id="newFolderName" class="new-folder-input" placeholder="폴더 이름 입력..." maxlength="50" />
+            <button class="btn-folder-save" onclick="createFolder()">만들기</button>
+            <button class="btn-folder-cancel" onclick="hideNewFolderRow()">취소</button>
+          </div>
+
+          <div id="folderList"></div>
+        </div>
+      </div>
+      <div id="loadMsg" style="padding:3rem 1rem;text-align:center;color:var(--text-muted);font-size:.82rem">불러오는 중...</div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p></footer>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="links.js"></script>
+</body>
+</html>

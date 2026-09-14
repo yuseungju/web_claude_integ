@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>파일 변환 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="../../../index.html" class="back-btn">← 메뉴</a>
+        <h1 class="page-title">🔄 파일 변환</h1>
+      </div>
+
+      <div class="card">
+        <div class="card-header">📂 파일 업로드</div>
+        <div style="padding:1.25rem">
+          <div class="upload-zone" id="dropZone">
+            <span class="upload-icon">📄</span>
+            <div class="upload-title">파일을 드래그하거나 클릭하세요</div>
+            <div class="upload-sub">지원 형식: JPG · PNG · WEBP · BMP · GIF · PDF · CSV · XLS · XLSX</div>
+            <div class="upload-file-name" id="fileName"></div>
+            <button class="upload-btn" type="button">파일 선택</button>
+            <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.pdf,.csv,.xls,.xlsx" hidden />
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="convertCard" style="display:none;margin-top:1.25rem">
+        <div class="card-header">🎯 변환 설정</div>
+        <div class="conv-body">
+          <div class="conv-row">
+            <div class="conv-col">
+              <span class="conv-label">원본 형식</span>
+              <span class="conv-ext-badge" id="srcExtBadge">-</span>
+            </div>
+            <div class="conv-arrow">→</div>
+            <div class="conv-col">
+              <span class="conv-label">변환 후 형식</span>
+              <select id="targetExt" class="conv-select"></select>
+            </div>
+          </div>
+          <div id="unsupportedMsg" class="status-bar error" style="display:none">
+            ⚠️ 이 파일 형식은 지원되는 변환 대상이 없습니다.
+          </div>
+          <button class="btn primary" id="btnConvert" onclick="runConvert()" disabled>⬇ 변환 후 다운로드</button>
+          <div id="convStatus" class="conv-status"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1.25rem">
+        <div class="card-header">ℹ️ 지원 변환 안내</div>
+        <div class="conv-info">
+          <p><strong>이미지 ↔ 이미지</strong> : JPG · PNG · WEBP · BMP · GIF 상호 변환 (GIF는 첫 프레임만 변환됩니다)</p>
+          <p><strong>이미지 → PDF</strong> : JPG · PNG · WEBP · BMP · GIF → PDF</p>
+          <p><strong>PDF → 이미지</strong> : 1페이지면 이미지 파일로, 여러 페이지면 ZIP으로 다운로드됩니다.</p>
+          <p><strong>표 파일</strong> : CSV ↔ XLSX, XLS → CSV / XLSX</p>
+          <p class="conv-info-note">⚠️ 다음 변환은 브라우저에서 완벽하게 처리할 수 없어 제외했습니다: PPT·PPTX → PDF, XLSX/CSV → XLS</p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p></footer>
+  </div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

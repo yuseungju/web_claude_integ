@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>기사 작성 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="../../../index.html" class="back-btn">← 메뉴</a>
+        <h1 class="page-title">📋 기사 작성</h1>
+      </div>
+
+      <div class="toolbar">
+        <span class="toolbar-title">이슈 목록</span>
+        <div class="toolbar-btns" id="toolbarBtns"></div>
+      </div>
+
+      <!-- 필터 바 -->
+      <div class="filter-bar">
+        <input type="text"  id="fQ"      class="f-input f-q"      placeholder="제목 검색..." />
+        <input type="date"  id="fDate"   class="f-input f-date"   />
+        <input type="text"  id="fAuthor" class="f-input f-author" placeholder="작성자" />
+        <select id="fCat" class="f-input f-cat">
+          <option value="">전체 분류</option>
+        </select>
+        <div id="filterToggles" style="display:flex;gap:0.3rem;flex-wrap:wrap"></div>
+        <button class="f-reset" onclick="resetFilters()">초기화</button>
+        <button class="f-search" onclick="doSearch()">검색</button>
+      </div>
+
+      <div id="bestWrap"></div>
+      <div id="tableWrap"><div class="loading">불러오는 중...</div></div>
+      <div id="pagination"></div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p></footer>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>웹소설 작성 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="write.css" />
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- ── 편집 워크스페이스 ── -->
+    <div id="editWorkspace" class="edit-workspace" style="display:none">
+      <div class="ws-header">
+        <a href="index.html" class="ws-back">← 목록</a>
+        <input id="wsTitleInput" class="ws-title-input" placeholder="소설 제목을 입력하세요" maxlength="200" onblur="saveNovelTitle()" />
+        <button class="btn sm" id="btnWsSave" onclick="saveNovelDraft()">💾 저장하기</button>
+        <span id="wsStatusBadge" class="status-badge" style="display:none"></span>
+        <button class="btn success sm" id="btnWsComplete" onclick="publishNovel()">📢 게시하기</button>
+        <button class="btn sm" id="btnWsUnpublish" onclick="unpublishNovel()" style="display:none">🔒 게시취소</button>
+      </div>
+      <div class="ws-body">
+        <div class="ws-sidebar" id="editSidebar">
+          <div class="sidebar-top">
+            <button id="btnRefInfo" class="btn-refinfo" onclick="showRefPanel()">⚙️ 기준정보 설정</button>
+          </div>
+          <div class="menu-tree" id="menuTree">
+            <div style="text-align:center;padding:1.5rem;font-size:.75rem;color:var(--text-muted)">아래 버튼으로 메뉴를 추가하세요</div>
+          </div>
+          <div class="sidebar-bottom">
+            <button class="btn-add-menu" onclick="addRootNode()">+ 최상위 메뉴 추가</button>
+          </div>
+        </div>
+        <div class="sidebar-resize" id="editSidebarResize"></div>
+        <div class="ws-main" id="wsMain">
+          <div id="mainEmpty" class="main-empty">
+            <strong>메뉴를 선택하거나 추가하세요</strong>
+            <span>왼쪽에서 메뉴를 선택하면 내용을 작성할 수 있습니다.</span>
+          </div>
+          <div id="nodePanel" style="display:none"></div>
+          <div id="refPanel"  style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 조회 워크스페이스 ── -->
+    <div id="viewWorkspace" class="view-workspace" style="display:none">
+      <div class="ws-header">
+        <a href="index.html" class="ws-back">← 목록</a>
+        <div style="flex:1;min-width:0">
+          <div id="viewNovelTitle" class="view-title-txt"></div>
+        </div>
+        <div id="viewNovelSub" class="view-title-sub"></div>
+        <div id="viewTopActions" style="display:flex;gap:.4rem;flex-shrink:0"></div>
+      </div>
+      <div class="ws-body">
+        <div class="ws-sidebar" id="viewSidebar">
+          <div class="menu-tree" id="viewMenuTree">
+            <div style="text-align:center;padding:1.5rem;font-size:.75rem;color:var(--text-muted)">노출된 메뉴가 없습니다</div>
+          </div>
+        </div>
+        <div class="sidebar-resize" id="viewSidebarResize"></div>
+        <div class="ws-main" id="viewMain">
+          <div id="viewEmpty" class="main-empty">
+            <strong>메뉴를 선택하세요</strong>
+            <span>왼쪽에서 메뉴를 선택하면 내용을 볼 수 있습니다.</span>
+          </div>
+          <div id="viewNodePanel" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 조회 하단 ── -->
+    <main class="container" id="viewFooter" style="display:none">
+      <div id="novelReactSection" style="margin-bottom:.75rem;display:flex;gap:.3rem;align-items:center"></div>
+      <div class="comments-section" id="commentsSection" style="display:none">
+        <div class="comments-header">
+          💬 댓글 <span class="comment-count-badge" id="commentCountBadge">0</span>
+        </div>
+        <div id="commentList"></div>
+        <div id="commentFormWrap"></div>
+      </div>
+    </main>
+
+    <footer class="app-footer" id="appFooter"><p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p></footer>
+  </div>
+
+  <!-- ── 기준정보 팝업 ── -->
+  <div class="ref-popup-overlay" id="refPopupOverlay" onclick="closeRefPopup(event)">
+    <div class="ref-popup" onclick="event.stopPropagation()">
+      <div class="ref-popup-hd">
+        <span class="ref-popup-hd-title">📋 전체 기준정보 조회</span>
+        <button class="btn sm" onclick="closeRefPopup()">✕ 닫기</button>
+      </div>
+      <div class="ref-popup-body" id="refPopupBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="write.js"></script>
+</body>
+</html>

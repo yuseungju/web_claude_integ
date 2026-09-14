@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>일정관리 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit" onclick="return confirmLeavePage()">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div id="collabBanner" class="collab-banner"></div>
+
+      <div class="page-header">
+        <a href="../../../index.html" class="back-btn" onclick="return confirmLeavePage()">← 메뉴</a>
+        <h1 class="page-title">📅 일정관리</h1>
+        <span id="versionMeta" class="version-meta-text"></span>
+      </div>
+
+      <!-- Tabs -->
+      <div class="sched-tabs">
+        <button class="sched-tab active" data-tab="plan" onclick="switchTab('plan')">📋 일정 계획</button>
+        <button class="sched-tab" data-tab="completed" onclick="switchTab('completed')">✅ 일정 완료<span id="completedCount" class="tab-count"></span></button>
+      </div>
+
+      <!-- Controls Bar -->
+      <div class="controls-bar">
+        <div class="controls-left">
+          <button class="btn btn-newver" onclick="startNewVersion()">🆕 새로 만들기</button>
+          <button class="btn btn-dbsave" onclick="openSavePopup()">💾 내 버전 저장</button>
+          <button class="btn btn-dbload" onclick="openLoadPopup()">🗂 불러오기</button>
+          <button class="btn btn-dbload" id="btnShareOpen" onclick="openSharePopup()">🔗 공유하기</button>
+        </div>
+        <div class="controls-right">
+          <button class="btn btn-reset" onclick="resetData()">🗑 초기화</button>
+          <label class="btn btn-upload" for="excelUpload">📂 엑셀 불러오기</label>
+          <input type="file" id="excelUpload" accept=".xlsx,.xls" style="display:none" onchange="uploadExcel(this)" />
+          <button class="btn btn-download" onclick="downloadExcel()">⬇ 엑셀 다운로드</button>
+        </div>
+      </div>
+
+      <!-- Table Section -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="section-title" id="tableSectionTitle">📋 일정 목록</span>
+          <div class="section-header-actions">
+            <button class="btn btn-delete-selected" id="btnDeleteSelected" onclick="deleteSelectedRows()" disabled>🗑 선택 삭제</button>
+            <button class="btn btn-add" onclick="addRow()">+ 행 추가</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <input type="text" id="filterManager" class="filter-input" placeholder="👤 담당자 검색" oninput="applyFilter()">
+          <input type="text" id="filterKeyword" class="filter-input" placeholder="🔍 검색어 (전체 항목 대상)" oninput="applyFilter()">
+          <button class="btn btn-filter-clear" onclick="clearFilters()">필터 초기화</button>
+        </div>
+        <div class="paste-hint">
+          셀 클릭 후 <strong>Ctrl+C</strong> 복사 · 드래그로 범위 선택 후 <strong>Ctrl+C</strong> 표 복사 → 엑셀에 바로 붙여넣기 가능 &nbsp;|&nbsp; 엑셀에서 복사한 범위를 셀 클릭 후 <strong>Ctrl+V</strong>로 입력 &nbsp;|&nbsp; 날짜: YYYYMMDD 또는 YYYY-MM-DD
+        </div>
+        <div class="table-scroll">
+          <table class="sched-table">
+            <thead>
+              <tr>
+                <th class="drag-handle-th"></th>
+                <th class="row-handle-th"></th>
+                <th style="width:110px" class="sortable" data-field="lv1" onclick="sortByColumn('lv1',event)">대분류 (LV1)<span class="sort-ind"></span></th>
+                <th style="width:110px" class="sortable" data-field="lv2" onclick="sortByColumn('lv2',event)">중분류 (LV2)<span class="sort-ind"></span></th>
+                <th style="width:475px" class="sortable" data-field="content" onclick="sortByColumn('content',event)">내용<span class="sort-ind"></span></th>
+                <th style="width:108px" class="sortable" data-field="link" onclick="sortByColumn('link',event)">참고 링크<span class="sort-ind"></span></th>
+                <th style="width:90px" class="sortable" data-field="manager" onclick="sortByColumn('manager',event)">담당자<span class="sort-ind"></span></th>
+                <th style="width:105px" class="sortable" data-field="startDate" onclick="sortByColumn('startDate',event)">시작일<span class="sort-ind"></span></th>
+                <th style="width:105px" class="sortable" data-field="endDate" onclick="sortByColumn('endDate',event)">종료일<span class="sort-ind"></span></th>
+                <th style="width:78px">생성자</th>
+                <th style="width:118px">생성일시</th>
+                <th style="width:132px"></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="add-row-bar">
+          <button class="btn btn-add" onclick="addRowAtEnd()">+ 행 추가</button>
+        </div>
+      </div>
+
+      <!-- Gantt Section -->
+      <div id="ganttSection" class="section-card" style="margin-top:1.5rem">
+        <div class="section-header" style="flex-wrap:wrap;gap:0.4rem">
+          <span class="section-title">📊 간트 차트</span>
+          <div style="display:flex;align-items:center;gap:0.6rem;flex-shrink:0">
+            <button class="btn btn-update" onclick="renderGantt()">🔄 업데이트</button>
+            <button class="btn btn-today" onclick="scrollToToday()">📍 오늘로</button>
+            <button class="btn btn-compact" id="ganttCompactBtn" onclick="toggleGanttCompact()">날짜요약</button>
+            <button class="btn btn-compact" id="ganttGroupBtn" onclick="toggleGanttGroup()">중분류요약</button>
+          </div>
+          <span class="gantt-info" id="ganttInfo" style="width:100%;padding-top:0.1rem"></span>
+        </div>
+        <div id="ganttWrap" class="gantt-wrap"></div>
+      </div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p></footer>
+  </div>
+
+  <div id="ganttPopup"></div>
+  <div id="ganttTooltip"></div>
+
+  <!-- 상세 내용 팝업 -->
+  <div class="sched-overlay" id="detailOverlay">
+    <div class="sched-modal wide">
+      <h3>📝 상세 내용<span id="detailRowLabel"></span></h3>
+      <textarea id="detailTextarea" class="sched-modal-input detail-textarea" placeholder="상세 내용을 입력하세요"></textarea>
+      <div class="sched-modal-actions">
+        <button onclick="closeDetailPopup()">취소</button>
+        <button class="primary" onclick="saveDetailPopup()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 버전 저장 팝업 -->
+  <div class="sched-overlay" id="saveOverlay">
+    <div class="sched-modal">
+      <h3>💾 버전 저장</h3>
+      <input class="sched-modal-input" id="saveTitleInput" type="text" placeholder="저장 제목 (예: 2025년 1분기)" maxlength="100"
+        onkeydown="if(event.key==='Enter')confirmSaveCopy();if(event.key==='Escape')closeSavePopup();" />
+      <div class="sched-modal-actions">
+        <button onclick="closeSavePopup()">취소</button>
+        <button class="primary" id="btnOverwrite" onclick="confirmOverwrite()" style="display:none">기존 버전 수정</button>
+        <button class="primary" id="btnSaveCopy" onclick="confirmSaveCopy()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 버전 불러오기 팝업 -->
+  <div class="sched-overlay" id="loadOverlay">
+    <div class="sched-modal wide">
+      <h3>🗂 버전 불러오기</h3>
+      <div class="load-warning">⚠️ 불러오면 현재 입력된 데이터가 모두 초기화됩니다.</div>
+      <div class="version-list" id="versionList"></div>
+      <div class="sched-modal-actions">
+        <button onclick="closeLoadPopup()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 공유 종류 선택 팝업 -->
+  <div class="sched-overlay" id="shareOverlay">
+    <div class="sched-modal">
+      <h3>🔗 공유하기</h3>
+      <div class="share-type-list">
+        <button class="btn-share-type" onclick="shareView()">
+          <strong>🔍 공유(조회)</strong>
+          <span>받는 사람은 현재 버전을 볼 수만 있습니다.</span>
+        </button>
+        <button class="btn-share-type" onclick="shareCollabLink()">
+          <strong>🔗 변경공유</strong>
+          <span>받는 사람이 로그인 후 본인의 일정을 추가·관리할 수 있습니다.</span>
+        </button>
+      </div>
+      <div class="sched-modal-actions">
+        <button onclick="closeSharePopup()">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

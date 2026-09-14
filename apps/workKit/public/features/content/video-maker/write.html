@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>동영상 제작 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="vm-workspace-page">
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit" onclick="if(typeof _saving!=='undefined'&&(_saving||_merging)){event.preventDefault();showToast(_saving?'저장 중입니다. 잠시 기다려 주세요.':'합치기 중입니다. 완료 후 이동하세요.');}">
+            <span class="logo-icon">⚙️</span><span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div class="vm-workspace">
+      <!-- 상단 헤더 -->
+      <div class="ws-header">
+        <a href="index.html" class="ws-back" onclick="event.preventDefault();goBack()">← 목록</a>
+        <input id="projTitle" class="ws-title-input" placeholder="프로젝트 제목" maxlength="200" oninput="onProjTitleModified()" onblur="autosaveProjectTitle()" />
+        <button class="btn primary" id="saveDraftBtn" onclick="saveProject()" style="display:none">💾 저장</button>
+        <span id="publishBadge" class="publish-badge" style="display:none">임시저장</span>
+        <button class="btn success" id="publishBtn" onclick="togglePublish()" style="display:none">📢 게시하기</button>
+      </div>
+
+      <div class="ws-body">
+        <!-- 노드 트리 사이드바 -->
+        <div class="ws-sidebar" id="vmSidebar">
+          <div class="sidebar-top">
+            <button class="sidebar-add-btn" onclick="addNode(null)">+ 항목 추가</button>
+          </div>
+          <div id="nodeTree" class="node-tree">
+            <div class="node-tree-loading">불러오는 중...</div>
+          </div>
+        </div>
+        <div class="sidebar-resize" id="vmSidebarResize"></div>
+
+        <!-- 노드 작업 영역 -->
+        <div class="ws-main" id="wsMain">
+
+          <!-- 아무것도 선택 안 됐을 때 -->
+          <div id="nodeEmpty" class="node-empty-state">
+            <span class="node-empty-icon">🎬</span>
+            <p>왼쪽에서 항목을 선택하거나<br>+ 항목 추가를 눌러 시작하세요</p>
+          </div>
+
+          <!-- 노드 작업 패널 -->
+          <div id="nodePanel" class="vm-panel" style="display:none">
+
+            <!-- 노드 헤더 -->
+            <div class="node-panel-header">
+              <input id="nodeTitle" class="vm-input node-title-input" placeholder="항목 이름" maxlength="200" onblur="saveCurrentNode(true)" />
+              <button class="btn" onclick="addNode(currentNodeId)">+ 하위 추가</button>
+              <button class="btn danger" onclick="deleteCurrentNode()">삭제</button>
+            </div>
+            <div style="font-size:0.7rem;color:#bbb;padding:2px 4px 0" id="nodeIdDisplay"></div>
+
+            <!-- 객체 추가 툴바 -->
+            <div class="vm-toolbar" style="margin-top:.75rem">
+              <input type="file" id="objInput" accept="image/*,video/*" multiple hidden onchange="addObjects(this)" />
+              <button class="btn" onclick="document.getElementById('objInput').click()">+ 이미지/영상 추가</button>
+              <button class="btn fetch-btn" id="fetchBtn" onclick="fetchFromChildren()">📥 자식에서 가져오기</button>
+              <span id="fetchedBadge" class="fetched-badge" style="display:none">자식 뷰</span>
+            </div>
+
+            <!-- 객체 그리드 -->
+            <div id="objectsList" class="objects-grid"></div>
+
+            <!-- 합치기 -->
+            <div class="merge-bar" id="mergeBar" style="display:none">
+              <button class="btn primary" id="mergeBtn" onclick="doMerge()">🎬 합치기</button>
+              <span class="vm-hint">이미지 재생시간은 각 파일 카드에서 설정 · 출력: WebM</span>
+            </div>
+
+            <!-- 비디오 업로드 안내 (숨겨진 개별 파일 인풋 컨테이너) -->
+            <div id="videoInputs"></div>
+
+          </div>
+        </div>
+
+        <!-- 소스 미리보기 패널 (합치기에 사용된 원본 파일) -->
+        <div class="ws-source-panel" id="sourcePanel" style="display:none">
+          <div class="sp-header">첫 화면 소스</div>
+          <div id="sourceList" class="sp-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 미리보기 모달 -->
+  <div id="previewModal" class="preview-modal" style="display:none" onclick="closePreview()">
+    <div class="preview-inner" onclick="event.stopPropagation()">
+      <button class="preview-close" onclick="closePreview()">×</button>
+      <div id="previewContent" class="preview-content"></div>
+      <div class="preview-footer">
+        <span id="previewName" class="preview-name"></span>
+        <button class="btn primary" onclick="downloadPreview()">📥 다운로드</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="write.js"></script>
+</body>
+</html>

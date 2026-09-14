@@ -1,0 +1,252 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>표 비교 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="../../../index.html" class="back-btn">← 메뉴</a>
+        <h1 class="page-title">⚖️ 표 비교</h1>
+      </div>
+
+      <!-- 탭 네비게이션 -->
+      <div class="tab-nav">
+        <button class="tab-btn" data-tab="excel" onclick="switchTab('excel')">📂 엑셀 업로드</button>
+        <button class="tab-btn active" data-tab="manual" onclick="switchTab('manual')">✏️ 직접 입력</button>
+      </div>
+
+      <!-- ══ 탭 1: 엑셀 업로드 ══ -->
+      <div id="tabExcel" class="tab-panel">
+        <div class="upload-hint-box">
+          <strong>💡 비교 열 설정</strong> &nbsp;·&nbsp;
+          열 문자(<strong>A · B · C</strong>) 또는 숫자(<strong>1 · 2 · 3</strong>)로 입력하세요.
+          비교열을 2~5개 입력하면 <strong>AND 조건</strong>으로 비교합니다
+          (입력한 열이 <em>모두</em> 일치해야 같은 행으로 판단). 양쪽 입력 개수가 같아야 합니다.
+        </div>
+
+        <!-- ── 비교 결과 예시 ── -->
+        <div class="cmp-example-wrap">
+          <span class="cmp-example-label">📊 비교 결과 예시 — 비교 키 2개(이름+코드) 설정 시</span>
+          <div class="cmp-example-grid">
+            <div class="cmp-example-side">
+              <div class="cmp-ex-title">왼쪽 파일</div>
+              <table class="cmp-ex-table">
+                <thead><tr><th class="cmp-ex-cnt-th">일치건수</th><th>이름</th><th>코드</th><th>금액</th></tr></thead>
+                <tbody>
+                  <tr class="cmp-ex-match">
+                    <td class="cmp-ex-cnt match">1</td><td>홍길동</td><td>A001</td><td>10,000</td>
+                  </tr>
+                  <tr class="cmp-ex-miss">
+                    <td class="cmp-ex-cnt miss">0</td><td>김철수</td><td>B002</td><td>20,000</td>
+                  </tr>
+                  <tr class="cmp-ex-miss">
+                    <td class="cmp-ex-cnt miss">0</td><td>이순신</td><td>C003</td><td>15,000</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="cmp-example-vs">VS</div>
+            <div class="cmp-example-side">
+              <div class="cmp-ex-title">오른쪽 파일</div>
+              <table class="cmp-ex-table">
+                <thead><tr><th class="cmp-ex-cnt-th">일치건수</th><th>이름</th><th>코드</th><th>금액</th></tr></thead>
+                <tbody>
+                  <tr class="cmp-ex-miss">
+                    <td class="cmp-ex-cnt miss">0</td><td>이영희</td><td>D004</td><td>30,000</td>
+                  </tr>
+                  <tr class="cmp-ex-match">
+                    <td class="cmp-ex-cnt match">1</td><td>홍길동</td><td>A001</td><td class="cmp-ex-nonkey">55,000</td>
+                  </tr>
+                  <tr class="cmp-ex-miss">
+                    <td class="cmp-ex-cnt miss">0</td><td>김철수</td><td>B999</td><td>20,000</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="cmp-example-legend">
+            <span class="legend-match">■ 일치</span> 행 위치가 달라도 키(이름+코드)가 같으면 일치 &nbsp;|&nbsp;
+            <span class="legend-miss">■ 불일치</span> 키 조합이 상대방에 없음 &nbsp;|&nbsp;
+            <span style="color:#6b7280">흰색 셀</span> = 비교 키 외 열 (금액 등, 달라도 무관)
+          </div>
+        </div>
+        <div class="upload-row">
+          <div class="upload-col">
+            <div class="upload-zone" id="zoneA">
+              <span class="upload-icon">📄</span>
+              <div class="upload-title">파일을 드래그하거나 클릭하세요</div>
+              <div class="upload-sub">왼쪽 파일 (기준)</div>
+              <div class="upload-file-name"></div>
+              <button class="upload-btn">파일 선택</button>
+              <input type="file" id="inputA" accept=".xlsx,.xls,.csv" hidden />
+            </div>
+            <div class="col-key-block">
+              <div class="col-key-title">
+                비교 열 <span class="col-and-badge">AND</span>
+                <span class="col-mode-group">
+                  <button class="col-mode-btn active" data-prefix="keyColA" data-mode="multi" onclick="setColMode('keyColA','multi',this)">개별</button>
+                  <button class="col-mode-btn" data-prefix="keyColA" data-mode="range" onclick="setColMode('keyColA','range',this)">범위</button>
+                </span>
+              </div>
+              <div class="col-key-multi" id="colMultiA">
+                <span class="col-key-num">1</span><input id="keyColA_1" class="col-key-inp" type="text" value="A" maxlength="3" placeholder="A">
+                <span class="col-key-num">2</span><input id="keyColA_2" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+                <span class="col-key-num">3</span><input id="keyColA_3" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+                <span class="col-key-num">4</span><input id="keyColA_4" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+                <span class="col-key-num">5</span><input id="keyColA_5" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+              </div>
+              <div class="col-key-range" id="colRangeA" style="display:none">
+                <input id="keyColA_range" class="col-range-inp" type="text" maxlength="30" placeholder="예) A:E · 1:5 · A,C,E · B:D,G">
+                <span class="col-key-hint">연속: A:E · 번호: 1:5 · 개별: A,C,E</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="vs-badge">VS</div>
+
+          <div class="upload-col">
+            <div class="upload-zone" id="zoneB">
+              <span class="upload-icon">📄</span>
+              <div class="upload-title">파일을 드래그하거나 클릭하세요</div>
+              <div class="upload-sub">오른쪽 파일 (비교)</div>
+              <div class="upload-file-name"></div>
+              <button class="upload-btn">파일 선택</button>
+              <input type="file" id="inputB" accept=".xlsx,.xls,.csv" hidden />
+            </div>
+            <div class="col-key-block">
+              <div class="col-key-title">
+                비교 열 <span class="col-and-badge">AND</span>
+                <span class="col-mode-group">
+                  <button class="col-mode-btn active" data-prefix="keyColB" data-mode="multi" onclick="setColMode('keyColB','multi',this)">개별</button>
+                  <button class="col-mode-btn" data-prefix="keyColB" data-mode="range" onclick="setColMode('keyColB','range',this)">범위</button>
+                </span>
+              </div>
+              <div class="col-key-multi" id="colMultiB">
+                <span class="col-key-num">1</span><input id="keyColB_1" class="col-key-inp" type="text" value="A" maxlength="3" placeholder="A">
+                <span class="col-key-num">2</span><input id="keyColB_2" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+                <span class="col-key-num">3</span><input id="keyColB_3" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+                <span class="col-key-num">4</span><input id="keyColB_4" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+                <span class="col-key-num">5</span><input id="keyColB_5" class="col-key-inp" type="text" maxlength="3" placeholder="-">
+              </div>
+              <div class="col-key-range" id="colRangeB" style="display:none">
+                <input id="keyColB_range" class="col-range-inp" type="text" maxlength="30" placeholder="예) A:E · 1:5 · A,C,E · B:D,G">
+                <span class="col-key-hint">연속: A:E · 번호: 1:5 · 개별: A,C,E</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="excel-ctrl-bar">
+          <button class="excel-ctrl-btn primary" id="excelCompareBtn" onclick="runCompare()" disabled>⚖️ 비교 실행</button>
+          <button class="excel-ctrl-btn" id="resetBtn" style="display:none" onclick="resetExcel()">↺ 초기화</button>
+        </div>
+
+        <div id="compareProgressWrap" style="display:none;margin-bottom:0.6rem">
+          <div class="compare-progress-track">
+            <div class="compare-progress-bar" id="compareProgressBar" style="width:0%"></div>
+          </div>
+          <span class="compare-progress-label" id="compareProgressLabel">비교 중...</span>
+        </div>
+
+        <div id="statusBar" style="display:none"></div>
+
+        <div id="compareSection" style="display:none;margin-top:0.75rem">
+          <div class="compare-grid">
+            <div class="card" style="padding:0.75rem 1rem">
+              <div class="card-header">
+                <span>왼쪽 파일 &nbsp;<span id="infoA"></span></span>
+                <button class="download-btn" onclick="downloadExcelTable('A')">⬇ 다운로드</button>
+              </div>
+            </div>
+            <div class="card" style="padding:0.75rem 1rem">
+              <div class="card-header">
+                <span>오른쪽 파일 &nbsp;<span id="infoB"></span></span>
+                <button class="download-btn" onclick="downloadExcelTable('B')">⬇ 다운로드</button>
+              </div>
+            </div>
+          </div>
+          <!-- 비교 결과 미리보기 (상위 50행) -->
+          <div class="cmp-preview-wrap" id="cmpPreviewWrap" style="display:none">
+            <div class="cmp-preview-tabs">
+              <button class="cmp-tab active" id="tabPrevA" onclick="showPreview('A')">왼쪽 미리보기</button>
+              <button class="cmp-tab" id="tabPrevB" onclick="showPreview('B')">오른쪽 미리보기</button>
+              <span class="cmp-preview-note">상위 200행 · 엑셀 순서 기준 · <span class="legend-match">■ 일치</span> <span class="legend-miss">■ 불일치</span></span>
+            </div>
+            <div class="cmp-preview-scroll" id="cmpPreviewTable"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 탭 2: 직접 입력 ══ -->
+      <div id="tabManual" class="tab-panel">
+        <div class="manual-hint">
+          <strong>💡 사용법</strong>
+          <ul>
+            <li>열 이름 <strong>아래 영역</strong>을 클릭하면 비교 기준 열로 <strong>선택/해제</strong>됩니다.</li>
+            <li>여러 열을 선택하면 <strong>AND 조건</strong>으로 비교합니다. (양쪽 선택 수가 같아야 함)</li>
+            <li><span class="hint-blue">■ 파란색</span> = 양쪽 모두 일치 &nbsp;·&nbsp; <span class="hint-red">■ 빨간색</span> = 한쪽에만 불일치</li>
+            <li>표의 셀을 클릭한 뒤 엑셀에서 복사한 범위를 <strong>Ctrl+V</strong>로 붙여넣으면 행이 자동으로 추가됩니다. (열 수 6개 고정, 행 수 제한 없음)</li>
+            <li>셀을 <strong>드래그</strong>하면 직사각형 범위 선택 → <strong>Ctrl+C</strong>로 범위 복사 · <strong>Esc</strong>로 해제</li>
+          </ul>
+        </div>
+        <div class="manual-bar">
+          <button class="upload-btn" id="manualCompareBtn" onclick="runManualCompare()">⚖️ 비교 실행</button>
+        </div>
+        <div id="manualStatus" style="display:none"></div>
+        <div class="compare-grid">
+          <div class="card">
+            <div class="card-header">
+              <span>왼쪽 (기준)</span>
+              <div class="card-header-actions">
+                <button class="filter-btn" id="filterBtn_left" onclick="toggleFilter('left','mismatch')">불일치만</button>
+                <button class="filter-btn filter-match-btn" id="filterMatchBtn_left" onclick="toggleFilter('left','match')">일치만</button>
+                <button class="download-btn" onclick="downloadManualTable('left')">⬇ 다운로드</button>
+                <button class="add-row-btn" onclick="addManualRow('left')">+ 행 추가</button>
+                <button class="reset-btn" onclick="resetManualSide('left')">↺ 초기화</button>
+              </div>
+            </div>
+            <div class="data-table-wrap" id="manualLeft"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span>오른쪽 (비교)</span>
+              <div class="card-header-actions">
+                <button class="filter-btn" id="filterBtn_right" onclick="toggleFilter('right','mismatch')">불일치만</button>
+                <button class="filter-btn filter-match-btn" id="filterMatchBtn_right" onclick="toggleFilter('right','match')">일치만</button>
+                <button class="download-btn" onclick="downloadManualTable('right')">⬇ 다운로드</button>
+                <button class="add-row-btn" onclick="addManualRow('right')">+ 행 추가</button>
+                <button class="reset-btn" onclick="resetManualSide('right')">↺ 초기화</button>
+              </div>
+            </div>
+            <div class="data-table-wrap" id="manualRight"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit</p></footer>
+  </div>
+
+  <script src="../../../assets/js/common.js"></script>
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

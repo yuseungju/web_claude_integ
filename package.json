@@ -1,13 +1,18 @@
 {
   "name": "sap-work-guide",
   "version": "1.0.0",
-  "description": "SAP 업무 활용 정리",
+  "description": "한 도메인 아래 경로로 나뉜 앱 모음 (nol / pgo / workKit)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "node scripts/build-site.js && node db/build-schema.js",
+    "db:build": "node db/build-schema.js",
+    "db:migrate": "node db/migrate.js",
+    "db:migrate:dry": "node db/migrate.js --dry-run"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "pg": "^8.23.0"
   }
 }

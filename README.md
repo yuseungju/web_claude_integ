@@ -1,20 +1,50 @@
 # article-writer
 
-한 저장소에 **서로 독립된 두 개의 웹**이 들어 있다. 화면·에셋·URL이 완전히 분리되어 있고
-공유하는 것은 배포 파이프라인과 (선택적으로) RDS 인스턴스뿐이다.
+한 저장소에 **서로 독립된 앱 여럿**이 들어 있고, 같은 도메인 아래 **경로로 나뉜다**.
+화면·에셋은 완전히 분리되어 있고 공유하는 것은 배포 파이프라인과 RDS 인스턴스뿐이다.
 
-| 앱 | URL | 성격 | 에셋 |
+| 앱 | URL | 소스 | 성격 |
 |---|---|---|---|
-| SAP 업무 활용 정리 | `/` | 정적 문서 사이트 | `public/assets/`, `public/process/` |
-| 사라님을 위한 포켓몬 쓸모분석 | `/pgo/` | 포켓몬GO 보유/버림 판정 도구 | `public/pgo/assets/` |
+| — (런처) | `/` | `site/index.html` | 앱 목록 |
+| SAP 업무 활용 정리 | `/nol/` | `apps/nol/public/` | 정적 문서 사이트 |
+| 사라님을 위한 포켓몬 쓸모분석 | `/pgo/` | `apps/pgo/public/` | 포켓몬GO 보유/버림 판정 도구 |
+| Work Kit | `/workKit/` | `apps/workKit/public/` | 기사·웹소설 작성, 일정 공유 등 업무 도구 |
 
-두 앱은 CSS 토큰·클래스명·JS 전역이 서로 겹치지 않는다.
-PGO 쪽은 전부 `pgo-` 접두어를 쓰고 전역은 `window.PGO*` 하나뿐이다.
-SAP 사이트 사이드바에는 `/pgo/` 링크를 넣지 않는다 (의도적 분리).
+```
+apps/<앱>/public/   →   dist/<URL경로>/   →   https://.../<URL경로>/
+```
+
+**디렉토리 구조가 곧 URL 구조다.** 앱을 추가하려면 `apps/` 아래 디렉토리를 만들고
+`scripts/build-site.js` 의 `APPS` 목록에 한 줄 넣으면 된다. URL 경로는 대소문자까지
+그대로 쓰이므로 `workKit` 처럼 적으면 `/workKit/` 이 된다.
+
+각 앱은 CSS 토큰·클래스명·JS 전역이 서로 겹치지 않는다. PGO 쪽은 전부 `pgo-` 접두어를
+쓰고 전역은 `window.PGO*` 하나뿐이다.
+
+### 경로 표기 주의
+
+`apps/nol` 은 `/nol/assets/...` 처럼 **자기 경로를 포함한 절대경로**를 쓴다.
+`apps/workKit` 은 전부 상대경로라 위치를 옮겨도 그대로 동작한다.
+새 앱을 넣을 때 절대경로를 쓴다면 반드시 `/<URL경로>/` 로 시작해야 한다.
+
+## 로컬 실행
+
+```bash
+npm install
+npm run build     # apps/ -> dist/ 조립 + db/schema_all.sql 생성
+npm start         # http://localhost:3000
+```
+
+`server.js` 는 배포와 같은 구조로 `dist/` 를 서빙한다. 앱 코드를 고쳤으면
+`npm run build` 를 다시 돌려야 반영된다.
 
 ## 배포
 
-- **정적 프론트엔드**: `main` 브랜치 push → AWS Amplify 자동 빌드 (`amplify.yml`, `baseDirectory: public`)
+- **정적 프론트엔드**: `main` 브랜치 push → AWS Amplify 자동 빌드 (`amplify.yml`, `baseDirectory: dist`)
+  빌드 단계에서 `scripts/build-site.js` 가 `apps/` 를 `dist/` 로 조립한다.
+- **DB 스키마**: 같은 빌드 단계에서 `db/migrate.js` 가 RDS 에 반영한다.
+  Amplify 환경 변수 `DB_HOST` · `DB_NAME` · `DB_USER` · `DB_PASSWORD` 가 필요하며,
+  없으면 마이그레이션만 건너뛰고 프론트엔드 배포는 계속된다. 자세한 내용은 [db/README.md](db/README.md)
 - **Lambda API**: `lambda/**` 변경 push → GitHub Actions가 `article-generate` 함수에 자동 배포
   (`.github/workflows/deploy-lambda.yml`)
 

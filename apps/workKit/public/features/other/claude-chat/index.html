@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 대화 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-wrap chat-app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span>
+            <span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <div class="chat-layout">
+      <div class="chat-topbar">
+        <a href="../../../index.html" class="back-btn">← 메뉴</a>
+        <h1 class="chat-title">🤖 AI 대화</h1>
+        <div class="chat-topbar-actions">
+          <button class="chat-act-btn save-btn"  id="btnSave"  onclick="openSaveModal()">💾 요약/저장</button>
+          <button class="chat-act-btn load-btn"  id="btnLoad"  onclick="openLoadModal()">📂 불러오기</button>
+          <button class="chat-act-btn view-btn"  id="btnView"  onclick="viewLoadedSummary()">📄 내용 조회</button>
+          <button class="chat-act-btn instr-btn" id="btnInstr" onclick="openInstrModal()">⚙️ 지침 설정</button>
+          <button class="chat-act-btn file-btn"  id="btnFile"  onclick="openMainFileModal()">📎 파일</button>
+          <button class="chat-act-btn share-btn" id="btnShare" onclick="topbarShare()">🔗 공유</button>
+          <button class="chat-act-btn clear-btn" id="btnClear" onclick="clearChat()">🗑 새 대화</button>
+        </div>
+      </div>
+
+      <div id="shareBanner" style="display:none" class="share-banner">
+        🔗 공유된 버전 기반 질의 전용 모드 · 대화 내용은 저장되지 않습니다&nbsp;&nbsp;
+        <a href="javascript:void(0)" onclick="location.href=location.pathname">내 화면으로</a>
+      </div>
+
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <div class="chat-input-bar">
+        <textarea id="chatInput" class="chat-textarea"
+          placeholder="메시지를 입력하세요… (Enter 전송 · Shift+Enter 줄바꿈)" rows="1"></textarea>
+        <button id="sendBtn" class="chat-send-btn" onclick="sendMessage()">전송</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 저장 모달 ────────────────────────────────────────── -->
+  <div class="ai-overlay" id="aiSaveModal" onclick="if(event.target===this)closeModal('aiSaveModal')">
+    <div class="ai-modal">
+      <h3>💾 요약 저장</h3>
+      <p class="ai-modal-desc">현재 대화를 AI가 요약하여 저장합니다.</p>
+      <!-- 기존 버전 로드 시 표시 -->
+      <div id="saveUpdateWrap" style="display:none" class="save-mode-wrap">
+        <label class="save-opt"><input type="radio" name="saveMode" value="update" id="modeUpdate" checked>
+          기존 버전 덮어쓰기 — <em id="saveLoadedTitle"></em></label>
+        <label class="save-opt"><input type="radio" name="saveMode" value="new" id="modeNew">
+          새 버전으로 저장</label>
+      </div>
+      <input class="ai-modal-input" id="saveTitleInput" type="text" placeholder="저장 제목" maxlength="100"
+             onkeydown="if(event.key==='Enter')confirmSave();if(event.key==='Escape')closeModal('aiSaveModal')">
+      <div class="ai-modal-btns">
+        <button onclick="closeModal('aiSaveModal')">취소</button>
+        <button class="primary" id="confirmSaveBtn" onclick="confirmSave()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 공유 저장 확인 모달 ────────────────────────────────── -->
+  <div class="ai-overlay" id="aiShareSaveModal" onclick="if(event.target===this)closeModal('aiShareSaveModal')">
+    <div class="ai-modal">
+      <h3>💾 대화 저장</h3>
+      <p class="ai-modal-desc">현재 대화를 요약하여 이 버전에 저장합니다.</p>
+      <p class="ai-modal-desc" style="color:#d97706;margin-top:.2rem">⚠️ 공유해준 사람의 AI 대화 내용에 함께 저장됩니다. 기존 내용에 덮어씌워집니다.</p>
+      <div class="ai-modal-btns">
+        <button onclick="closeModal('aiShareSaveModal')">취소</button>
+        <button class="primary" id="confirmShareSaveBtn" onclick="confirmShareSave()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 불러오기 모달 ────────────────────────────────────── -->
+  <div class="ai-overlay" id="aiLoadModal" onclick="if(event.target===this)closeModal('aiLoadModal')">
+    <div class="ai-modal ai-modal-wide">
+      <div class="ai-modal-header">
+        <h3>📂 요약 목록</h3>
+        <div class="ai-modal-toolbar">
+          <label class="chk-all-label"><input type="checkbox" id="chkAll" onchange="toggleAllCheck(this)"><span>전체선택</span></label>
+          <button class="ai-sm-btn danger" id="btnDelSel"   onclick="deleteSelected()" disabled>선택 삭제</button>
+          <button class="ai-sm-btn merge" id="btnMergeSel"  onclick="openMergeModal()" disabled>합치기</button>
+        </div>
+      </div>
+      <div class="ai-list-scroll" id="summaryList"><div class="ai-empty">불러오는 중...</div></div>
+      <div class="ai-modal-btns"><button onclick="closeModal('aiLoadModal')">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- ── 파일 관리 모달 ──────────────────────────────────── -->
+  <div class="ai-overlay" id="aiFileModal" onclick="if(event.target===this)closeModal('aiFileModal')">
+    <div class="ai-modal ai-modal-wide">
+      <h3>📎 첨부 파일 — <span id="fileModalTitle"></span></h3>
+      <div class="file-upload-bar" id="fileUploadBar">
+        <input type="file" id="fileInput" style="display:none" onchange="handleFileSelect()" multiple
+               accept=".txt,.md,.csv,.json,.pdf,.png,.jpg,.jpeg,.webp,.gif,.xlsx,.xls,.html,.htm">
+        <input type="file" id="folderInput" style="display:none" onchange="handleFolderSelect()" webkitdirectory multiple>
+        <button class="ai-sm-btn" onclick="document.getElementById('fileInput').click()">+ 파일</button>
+        <button class="ai-sm-btn folder-btn" onclick="document.getElementById('folderInput').click()">📁 폴더</button>
+        <span class="file-hint">파일 3MB↓ · 폴더 30개↓ · 전체 100MB</span>
+      </div>
+      <div id="fileList" class="file-list"><div class="ai-empty">파일 없음</div></div>
+      <div class="ai-modal-btns"><button onclick="closeModal('aiFileModal')">닫기</button></div>
+    </div>
+  </div>
+
+  <!-- ── 제목 변경 모달 ──────────────────────────────────── -->
+  <div class="ai-overlay" id="aiRenameModal" onclick="if(event.target===this)closeModal('aiRenameModal')">
+    <div class="ai-modal">
+      <h3>✏️ 제목 변경</h3>
+      <input class="ai-modal-input" id="renameTitleInput" type="text" maxlength="100"
+             onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')closeModal('aiRenameModal')">
+      <div class="ai-modal-btns">
+        <button onclick="closeModal('aiRenameModal')">취소</button>
+        <button class="primary" onclick="confirmRename()">변경</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 합치기 모달 ─────────────────────────────────────── -->
+  <div class="ai-overlay" id="aiMergeModal" onclick="if(event.target===this)closeModal('aiMergeModal')">
+    <div class="ai-modal">
+      <h3>🔀 요약 합치기</h3>
+      <p class="ai-modal-desc">중복 제거 후 새 버전 저장. 첨부 파일도 합쳐집니다.</p>
+      <input class="ai-modal-input" id="mergeTitleInput" type="text" placeholder="새 제목" maxlength="100"
+             onkeydown="if(event.key==='Enter')confirmMerge();if(event.key==='Escape')closeModal('aiMergeModal')">
+      <div class="ai-modal-btns">
+        <button onclick="closeModal('aiMergeModal')">취소</button>
+        <button class="primary" id="confirmMergeBtn" onclick="confirmMerge()">합치기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 내용 조회 모달 ──────────────────────────────────── -->
+  <div class="ai-overlay" id="aiViewModal" onclick="if(event.target===this)closeModal('aiViewModal')">
+    <div class="ai-modal ai-modal-wide">
+      <h3 id="viewModalTitle">📄 요약 내용</h3>
+      <div class="ai-view-content" id="viewContent"></div>
+      <div class="ai-modal-btns">
+        <button onclick="copyViewContent()">📋 전체 복사</button>
+        <button onclick="closeModal('aiViewModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 지침 설정 모달 ──────────────────────────────────── -->
+  <div class="ai-overlay" id="aiInstrModal" onclick="if(event.target===this)closeModal('aiInstrModal')">
+    <div class="ai-modal ai-modal-wide">
+      <h3>⚙️ 지침 설정</h3>
+      <p class="ai-modal-desc">AI가 모든 답변에 기본으로 따를 지침을 입력하세요. (역할, 말투, 주의사항 등)</p>
+      <textarea class="ai-instr-textarea" id="instrInput"
+        placeholder="예) 당신은 친절한 업무 도우미입니다. 항상 한국어로 답변하고, 간결하게 핵심만 말해주세요."
+        rows="6"></textarea>
+      <div class="ai-instr-meta" id="instrMeta"></div>
+      <div class="ai-modal-btns">
+        <button onclick="clearInstructions()" style="color:#991b1b;border-color:#fca5a5">🗑 초기화</button>
+        <button onclick="closeModal('aiInstrModal')">취소</button>
+        <button class="primary" onclick="saveInstructions()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="aiToast" class="ai-toast"></div>
+
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

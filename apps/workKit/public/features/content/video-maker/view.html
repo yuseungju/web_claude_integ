@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>동영상 보기 – WorkKit</title>
+  <link rel="stylesheet" href="../../../assets/css/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-wrap">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <a href="../../../index.html" class="header-logo" style="text-decoration:none;color:inherit">
+            <span class="logo-icon">⚙️</span><span class="logo-text">WorkKit</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="page-header">
+        <a href="index.html" class="back-btn">← 목록</a>
+        <div id="viewMeta" class="view-meta">
+          <h1 id="viewTitle" class="page-title" style="margin:0">불러오는 중...</h1>
+          <span id="viewAuthor" class="view-author"></span>
+          <span id="viewDate" class="view-date"></span>
+          <span class="badge badge-done">게시됨</span>
+        </div>
+        <div id="viewActions" style="margin-left:auto;display:flex;gap:.4rem"></div>
+      </div>
+
+      <div id="viewBody">
+        <div class="loading">불러오는 중...</div>
+      </div>
+    </main>
+
+    <footer class="app-footer"><p>© 2025 WorkKit · 일상 업무 편의 플랫폼</p></footer>
+  </div>
+
+  <!-- 미리보기 모달 -->
+  <div id="previewModal" class="preview-modal" style="display:none" onclick="closePreview()">
+    <div class="preview-inner" onclick="event.stopPropagation()">
+      <button class="preview-close" onclick="closePreview()">×</button>
+      <div id="previewContent" class="preview-content"></div>
+      <div class="preview-footer">
+        <span id="previewName" class="preview-name"></span>
+        <button class="btn primary" onclick="downloadPreview()">📥 다운로드</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="../../../assets/js/auth-header.js"></script>
+  <script src="view.js"></script>
+</body>
+</html>

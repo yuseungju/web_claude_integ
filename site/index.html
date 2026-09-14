@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>앱 목록</title>
+  <meta name="description" content="같은 도메인 아래 경로로 나뉜 앱 목록" />
+  <style>
+    :root {
+      --bg: #0f1420; --surface: #1e2536; --surface-2: #273047; --border: #2f3a54;
+      --text: #e8ecf5; --dim: #97a3bd; --mute: #6b7897; --accent: #ffcb05; --accent-2: #3b7dd8;
+      --font: 'Pretendard', -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+      --mono: 'Consolas', 'D2Coding', ui-monospace, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font); background: var(--bg); color: var(--text);
+      min-height: 100vh; line-height: 1.55; -webkit-font-smoothing: antialiased;
+      display: flex; align-items: center; justify-content: center; padding: 2rem 1.25rem;
+    }
+    .wrap { width: 100%; max-width: 880px; }
+    h1 { font-size: clamp(1.5rem, 5vw, 2.2rem); font-weight: 900; letter-spacing: -0.8px; }
+    .sub { color: var(--dim); font-size: 0.9rem; margin-top: 0.4rem; }
+    .grid {
+      display: grid; gap: 0.8rem; margin-top: 1.8rem;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .card {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      padding: 1.1rem 1.2rem; text-decoration: none; color: inherit;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      transition: border-color .15s, transform .1s, background .15s;
+    }
+    .card:hover { border-color: var(--accent-2); background: var(--surface-2); transform: translateY(-2px); }
+    .card-path { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); }
+    .card-title { font-size: 1.02rem; font-weight: 800; margin-top: 0.15rem; }
+    .card-desc { font-size: 0.8rem; color: var(--mute); line-height: 1.5; }
+    footer { margin-top: 2rem; font-size: 0.74rem; color: var(--mute); line-height: 1.7; }
+    code { font-family: var(--mono); background: var(--surface-2); padding: 0.05rem 0.3rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>앱 목록</h1>
+    <p class="sub">같은 도메인 아래 경로로 나뉘어 있습니다. 필요한 것을 고르세요.</p>
+    <div class="grid">
+<!--APPS-->
+    </div>
+    <footer>
+      각 앱은 <code>apps/&lt;이름&gt;/public/</code> 에 있고, 빌드 때 <code>dist/&lt;경로&gt;/</code> 로 복사됩니다.
+      앱을 추가하려면 디렉토리를 만들고 <code>scripts/build-site.js</code> 의 목록에 한 줄만 넣으면 됩니다.
+    </footer>
+  </div>
+</body>
+</html>
