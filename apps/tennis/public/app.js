@@ -146,6 +146,10 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.toggle('active', btn.dataset.tab === tabName));
     document.querySelectorAll('.tab-panel').forEach(panel =>
       panel.classList.toggle('active', panel.id === 'tab-' + tabName));
+    // 예약내역은 표라서 넓은 화면을 쓴다. CSS 의 :has() 를 모르는
+    // 브라우저에서도 동작하도록 body 에 표시를 붙여 둔다.
+    const panel = document.getElementById('tab-' + tabName);
+    document.body.classList.toggle('wide-tab', !!(panel && panel.classList.contains('wide')));
   }
   document.querySelectorAll('[data-tab]').forEach(el =>
     el.addEventListener('click', () => switchTab(el.dataset.tab)));

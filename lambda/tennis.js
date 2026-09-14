@@ -351,7 +351,7 @@ async function route(ctx, event, method, path) {
   /* 계정 목록 — 비밀번호는 내려보내지 않는다 */
   if (path === '/tennis/accounts' && method === 'GET') {
     const { rows } = await pool.query(
-      `SELECT a.id, a.login_id, a.label, a.is_active, a.last_sync_at, a.last_sync_status,
+      `SELECT a.id, a.login_id, a.person, a.is_active, a.last_sync_at, a.last_sync_status,
               (SELECT count(*)::int FROM tn_reservations r WHERE r.account_id = a.id) AS reservations
          FROM tn_accounts a WHERE a.device_key = $1 ORDER BY a.id`, [uid]);
     return resp(200, { accounts: rows });
@@ -361,18 +361,18 @@ async function route(ctx, event, method, path) {
   if (path === '/tennis/accounts' && method === 'POST') {
     const loginId = (body.login_id || '').trim();
     const password = body.password || '';
-    const label = (body.label || '').trim();
+    const person = (body.person || '').trim().slice(0, 60);
     if (!loginId || !password) return resp(400, { error: '아이디와 비밀번호를 입력하세요.' });
 
     const { rows } = await pool.query(
-      `INSERT INTO tn_accounts (device_key, login_id, password_enc, label)
+      `INSERT INTO tn_accounts (device_key, login_id, password_enc, person)
             VALUES ($1, $2, $3, $4)
        ON CONFLICT (device_key, login_id)
        DO UPDATE SET password_enc = EXCLUDED.password_enc,
-                     label = EXCLUDED.label,
+                     person = EXCLUDED.person,
                      updated_at = NOW()
-         RETURNING id, login_id, label, is_active`,
-      [uid, loginId, encrypt(password), label]);
+         RETURNING id, login_id, person, is_active`,
+      [uid, loginId, encrypt(password), person]);
     return resp(200, { account: rows[0] });
   }
 
@@ -384,8 +384,8 @@ async function route(ctx, event, method, path) {
   }
   if (acctM && method === 'PUT') {
     const r = await pool.query(
-      'UPDATE tn_accounts SET is_active=$1, label=COALESCE($2,label), updated_at=NOW() WHERE id=$3 AND device_key=$4',
-      [body.is_active !== false, body.label ?? null, acctM[1], uid]);
+      'UPDATE tn_accounts SET is_active=$1, person=COALESCE($2,person), updated_at=NOW() WHERE id=$3 AND device_key=$4',
+      [body.is_active !== false, body.person ?? null, acctM[1], uid]);
     if (!r.rowCount) return resp(404, { error: '계정을 찾을 수 없습니다.' });
     return resp(200, { ok: true });
   }
@@ -509,6 +509,26 @@ async function route(ctx, event, method, path) {
     return resp(200, { ok: true });
   }
 
+  /* 화면 설정값 (정산 인원 등) */
+  if (path === '/tennis/settings' && method === 'GET') {
+    const { rows } = await pool.query(
+      'SELECT name, value FROM tn_settings WHERE device_key=$1', [uid]);
+    const out = {};
+    rows.forEach(r => { out[r.name] = r.value; });
+    return resp(200, { settings: out });
+  }
+  if (path === '/tennis/settings' && method === 'POST') {
+    const items = body.settings && typeof body.settings === 'object' ? body.settings : {};
+    for (const [name, value] of Object.entries(items)) {
+      if (!/^[a-z_]{1,40}$/.test(name)) continue;
+      await pool.query(
+        `INSERT INTO tn_settings (device_key, name, value) VALUES ($1,$2,$3)
+         ON CONFLICT (device_key, name) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()`,
+        [uid, name, String(value).slice(0, 200)]);
+    }
+    return resp(200, { ok: true });
+  }
+
   /* 시작 시간대별 단가 */
   if (path === '/tennis/prices' && method === 'GET') {
     const { rows } = await pool.query(
@@ -548,7 +568,7 @@ async function route(ctx, event, method, path) {
       // 이번 달 포함 최근 3개월(현재월 -2)부터. 앞으로 잡힌 예약은 모두 포함한다.
       // 체크는 tn_checks 에 따로 있고, 기록이 없으면 기본 체크 상태로 본다.
       `SELECT r.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
-              r.team, r.people, r.collected_at, a.login_id,
+              r.team, r.people, r.collected_at, a.login_id, a.person,
               COALESCE(c.checked, TRUE) AS checked
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id

@@ -80,7 +80,8 @@
             { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '아직 없음';
       return '<div class="acc-row" data-id="' + a.id + '">' +
-        '<div class="acc-main"><strong>' + esc(a.login_id) + '</strong></div>' +
+        '<div class="acc-main"><strong>' + esc(a.login_id) + '</strong>' +
+          (a.person ? '<span class="acc-tag">' + esc(a.person) + '</span>' : '') + '</div>' +
         '<div class="acc-actions">' +
           '<button type="button" class="acc-sync">수집</button>' +
           '<button type="button" class="acc-del">삭제</button>' +
@@ -96,9 +97,10 @@
   function addAccount() {
     var id = ($('acc-id') || {}).value || '';
     var pw = ($('acc-pw') || {}).value || '';
+    var person = ($('acc-person') || {}).value || '';
     if (!id.trim() || !pw) return msg($('acc-msg'), '아이디와 비밀번호를 입력하세요.', true);
     msg($('acc-msg'), '저장 중...');
-    api('/tennis/accounts', { method: 'POST', body: { login_id: id.trim(), password: pw } })
+    api('/tennis/accounts', { method: 'POST', body: { login_id: id.trim(), password: pw, person: person.trim() } })
       .then(function () {
         $('acc-id').value = ''; $('acc-pw').value = '';
         $('acc-id').focus();                       // 연달아 여러 개 넣기 쉽게
@@ -255,7 +257,8 @@
           '<td class="resv-amt">' + (r.people != null ? r.people + '명' : '-') + '</td>' +
           '<td class="resv-amt">' + won(priceOf(r)) + '</td>' +
           '<td class="resv-no">' + esc(/^X-/.test(r.reserve_no) ? '—' : r.reserve_no) + '</td>' +
-          '<td class="resv-acct">' + esc(r.login_id) + '</td>' +
+          '<td class="resv-acct">' + esc(r.person || r.login_id) +
+            (r.person ? '<span class="acc-tag">' + esc(r.login_id) + '</span>' : '') + '</td>' +
           '</tr>';
       }).join('') +
       '</tbody></table>';
@@ -293,8 +296,9 @@
     picked.forEach(function (r) {
       var ym = String(r.use_date).slice(0, 7);
       if (months.indexOf(ym) < 0) return;
-      byAcct[r.login_id] = byAcct[r.login_id] || {};
-      byAcct[r.login_id][ym] = (byAcct[r.login_id][ym] || 0) + priceOf(r);
+      var who = r.person || r.login_id;      // 이름이 없으면 아이디로 묶는다
+      byAcct[who] = byAcct[who] || {};
+      byAcct[who][ym] = (byAcct[who][ym] || 0) + priceOf(r);
     });
 
     var names = Object.keys(byAcct).sort();
@@ -309,7 +313,7 @@
     });
 
     box.innerHTML =
-      '<table class="resv-table sum-table"><thead><tr><th>계정</th>' +
+      '<table class="resv-table sum-table"><thead><tr><th>이름</th>' +
       months.map(function (m) { return '<th class="resv-amt">' + esc(m) + '</th>'; }).join('') +
       '<th class="resv-amt">합계</th></tr></thead><tbody>' +
       names.map(function (n) {
@@ -325,6 +329,63 @@
       months.map(function (m) { return '<td class="resv-amt">' + won(totals[m]) + '</td>'; }).join('') +
       '<td class="resv-amt sum-cell">' +
         won(months.reduce(function (a, m) { return a + totals[m]; }, 0)) + '</td></tr>' +
+      '</tbody></table>';
+
+    renderSettle(picked);
+  }
+
+  /* ── 정산 ─────────────────────────────────────────────────
+   * 총액을 전체 인원으로 나눠 1인당 부담액을 구하고,
+   * 이름별로 "낸 돈 - 부담액" 을 낸다. 양수면 받을 돈, 음수면 낼 돈이다.
+   * 인원을 사람 수가 아니라 직접 받는 이유는, 예약을 잡지 않은 사람도
+   * 함께 쓰는 경우가 있어서다.
+   */
+  function renderSettle(picked) {
+    var box = $('settle-table');
+    if (!box) return;
+
+    var paid = {};
+    var total = 0;
+    (picked || []).forEach(function (r) {
+      var who = r.person || r.login_id;
+      var v = priceOf(r);
+      paid[who] = (paid[who] || 0) + v;
+      total += v;
+    });
+
+    var names = Object.keys(paid).sort();
+    var headcount = Number(($('settle-people') || {}).value) || 0;
+    if (!names.length || headcount < 1) {
+      box.innerHTML = '<p class="resv-empty">체크된 내역과 전체 인원을 입력하면 정산이 나옵니다.</p>';
+      return;
+    }
+
+    var share = Math.round(total / headcount);
+    box.innerHTML =
+      '<table class="resv-table sum-table"><thead><tr>' +
+      '<th>이름</th><th class="resv-amt">낸 돈</th><th class="resv-amt">부담액</th>' +
+      '<th class="resv-amt">정산</th></tr></thead><tbody>' +
+      names.map(function (n) {
+        var diff = paid[n] - share;
+        var cls = diff > 0 ? 'settle-get' : (diff < 0 ? 'settle-pay' : 'settle-even');
+        var text = diff > 0 ? won(diff) + ' 받기'
+          : (diff < 0 ? won(-diff) + ' 내기' : '정산 없음');
+        return '<tr><td class="resv-acct">' + esc(n) + '</td>' +
+          '<td class="resv-amt">' + won(paid[n]) + '</td>' +
+          '<td class="resv-amt">' + won(share) + '</td>' +
+          '<td class="resv-amt ' + cls + '">' + text + '</td></tr>';
+      }).join('') +
+      // 예약을 잡지 않은 인원도 부담액을 낸다. 이름을 모르니 묶어서 보여준다.
+      (headcount > names.length
+        ? '<tr><td class="settle-rest">그 외 ' + (headcount - names.length) + '명</td>' +
+          '<td class="resv-amt">0원</td>' +
+          '<td class="resv-amt">' + won(share) + '</td>' +
+          '<td class="resv-amt settle-pay">각 ' + won(share) + ' 내기</td></tr>'
+        : '') +
+      '<tr class="sum-row"><td>합계</td>' +
+      '<td class="resv-amt">' + won(total) + '</td>' +
+      '<td class="resv-amt">' + headcount + '명 × ' + won(share) + '</td>' +
+      '<td class="resv-amt sum-cell">1인당 ' + won(share) + '</td></tr>' +
       '</tbody></table>';
   }
 
@@ -408,6 +469,15 @@
       }
     });
 
+    var people = $('settle-people');
+    if (people) {
+      people.addEventListener('input', function () { renderSummary(); });
+      people.addEventListener('change', function () {
+        api('/tennis/settings', { method: 'POST', body: { settings: { headcount: people.value } } })
+          .catch(function () { /* 저장 실패해도 화면 계산은 그대로 된다 */ });
+      });
+    }
+
     var table = $('resv-table');
     if (table) table.addEventListener('change', function (e) {
       if (e.target.id === 'chk-all') return setAll(e.target.checked);
@@ -417,7 +487,14 @@
     });
 
     loadAccounts();
-    loadPrices().then(loadReservations);
+    api('/tennis/settings')
+      .then(function (d) {
+        var n = (d.settings || {}).headcount;
+        if (n && $('settle-people')) $('settle-people').value = n;
+      })
+      .catch(function () { /* 없으면 기본값을 쓴다 */ })
+      .then(function () { return loadPrices(); })
+      .then(loadReservations);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

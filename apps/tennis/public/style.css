@@ -641,3 +641,37 @@ footer strong { color: #6e7681; }
   .price-row { flex-wrap: wrap; }
   .price-row .price-del { margin-left: 0; }
 }
+
+/* ─── 예약내역 탭은 넓은 화면을 쓴다 ────────────────────────────
+   다른 탭은 입력 폼이라 680px 이 읽기 좋지만, 예약내역은 표라서
+   좁으면 가로 스크롤만 생긴다. 이 탭이 열렸을 때만 컨테이너를 넓힌다. */
+body:has(#tab-history.tab-panel.active) .container { max-width: 1400px; }
+
+/* :has() 를 모르는 브라우저를 위한 대비 — JS 가 body 에 붙여 준다 */
+body.wide-tab .container { max-width: 1400px; }
+
+.container { transition: max-width 0.15s ease; }
+
+/* 넓어져도 표는 화면을 넘지 않는다 */
+#tab-history .resv-wrap { max-width: 100%; }
+
+/* ── 정산 ── */
+.settle-input { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; }
+.settle-input label { color: #8b949e; font-size: 0.86rem; }
+.settle-input input {
+  width: 110px;
+  padding: 9px 11px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 0.86rem;
+  text-align: right;
+}
+.settle-input input:focus { outline: none; border-color: #58a6ff; }
+
+.settle-get  { color: #3fb950; }   /* 받을 돈 */
+.settle-pay  { color: #f85149; }   /* 낼 돈 */
+.settle-even { color: #8b949e; }
+
+.settle-rest { color: #8b949e; }

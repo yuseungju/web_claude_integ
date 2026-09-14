@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS tn_accounts (
   id           SERIAL       PRIMARY KEY,
   device_key   TEXT         NOT NULL,
   login_id     VARCHAR(100) NOT NULL,
+  person       VARCHAR(60)  NOT NULL DEFAULT '',
   password_enc TEXT         NOT NULL,
   label        VARCHAR(100) NOT NULL DEFAULT '',
   is_active    BOOLEAN      NOT NULL DEFAULT TRUE,
@@ -75,4 +76,18 @@ CREATE TABLE IF NOT EXISTS tn_prices (
   price      INTEGER  NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (device_key, start_hour)
+);
+
+-- 계정 주인 이름 — 한 사람이 계정을 여러 개 쓰므로 이름으로 묶어 정산한다.
+-- 이미 만들어진 테이블에는 없는 컬럼이라 따로 붙인다
+-- (CREATE TABLE IF NOT EXISTS 는 기존 테이블을 고치지 않는다).
+ALTER TABLE tn_accounts ADD COLUMN IF NOT EXISTS person VARCHAR(60) NOT NULL DEFAULT '';
+
+-- 화면 설정값 (정산 인원 등) — 키/값 한 줄씩
+CREATE TABLE IF NOT EXISTS tn_settings (
+  device_key TEXT        NOT NULL,
+  name       VARCHAR(40) NOT NULL,
+  value      TEXT        NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (device_key, name)
 );
