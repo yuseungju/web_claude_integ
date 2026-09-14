@@ -1,56 +1,41 @@
 /**
- * 예약내역 탭 — 대치유수지 예약 사이트 계정 목록과 예약완료 내역.
+ * 예약내역 탭 — 대치유수지 계정 목록 · 예약완료 내역 · 계정별 월 정산.
  *
- * 이 웹의 로그인과는 아무 상관이 없다. 브라우저가 한 번 발급한 기기 키로
- * 목록을 구분한다(포켓몬 보관함과 같은 방식). 여기 등록하는 건 오로지
- * 대치유수지 사이트에 자동 로그인할 계정이다. 여러 개 등록할 수 있다.
+ * 이 웹의 로그인과는 아무 상관이 없다. 내부에서 함께 보는 하나의 공용
+ * 목록이라 열쇠를 나누지 않는다. 여기 등록하는 건 오로지 대치유수지
+ * 사이트에 자동 로그인할 계정이고, 여러 개 등록할 수 있다.
  *
  * 서버(lambda/tennis.js)가 계정마다 직접 로그인해서 긁어오므로
  * 이 화면은 목록을 보여주고 수집을 시작시키는 역할만 한다.
+ *
+ * 금액은 서버가 아니라 여기서 계산한다. 체크를 껐다 켤 때마다 곧바로
+ * 합계가 바뀌어야 하는데, 그때마다 서버를 다시 부르면 굼뜨기 때문이다.
  */
 (function () {
   'use strict';
 
   var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
-  var LS_KEY = 'tennis.deviceKey.v1';
+  // 서버는 이 값으로 행을 묶을 뿐이다. 나중에 목록을 나누고 싶으면 여기만 바꾸면 된다.
+  var LIST_KEY = 'tennis-shared-list';
 
   var $ = function (id) { return document.getElementById(id); };
 
-  var KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
-
-  /**
-   * 동기화 코드 — 목록을 서버에서 묶는 열쇠다.
-   * 처음 오면 무작위로 만들어 저장하고, 다른 PC 에서 같은 코드를 넣으면
-   * 같은 목록이 보인다. 그래서 "기기 키" 가 아니라 사용자가 옮길 수 있는 값이다.
-   */
-  function deviceKey() {
-    var k = '';
-    try { k = localStorage.getItem(LS_KEY) || ''; } catch (e) { /* 저장이 막힌 환경 */ }
-    if (!KEY_RE.test(k)) {
-      k = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
-        : 'k-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
-      try { localStorage.setItem(LS_KEY, k); } catch (e) { /* 이번 세션만 유지된다 */ }
-    }
-    return k;
-  }
-
-  function setDeviceKey(k) {
-    try { localStorage.setItem(LS_KEY, k); } catch (e) { /* 저장이 막힌 환경 */ }
-  }
+  var state = { rows: [], prices: [] };     // 화면이 들고 있는 현재 자료
 
   function api(path, opts) {
     opts = opts || {};
     var body = opts.body || {};
     var url = API + path;
-    if (!opts.method || opts.method === 'GET' || opts.method === 'DELETE') {
-      url += (path.indexOf('?') < 0 ? '?' : '&') + 'key=' + encodeURIComponent(deviceKey());
+    var method = opts.method || 'GET';
+    if (method === 'GET' || method === 'DELETE') {
+      url += (path.indexOf('?') < 0 ? '?' : '&') + 'key=' + encodeURIComponent(LIST_KEY);
     } else {
-      body.key = deviceKey();
+      body.key = LIST_KEY;
     }
     return fetch(url, {
-      method: opts.method || 'GET',
+      method: method,
       headers: { 'Content-Type': 'application/json' },
-      body: (opts.method && opts.method !== 'GET') ? JSON.stringify(body) : undefined,
+      body: method === 'GET' ? undefined : JSON.stringify(body),
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         if (!res.ok) throw new Error(data.error || ('요청 실패 (' + res.status + ')'));
@@ -71,6 +56,8 @@
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   };
+
+  var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
 
   /* ── 계정 ─────────────────────────────────────────────── */
   function loadAccounts() {
@@ -93,10 +80,7 @@
             { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         : '아직 없음';
       return '<div class="acc-row" data-id="' + a.id + '">' +
-        '<div class="acc-main">' +
-          '<strong>' + esc(a.login_id) + '</strong>' +
-          (a.label ? '<span class="acc-tag">' + esc(a.label) + '</span>' : '') +
-        '</div>' +
+        '<div class="acc-main"><strong>' + esc(a.login_id) + '</strong></div>' +
         '<div class="acc-actions">' +
           '<button type="button" class="acc-sync">수집</button>' +
           '<button type="button" class="acc-del">삭제</button>' +
@@ -112,12 +96,11 @@
   function addAccount() {
     var id = ($('acc-id') || {}).value || '';
     var pw = ($('acc-pw') || {}).value || '';
-    var label = ($('acc-label') || {}).value || '';
     if (!id.trim() || !pw) return msg($('acc-msg'), '아이디와 비밀번호를 입력하세요.', true);
     msg($('acc-msg'), '저장 중...');
-    api('/tennis/accounts', { method: 'POST', body: { login_id: id.trim(), password: pw, label: label.trim() } })
+    api('/tennis/accounts', { method: 'POST', body: { login_id: id.trim(), password: pw } })
       .then(function () {
-        $('acc-id').value = ''; $('acc-pw').value = ''; $('acc-label').value = '';
+        $('acc-id').value = ''; $('acc-pw').value = '';
         $('acc-id').focus();                       // 연달아 여러 개 넣기 쉽게
         msg($('acc-msg'), '저장했습니다. 계속 추가할 수 있습니다.');
         return loadAccounts();
@@ -164,34 +147,105 @@
     });
   }
 
-  /* ── 내역 ─────────────────────────────────────────────── */
-  function loadReservations() {
-    return api('/tennis/reservations').then(function (d) { renderReservations(d.reservations || []); })
-      .catch(function (e) {
-        var box = $('resv-table');
-        if (box) box.innerHTML = '<p class="error-msg">' + esc(e.message) + '</p>';
+  /* ── 단가 ─────────────────────────────────────────────── */
+  function loadPrices() {
+    return api('/tennis/prices').then(function (d) {
+      state.prices = (d.prices || []).map(function (p) {
+        return { hour: Number(p.start_hour), price: Number(p.price) };
       });
+      renderPrices();
+    }).catch(function (e) { msg($('price-msg'), e.message, true); });
   }
 
-  function renderReservations(list) {
+  function renderPrices() {
+    var box = $('price-list');
+    if (!box) return;
+    if (!state.prices.length) state.prices = [{ hour: 19, price: 0 }];
+    box.innerHTML = state.prices.map(function (p, i) {
+      return '<div class="price-row" data-i="' + i + '">' +
+        '<input type="number" class="price-hour" min="0" max="23" value="' + p.hour + '">' +
+        '<span class="price-sep">시 시작 →</span>' +
+        '<input type="number" class="price-won" min="0" step="100" value="' + p.price + '">' +
+        '<span class="price-sep">원</span>' +
+        '<button type="button" class="price-del">삭제</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  function readPrices() {
+    return [].slice.call(document.querySelectorAll('#price-list .price-row')).map(function (row) {
+      return {
+        hour: Number((row.querySelector('.price-hour') || {}).value),
+        price: Number((row.querySelector('.price-won') || {}).value),
+      };
+    }).filter(function (p) { return Number.isInteger(p.hour) && p.hour >= 0 && p.hour <= 23; });
+  }
+
+  function savePrices() {
+    state.prices = readPrices();
+    msg($('price-msg'), '저장 중...');
+    api('/tennis/prices', { method: 'POST', body: { prices: state.prices } })
+      .then(function (d) {
+        state.prices = (d.prices || []).map(function (p) {
+          return { hour: Number(p.start_hour), price: Number(p.price) };
+        });
+        renderPrices();
+        renderReservations();          // 금액 열까지 다시 그린다
+        msg($('price-msg'), '저장했습니다.');
+      })
+      .catch(function (e) { msg($('price-msg'), e.message, true); });
+  }
+
+  /** "19:00~21:00" 에서 시작 시각(19)을 뽑는다 */
+  function startHour(useTime) {
+    var m = String(useTime || '').match(/(\d{1,2}):\d{2}/);
+    return m ? Number(m[1]) : null;
+  }
+
+  function priceOf(row) {
+    var h = startHour(row.use_time);
+    if (h == null) return 0;
+    for (var i = 0; i < state.prices.length; i++) {
+      if (state.prices[i].hour === h) return state.prices[i].price || 0;
+    }
+    return 0;
+  }
+
+  /* ── 내역 ─────────────────────────────────────────────── */
+  function loadReservations() {
+    return api('/tennis/reservations').then(function (d) {
+      state.rows = d.reservations || [];
+      renderReservations();
+    }).catch(function (e) {
+      var box = $('resv-table');
+      if (box) box.innerHTML = '<p class="error-msg">' + esc(e.message) + '</p>';
+    });
+  }
+
+  function renderReservations() {
     var box = $('resv-table');
     var cnt = $('resv-count');
+    var list = state.rows;
     if (cnt) cnt.textContent = list.length ? '(' + list.length + '건)' : '';
     if (!box) return;
     if (!list.length) {
       box.innerHTML = '<p class="resv-empty">아직 수집한 내역이 없습니다.</p>';
+      renderSummary();
       return;
     }
     // 모든 계정의 내역을 한 표로 합치고, 어느 계정으로 잡은 건지는 맨 뒤에 붙인다
     box.innerHTML =
       '<table class="resv-table"><thead><tr>' +
+      '<th class="resv-chk"><input type="checkbox" id="chk-all" title="전체 선택"></th>' +
       '<th>#</th><th>이용일</th><th>요일</th><th>시간</th><th>시설</th>' +
-      '<th>단체</th><th>인원</th><th>접수번호</th><th>계정</th>' +
+      '<th>단체</th><th>인원</th><th>금액</th><th>접수번호</th><th>계정</th>' +
       '</tr></thead><tbody>' +
       list.map(function (r, i) {
         var d = r.use_date ? String(r.use_date).slice(0, 10) : '';
         var dow = d ? '일월화수목금토'.charAt(new Date(d + 'T00:00:00').getDay()) : '';
-        return '<tr>' +
+        var on = r.checked !== false;
+        return '<tr class="' + (on ? '' : 'row-off') + '" data-no="' + esc(r.reserve_no) + '">' +
+          '<td class="resv-chk"><input type="checkbox" class="row-chk"' + (on ? ' checked' : '') + '></td>' +
           '<td class="resv-idx">' + (i + 1) + '</td>' +
           '<td>' + esc(d || '-') + '</td>' +
           '<td class="resv-dow">' + esc(dow) + '</td>' +
@@ -199,62 +253,142 @@
           '<td>' + esc(r.facility || '-') + '</td>' +
           '<td>' + esc(r.team || '-') + '</td>' +
           '<td class="resv-amt">' + (r.people != null ? r.people + '명' : '-') + '</td>' +
+          '<td class="resv-amt">' + won(priceOf(r)) + '</td>' +
           '<td class="resv-no">' + esc(/^X-/.test(r.reserve_no) ? '—' : r.reserve_no) + '</td>' +
-          '<td class="resv-acct">' + esc(r.login_id) +
-            (r.label ? '<span class="acc-tag">' + esc(r.label) + '</span>' : '') + '</td>' +
+          '<td class="resv-acct">' + esc(r.login_id) + '</td>' +
           '</tr>';
       }).join('') +
       '</tbody></table>';
+
+    var all = $('chk-all');
+    if (all) all.checked = list.every(function (r) { return r.checked !== false; });
+    renderSummary();
   }
 
-  /* ── 동기화 코드 ──────────────────────────────────────── */
-  function initSyncCode() {
-    var field = $('sync-code');
-    if (field) field.value = deviceKey();
+  /* ── 정산 ─────────────────────────────────────────────── */
+  function renderSummary() {
+    var box = $('sum-table');
+    if (!box) return;
 
-    var copyBtn = $('sync-copy');
-    if (copyBtn) copyBtn.addEventListener('click', function () {
-      var v = ($('sync-code') || {}).value || '';
-      var done = function () { msg($('sync-msg'), '복사했습니다. 다른 PC 에서 이 코드를 넣으세요.'); };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(v).then(done, function () {
-          msg($('sync-msg'), '복사가 막혀 있습니다. 코드를 직접 선택해 복사하세요.', true);
-        });
-      } else {
-        // 클립보드 API 가 없는 환경에서는 선택만 해 준다
-        if (field && field.select) field.select();
-        done();
-      }
+    var picked = state.rows.filter(function (r) { return r.checked !== false && r.use_date; });
+    if (!picked.length) {
+      box.innerHTML = '<p class="resv-empty">체크된 내역이 없습니다.</p>';
+      return;
+    }
+
+    // 최근 3개월(이번 달 포함). 앞으로 잡힌 예약도 그 달에 합산한다.
+    var now = new Date();
+    var months = [];
+    for (var k = 2; k >= 0; k--) {
+      var d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+      months.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+    }
+    picked.forEach(function (r) {
+      var ym = String(r.use_date).slice(0, 7);
+      if (months.indexOf(ym) < 0) months.push(ym);
+    });
+    months = months.sort().slice(-3);
+
+    var byAcct = {};
+    picked.forEach(function (r) {
+      var ym = String(r.use_date).slice(0, 7);
+      if (months.indexOf(ym) < 0) return;
+      byAcct[r.login_id] = byAcct[r.login_id] || {};
+      byAcct[r.login_id][ym] = (byAcct[r.login_id][ym] || 0) + priceOf(r);
     });
 
-    var applyBtn = $('sync-apply');
-    if (applyBtn) applyBtn.addEventListener('click', function () {
-      var v = (($('sync-code') || {}).value || '').trim();
-      if (!KEY_RE.test(v)) {
-        return msg($('sync-msg'), '영문·숫자·하이픈 8~64자여야 합니다.', true);
-      }
-      setDeviceKey(v);
-      msg($('sync-msg'), '코드를 적용했습니다. 목록을 다시 불러옵니다.');
-      loadAccounts();
-      loadReservations();
+    var names = Object.keys(byAcct).sort();
+    if (!names.length) {
+      box.innerHTML = '<p class="resv-empty">최근 3개월에 해당하는 체크 내역이 없습니다.</p>';
+      return;
+    }
+
+    var totals = {};
+    months.forEach(function (m) {
+      totals[m] = names.reduce(function (a, n) { return a + (byAcct[n][m] || 0); }, 0);
+    });
+
+    box.innerHTML =
+      '<table class="resv-table sum-table"><thead><tr><th>계정</th>' +
+      months.map(function (m) { return '<th class="resv-amt">' + esc(m) + '</th>'; }).join('') +
+      '<th class="resv-amt">합계</th></tr></thead><tbody>' +
+      names.map(function (n) {
+        var sum = months.reduce(function (a, m) { return a + (byAcct[n][m] || 0); }, 0);
+        return '<tr><td class="resv-acct">' + esc(n) + '</td>' +
+          months.map(function (m) {
+            var v = byAcct[n][m] || 0;
+            return '<td class="resv-amt">' + (v ? won(v) : '-') + '</td>';
+          }).join('') +
+          '<td class="resv-amt sum-cell">' + won(sum) + '</td></tr>';
+      }).join('') +
+      '<tr class="sum-row"><td>합계</td>' +
+      months.map(function (m) { return '<td class="resv-amt">' + won(totals[m]) + '</td>'; }).join('') +
+      '<td class="resv-amt sum-cell">' +
+        won(months.reduce(function (a, m) { return a + totals[m]; }, 0)) + '</td></tr>' +
+      '</tbody></table>';
+  }
+
+  /* ── 체크 ─────────────────────────────────────────────── */
+  function setChecked(no, on) {
+    var row = null;
+    for (var i = 0; i < state.rows.length; i++) {
+      if (state.rows[i].reserve_no === no) { row = state.rows[i]; break; }
+    }
+    if (!row) return Promise.resolve();
+    row.checked = on;                       // 먼저 화면을 바꾸고
+    renderReservations();                   // 합계가 곧바로 반영된다
+    return api('/tennis/check', { method: 'POST', body: { reserve_no: no, checked: on } })
+      .catch(function (e) {                 // 실패하면 되돌린다
+        row.checked = !on;
+        renderReservations();
+        msg($('price-msg'), '체크 저장 실패: ' + e.message, true);
+      });
+  }
+
+  function setAll(on) {
+    state.rows.forEach(function (r) { r.checked = on; });
+    renderReservations();
+    // 한꺼번에 보내면 사이트가 아니라 우리 서버라 부담은 적지만, 순서대로 보낸다
+    state.rows.reduce(function (chain, r) {
+      return chain.then(function () {
+        return api('/tennis/check', { method: 'POST', body: { reserve_no: r.reserve_no, checked: on } });
+      });
+    }, Promise.resolve()).catch(function (e) {
+      msg($('price-msg'), '체크 저장 실패: ' + e.message, true);
     });
   }
 
   /* ── 연결 ─────────────────────────────────────────────── */
   function init() {
-    initSyncCode();
-
     var addBtn = $('acc-add-btn');
     if (addBtn) addBtn.addEventListener('click', addAccount);
 
-    // 메모 칸에서 엔터 → 바로 추가 (여러 개 넣을 때 편하다)
-    var labelField = $('acc-label');
-    if (labelField) labelField.addEventListener('keydown', function (e) {
+    var pwField = $('acc-pw');
+    if (pwField) pwField.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); addAccount(); }
     });
 
     var syncBtn = $('sync-btn');
     if (syncBtn) syncBtn.addEventListener('click', syncAll);
+
+    var addPrice = $('price-add');
+    if (addPrice) addPrice.addEventListener('click', function () {
+      state.prices = readPrices();
+      state.prices.push({ hour: 17, price: 0 });
+      renderPrices();
+    });
+
+    var savePrice = $('price-save');
+    if (savePrice) savePrice.addEventListener('click', savePrices);
+
+    var priceBox = $('price-list');
+    if (priceBox) priceBox.addEventListener('click', function (e) {
+      if (!e.target.classList.contains('price-del')) return;
+      state.prices = readPrices();
+      var row = e.target.closest('.price-row');
+      state.prices.splice(Number(row.dataset.i), 1);
+      renderPrices();
+    });
 
     var list = $('acc-list');
     if (list) list.addEventListener('click', function (e) {
@@ -274,8 +408,16 @@
       }
     });
 
+    var table = $('resv-table');
+    if (table) table.addEventListener('change', function (e) {
+      if (e.target.id === 'chk-all') return setAll(e.target.checked);
+      if (!e.target.classList.contains('row-chk')) return;
+      var tr = e.target.closest('tr');
+      if (tr) setChecked(tr.dataset.no, e.target.checked);
+    });
+
     loadAccounts();
-    loadReservations();
+    loadPrices().then(loadReservations);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

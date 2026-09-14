@@ -439,8 +439,21 @@ async function route(ctx, event, method, path) {
            r.team, r.people, r.page_no, r.raw]);
         saved++;
       }
+      // 현재월 -2 보다 오래된 건은 화면에도 안 나오므로 그때그때 걷어낸다
+      const old = await client.query(
+        `DELETE FROM tn_reservations
+          WHERE device_key = $1
+            AND use_date IS NOT NULL
+            AND use_date < date_trunc('month', CURRENT_DATE) - INTERVAL '2 months'`, [uid]);
+      // 사라진 예약의 체크 기록도 같이 정리한다
+      await client.query(
+        `DELETE FROM tn_checks c
+          WHERE c.device_key = $1
+            AND NOT EXISTS (SELECT 1 FROM tn_reservations r
+                             WHERE r.device_key = c.device_key AND r.reserve_no = c.reserve_no)`, [uid]);
       await client.query('COMMIT');
       result.removed = gone.rowCount;
+      result.purged = old.rowCount;
     } catch (e) {
       await client.query('ROLLBACK');
       client.release();
@@ -484,14 +497,64 @@ async function route(ctx, event, method, path) {
     return resp(200, out);
   }
 
+  /* 행별 체크 — 정산에 포함할지. 접수번호로 묶어 재수집해도 유지된다 */
+  if (path === '/tennis/check' && method === 'POST') {
+    const no = String(body.reserve_no || '');
+    if (!no) return resp(400, { error: 'reserve_no 가 필요합니다.' });
+    await pool.query(
+      `INSERT INTO tn_checks (device_key, reserve_no, checked) VALUES ($1,$2,$3)
+       ON CONFLICT (device_key, reserve_no)
+       DO UPDATE SET checked = EXCLUDED.checked, updated_at = NOW()`,
+      [uid, no, body.checked !== false]);
+    return resp(200, { ok: true });
+  }
+
+  /* 시작 시간대별 단가 */
+  if (path === '/tennis/prices' && method === 'GET') {
+    const { rows } = await pool.query(
+      'SELECT start_hour, price FROM tn_prices WHERE device_key=$1 ORDER BY start_hour', [uid]);
+    return resp(200, { prices: rows });
+  }
+  if (path === '/tennis/prices' && method === 'POST') {
+    const list = Array.isArray(body.prices) ? body.prices : [];
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM tn_prices WHERE device_key=$1', [uid]);
+      for (const p of list) {
+        const h = Number(p.hour);
+        const v = Number(p.price);
+        if (!Number.isInteger(h) || h < 0 || h > 23) continue;
+        await client.query(
+          'INSERT INTO tn_prices (device_key, start_hour, price) VALUES ($1,$2,$3) ' +
+          'ON CONFLICT (device_key, start_hour) DO UPDATE SET price=EXCLUDED.price, updated_at=NOW()',
+          [uid, h, Number.isFinite(v) ? Math.round(v) : 0]);
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      client.release();
+      return resp(500, { error: '단가 저장 실패: ' + e.message });
+    }
+    client.release();
+    const { rows } = await pool.query(
+      'SELECT start_hour, price FROM tn_prices WHERE device_key=$1 ORDER BY start_hour', [uid]);
+    return resp(200, { prices: rows });
+  }
+
   /* 모든 계정의 예약완료 내역 취합 */
   if (path === '/tennis/reservations' && method === 'GET') {
     const { rows } = await pool.query(
+      // 이번 달 포함 최근 3개월(현재월 -2)부터. 앞으로 잡힌 예약은 모두 포함한다.
+      // 체크는 tn_checks 에 따로 있고, 기록이 없으면 기본 체크 상태로 본다.
       `SELECT r.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
-              r.team, r.people, r.collected_at, a.login_id, a.label
+              r.team, r.people, r.collected_at, a.login_id,
+              COALESCE(c.checked, TRUE) AS checked
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id
+         LEFT JOIN tn_checks c ON c.device_key = r.device_key AND c.reserve_no = r.reserve_no
         WHERE r.device_key = $1
+          AND (r.use_date IS NULL OR r.use_date >= date_trunc('month', CURRENT_DATE) - INTERVAL '2 months')
         ORDER BY r.use_date ASC NULLS LAST, r.facility ASC, r.use_time ASC, r.id ASC
         LIMIT 2000`, [uid]);
     return resp(200, { reservations: rows, total: rows.length });

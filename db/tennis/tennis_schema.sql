@@ -53,3 +53,26 @@ CREATE TABLE IF NOT EXISTS tn_reservations (
 );
 CREATE INDEX IF NOT EXISTS idx_tn_reservations_device ON tn_reservations(device_key, use_date DESC);
 CREATE INDEX IF NOT EXISTS idx_tn_reservations_acct   ON tn_reservations(account_id);
+
+-- 행별 체크 (정산에 포함할지)
+--
+-- tn_reservations 는 수집할 때마다 통째로 지웠다 다시 넣는다. 체크를 거기
+-- 두면 매번 사라지므로 따로 뺐다. 접수번호(reserve_no)로 묶어 두면
+-- 다시 수집해도 같은 예약은 체크가 그대로 유지된다.
+CREATE TABLE IF NOT EXISTS tn_checks (
+  device_key TEXT        NOT NULL,
+  reserve_no VARCHAR(80) NOT NULL,
+  checked    BOOLEAN     NOT NULL DEFAULT TRUE,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (device_key, reserve_no)
+);
+
+-- 시작 시간대별 단가 — "17시 얼마, 19시 얼마" 를 넣어 두면
+-- 체크된 예약의 시작 시각을 보고 금액을 매긴다.
+CREATE TABLE IF NOT EXISTS tn_prices (
+  device_key TEXT     NOT NULL,
+  start_hour SMALLINT NOT NULL CHECK (start_hour >= 0 AND start_hour <= 23),
+  price      INTEGER  NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (device_key, start_hour)
+);

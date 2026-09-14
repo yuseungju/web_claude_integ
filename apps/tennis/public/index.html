@@ -300,24 +300,7 @@
 
       <div id="hist-main">
 
-        <div class="field-card">
-          <div class="field-label">동기화 코드</div>
-          <p class="step-desc">
-            계정 목록과 수집한 내역은 이 코드로 묶여 서버에 저장됩니다.
-            <strong>다른 PC에서 같은 코드를 넣으면 같은 목록이 그대로 보입니다.</strong>
-            아래 코드를 복사해 두세요 — 이 브라우저 데이터를 지우면 코드도 사라집니다.
-          </p>
-          <div class="sync-row">
-            <input type="text" id="sync-code" spellcheck="false" autocomplete="off">
-            <button type="button" id="sync-copy">복사</button>
-            <button type="button" id="sync-apply">적용</button>
-          </div>
-          <div id="sync-msg" class="error-msg hidden"></div>
-          <p class="step-tip sync-warn">
-            코드를 아는 사람은 이 목록을 볼 수 있습니다. 짧거나 뻔한 값으로 바꾸지 마세요.
-            (영문·숫자·하이픈 8~64자)
-          </p>
-        </div>
+div>
 
         <div class="field-card">
           <div class="field-label">
@@ -331,7 +314,7 @@
             비밀번호는 암호화해 보관하고 화면에 다시 보여주지 않습니다.
           </p>
 
-          <div class="field-row-three">
+          <div class="field-row-two">
             <div class="input-wrap">
               <label for="acc-id">아이디</label>
               <input type="text" id="acc-id" autocomplete="off" placeholder="대치유수지 아이디">
@@ -339,10 +322,6 @@
             <div class="input-wrap">
               <label for="acc-pw">비밀번호</label>
               <input type="password" id="acc-pw" autocomplete="new-password" placeholder="••••••••">
-            </div>
-            <div class="input-wrap">
-              <label for="acc-label">메모 <span class="step-tip">(선택)</span></label>
-              <input type="text" id="acc-label" placeholder="예: 본인 / 가족">
             </div>
           </div>
           <button type="button" id="acc-add-btn" class="run-btn">계정 추가</button>
@@ -358,6 +337,29 @@
           </p>
           <button type="button" id="sync-btn" class="run-btn">전체 계정 수집</button>
           <div id="sync-log" class="run-result hidden"></div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">시작 시간대별 단가</div>
+          <p class="step-desc">
+            체크된 예약의 <strong>시작 시각</strong>을 보고 금액을 매깁니다.
+            예를 들어 <code>17</code> 에 12000, <code>19</code> 에 18000 을 넣으면
+            <code>19:00~21:00</code> 예약은 18,000원으로 계산됩니다.
+          </p>
+          <div id="price-list" class="price-list"></div>
+          <div class="price-actions">
+            <button type="button" id="price-add">＋ 시간대 추가</button>
+            <button type="button" id="price-save" class="run-btn">단가 저장 후 계산</button>
+          </div>
+          <div id="price-msg" class="error-msg hidden"></div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">
+            계정별 월 합계
+            <span class="step-tip">체크된 건만 · 최근 3개월</span>
+          </div>
+          <div id="sum-table" class="resv-wrap"></div>
         </div>
 
         <div class="field-card">

@@ -579,3 +579,65 @@ footer strong { color: #6e7681; }
   .sync-row input { flex: 1 1 100%; }
   .sync-row button { flex: 1; }
 }
+
+/* ── 단가 입력 ── */
+.price-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 12px; }
+.price-row  { display: flex; align-items: center; gap: 8px; }
+.price-row input {
+  width: 110px;
+  padding: 9px 11px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 0.86rem;
+  text-align: right;
+}
+.price-row input:focus { outline: none; border-color: #58a6ff; }
+.price-row .price-hour { width: 70px; }
+.price-sep { color: #8b949e; font-size: 0.82rem; white-space: nowrap; }
+.price-row .price-del {
+  margin-left: auto;
+  background: none;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: #8b949e;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.price-row .price-del:hover { color: #f85149; border-color: #f85149; }
+
+.price-actions { display: flex; gap: 8px; align-items: center; }
+.price-actions #price-add {
+  flex: none;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 11px 16px;
+  color: #e6edf3;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.price-actions #price-add:hover { border-color: #58a6ff; color: #58a6ff; }
+.price-actions .run-btn { flex: 1; margin: 0; }
+
+/* ── 체크 열 ── */
+.resv-chk { width: 1%; text-align: center; }
+.resv-chk input { width: 15px; height: 15px; accent-color: #58a6ff; cursor: pointer; }
+.resv-table tbody tr.row-off td { opacity: 0.4; }
+.resv-table tbody tr.row-off td.resv-chk { opacity: 1; }
+
+/* ── 월 합계 ── */
+.sum-table td, .sum-table th { white-space: nowrap; }
+.sum-cell { color: #58a6ff; font-weight: 600; }
+.sum-row td {
+  border-top: 1px solid #30363d;
+  background: #161b22;
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .price-row { flex-wrap: wrap; }
+  .price-row .price-del { margin-left: 0; }
+}
