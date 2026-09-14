@@ -41,8 +41,29 @@ function decrypt(stored) {
   return Buffer.concat([d.update(Buffer.from(data, 'base64')), d.final()]).toString('utf8');
 }
 
-/* ── 예약 사이트 HTTP ───────────────────────────────────────── */
-function request(method, path, { cookie, form } = {}) {
+/* ── 예약 사이트 HTTP ─────────────────────────────────────────
+ * .kr 권한 네임서버가 가끔 늦어서 첫 조회가 ENOTFOUND 로 떨어진다.
+ * 실제로 배포 직후 한 번 겪었고, 몇 초 뒤 재시도하면 정상이었다.
+ * 그래서 DNS·연결 계열 오류는 잠깐 쉬었다 다시 시도한다.
+ */
+const RETRYABLE = new Set(['ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED']);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+async function request(method, path, opts = {}) {
+  let last;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await requestOnce(method, path, opts);
+    } catch (e) {
+      last = e;
+      if (!RETRYABLE.has(e.code)) throw e;
+      if (attempt < 3) await wait(attempt * 700);
+    }
+  }
+  throw last;
+}
+
+function requestOnce(method, path, { cookie, form } = {}) {
   return new Promise((resolve, reject) => {
     const body = form ? new URLSearchParams(form).toString() : null;
     const headers = {
