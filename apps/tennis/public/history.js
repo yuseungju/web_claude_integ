@@ -30,11 +30,12 @@
     });
   }
 
+  // 다크 배경이라 성공/실패 색을 밝은 쪽으로 잡는다
   function msg(el, text, isError) {
     if (!el) return;
     el.textContent = text || '';
     el.classList.toggle('hidden', !text);
-    el.style.color = isError ? '' : '#15803d';
+    el.style.color = isError ? '#f85149' : '#3fb950';
   }
 
   var esc = function (s) {
@@ -77,23 +78,28 @@
     var box = $('acc-list');
     if (!box) return;
     if (!list.length) {
-      box.innerHTML = '<p class="step-desc">등록된 계정이 없습니다. 위에서 추가하세요.</p>';
+      box.innerHTML = '<p class="resv-empty">등록된 계정이 없습니다. 위에서 추가하세요.</p>';
       return;
     }
     box.innerHTML = list.map(function (a) {
       var sync = a.last_sync_at
-        ? new Date(a.last_sync_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })
-        : '-';
+        ? new Date(a.last_sync_at).toLocaleString('ko-KR',
+            { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '아직 없음';
       return '<div class="acc-row" data-id="' + a.id + '">' +
-        '<div class="acc-main"><strong>' + esc(a.login_id) + '</strong>' +
-        (a.label ? ' <span class="step-tip">' + esc(a.label) + '</span>' : '') + '</div>' +
-        '<div class="acc-meta">예약 ' + (a.reservations || 0) + '건 · 최근 수집 ' + sync +
-        (a.last_sync_status ? '<br><span class="step-tip">' + esc(a.last_sync_status) + '</span>' : '') +
+        '<div class="acc-main">' +
+          '<strong>' + esc(a.login_id) + '</strong>' +
+          (a.label ? '<span class="acc-tag">' + esc(a.label) + '</span>' : '') +
         '</div>' +
         '<div class="acc-actions">' +
-        '<button type="button" class="link-btn acc-sync">수집</button>' +
-        '<button type="button" class="link-btn acc-del">삭제</button>' +
-        '</div></div>';
+          '<button type="button" class="acc-sync">수집</button>' +
+          '<button type="button" class="acc-del">삭제</button>' +
+        '</div>' +
+        '<div class="acc-meta">' +
+          '예약 ' + (a.reservations || 0) + '건 · 최근 수집 ' + esc(sync) +
+          (a.last_sync_status ? '<br><span class="acc-status">' + esc(a.last_sync_status) + '</span>' : '') +
+        '</div>' +
+      '</div>';
     }).join('');
   }
 
@@ -117,7 +123,8 @@
     var box = $('sync-log');
     if (!box) return;
     box.classList.remove('hidden');
-    box.innerHTML += esc(line) + '<br>';
+    var cls = /^✓/.test(line) ? 'ok' : (/^✗/.test(line) ? 'fail' : '');
+    box.innerHTML += (cls ? '<span class="' + cls + '">' + esc(line) + '</span>' : esc(line)) + '<br>';
     box.scrollTop = box.scrollHeight;
   }
 
@@ -165,7 +172,7 @@
     if (cnt) cnt.textContent = list.length ? '(' + list.length + '건)' : '';
     if (!box) return;
     if (!list.length) {
-      box.innerHTML = '<p class="step-desc">아직 수집한 내역이 없습니다.</p>';
+      box.innerHTML = '<p class="resv-empty">아직 수집한 내역이 없습니다.</p>';
       return;
     }
     // 모든 계정의 내역을 한 표로 합치고, 어느 계정으로 잡은 건지는 맨 뒤에 붙인다
@@ -180,9 +187,9 @@
           '<td>' + esc(r.use_time || '-') + '</td>' +
           '<td>' + esc(r.facility || '-') + '</td>' +
           '<td class="resv-amt">' + (r.amount != null ? Number(r.amount).toLocaleString('ko-KR') + '원' : '-') + '</td>' +
-          '<td>' + esc(r.reserve_no) + '</td>' +
+          '<td class="resv-no">' + esc(/^X-/.test(r.reserve_no) ? '—' : r.reserve_no) + '</td>' +
           '<td class="resv-acct">' + esc(r.login_id) +
-            (r.label ? '<br><span class="step-tip">' + esc(r.label) + '</span>' : '') + '</td>' +
+            (r.label ? '<span class="acc-tag">' + esc(r.label) + '</span>' : '') + '</td>' +
           '</tr>';
       }).join('') +
       '</tbody></table>';

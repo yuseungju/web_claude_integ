@@ -160,12 +160,24 @@ function parseReservations(html, pageNo) {
     const time = (joined.match(/\d{1,2}:\d{2}\s*(?:~|-|–)\s*\d{1,2}:\d{2}/) || [])[0] || '';
     const amount = (joined.match(/([\d,]{3,})\s*원/) || [])[1];
     // 예약번호로 볼 만한 것: 6자리 이상 숫자 또는 영문+숫자 조합
-    const no = (joined.match(/\b([A-Z]{0,3}\d{6,})\b/) || [])[1]
-      || (tr.match(/(?:rno|reserve_no|rsv_no)=([\w-]+)/i) || [])[1]
-      || null;
+    // 예약번호는 사이트마다 형태가 달라 여러 갈래로 찾는다.
+    //   1) 링크·onclick 파라미터에 실린 번호 (가장 확실하다)
+    //   2) 칸 하나가 통째로 숫자/영문+숫자인 경우
+    //   3) 본문 어디든 6자리 이상 숫자
+    // 그래도 못 찾으면 계정·날짜·시간·시설로 만든 지문을 대신 쓴다.
+    // 예전에는 여기서 포기하고 행을 통째로 버려서 "예약번호를 못 읽은 N건 제외"가 났다.
+    const fromLink = (tr.match(/(?:rno|rsv_no|reserve_no|reserv_no|idx|seq|no)=["']?([A-Za-z0-9_-]{4,})/i) || [])[1];
+    const fromCell = cells.find(c => /^[A-Za-z]{0,4}[-]?\d{4,}$/.test(c.replace(/\s/g, '')));
+    const fromText = (joined.match(/\b([A-Z]{0,3}\d{6,})\b/) || [])[1];
+    const no = fromLink || (fromCell && fromCell.replace(/\s/g, '')) || fromText || null;
+
+    // 번호가 없어도 같은 예약을 두 번 저장하지 않도록 지문을 만든다
+    const fingerprint = 'X-' + crypto.createHash('sha1')
+      .update([useDate, time, cells.join('|')].join('~')).digest('hex').slice(0, 16);
 
     rows.push({
-      reserve_no: no,
+      reserve_no: no || fingerprint,
+      no_from: no ? 'site' : 'fingerprint',
       facility: cells.find(c => /코트|구장|체육|테니스|풋살|농구|배드민턴/.test(c)) || cells[1] || '',
       use_date: useDate,
       use_time: time,
@@ -282,6 +294,7 @@ async function route(ctx, event, method, path) {
   /* 한 계정 수집 — 로그인 → 1~4페이지 → 예약완료만 저장 */
   if (path === '/tennis/sync' && method === 'POST') {
     const accountId = body.account_id;
+    const debug = body.debug === true;
     if (!accountId) return resp(400, { error: 'account_id 가 필요합니다.' });
 
     const { rows: accs } = await pool.query(
@@ -311,7 +324,6 @@ async function route(ctx, event, method, path) {
 
     let saved = 0;
     for (const r of result.rows) {
-      if (!r.reserve_no) continue;                 // 예약번호가 없으면 중복 판정을 못 한다
       const q = await pool.query(
         `INSERT INTO tn_reservations
            (user_id, account_id, reserve_no, facility, use_date, use_time, status, amount, page_no, raw)
@@ -324,15 +336,21 @@ async function route(ctx, event, method, path) {
       if (q.rows[0].inserted) saved++;
     }
 
-    const noNumber = result.rows.filter(r => !r.reserve_no).length;
-    const status = `예약완료 ${result.rows.length}건 · 신규 ${saved}건` +
-      (noNumber ? ` (예약번호를 못 읽은 ${noNumber}건 제외)` : '');
+    // 사이트 예약번호를 못 읽어 지문으로 저장한 건수. 버리지는 않는다.
+    const noNumber = result.rows.filter(r => r.no_from === 'fingerprint').length;
+    const status = `예약완료 ${result.rows.length}건 · 신규 ${saved}건`;
     await pool.query('UPDATE tn_accounts SET last_sync_at=NOW(), last_sync_status=$1 WHERE id=$2', [status, acc.id]);
 
-    return resp(200, {
+    const out = {
       ok: true, login_id: acc.login_id, found: result.rows.length,
       saved, skipped: noNumber, message: status, diag: result.diag,
-    });
+    };
+    // 파싱이 어긋났을 때 구조를 보려면 debug:true 로 부른다 (앞 3행만)
+    if (debug) out.sample = result.rows.slice(0, 3).map(r => ({
+      reserve_no: r.reserve_no, no_from: r.no_from, use_date: r.use_date,
+      use_time: r.use_time, facility: r.facility, amount: r.amount, cells: r.raw.cells,
+    }));
+    return resp(200, out);
   }
 
   /* 모든 계정의 예약완료 내역 취합 */
