@@ -59,6 +59,33 @@
 
   var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
 
+  var ymd = function (d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+      + '-' + String(d.getDate()).padStart(2, '0');
+  };
+
+  /** 차월 1일 ~ 말일 — 기본 기간이다 */
+  function nextMonthRange() {
+    var n = new Date();
+    return {
+      from: ymd(new Date(n.getFullYear(), n.getMonth() + 1, 1)),
+      to: ymd(new Date(n.getFullYear(), n.getMonth() + 2, 0)),
+    };
+  }
+
+  /** 기간 필터를 적용한 목록. 캘린더도 이 결과를 그대로 쓴다. */
+  function filtered() {
+    var from = ($('f-from') || {}).value || '';
+    var to = ($('f-to') || {}).value || '';
+    return state.rows.filter(function (r) {
+      if (!r.use_date) return !from && !to;
+      var d = String(r.use_date).slice(0, 10);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }
+
   /* ── 계정 ─────────────────────────────────────────────── */
   function loadAccounts() {
     return api('/tennis/accounts').then(function (d) { renderAccounts(d.accounts || []); })
@@ -227,8 +254,12 @@
   function renderReservations() {
     var box = $('resv-table');
     var cnt = $('resv-count');
-    var list = state.rows;
-    if (cnt) cnt.textContent = list.length ? '(' + list.length + '건)' : '';
+    var list = filtered();
+    if (cnt) {
+      cnt.textContent = list.length
+        ? '(' + list.length + '건' + (list.length !== state.rows.length ? ' / 전체 ' + state.rows.length : '') + ')'
+        : '';
+    }
     if (!box) return;
     if (!list.length) {
       box.innerHTML = '<p class="resv-empty">아직 수집한 내역이 없습니다.</p>';
@@ -273,7 +304,7 @@
     var box = $('sum-table');
     if (!box) return;
 
-    var picked = state.rows.filter(function (r) { return r.checked !== false && r.use_date; });
+    var picked = filtered().filter(function (r) { return r.checked !== false && r.use_date; });
     if (!picked.length) {
       box.innerHTML = '<p class="resv-empty">체크된 내역이 없습니다.</p>';
       return;
@@ -407,15 +438,78 @@
   }
 
   function setAll(on) {
-    state.rows.forEach(function (r) { r.checked = on; });
+    var target = filtered();          // 화면에 보이는 것만 바꾼다
+    target.forEach(function (r) { r.checked = on; });
     renderReservations();
     // 한꺼번에 보내면 사이트가 아니라 우리 서버라 부담은 적지만, 순서대로 보낸다
-    state.rows.reduce(function (chain, r) {
+    target.reduce(function (chain, r) {
       return chain.then(function () {
         return api('/tennis/check', { method: 'POST', body: { reserve_no: r.reserve_no, checked: on } });
       });
     }, Promise.resolve()).catch(function (e) {
       msg($('price-msg'), '체크 저장 실패: ' + e.message, true);
+    });
+  }
+
+  /* ── 구글 캘린더 ──────────────────────────────────────── */
+  function calLog(line) {
+    var box = $('cal-log');
+    if (!box) return;
+    box.classList.remove('hidden');
+    var cls = /✓/.test(line) ? 'ok' : (/✗/.test(line) ? 'fail' : '');
+    box.innerHTML += (cls ? '<span class="' + cls + '">' + esc(line) + '</span>' : esc(line)) + '<br>';
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function calSettings() {
+    return {
+      clientId: (($('cal-client') || {}).value || '').trim(),
+      titlePrefix: (($('cal-title') || {}).value || '').trim() || '테니슈웅 (대치유수지)',
+      guests: (($('cal-guests') || {}).value || '')
+        .split(/[,\s]+/).map(function (x) { return x.trim(); })
+        .filter(function (x) { return x.indexOf('@') > 0; }),
+    };
+  }
+
+  function saveCalSettings() {
+    var c = calSettings();
+    msg($('cal-msg'), '저장 중...');
+    api('/tennis/settings', { method: 'POST', body: { settings: {
+      cal_client: c.clientId, cal_title: c.titlePrefix, cal_guests: c.guests.join(','),
+    } } })
+      .then(function () { msg($('cal-msg'), '저장했습니다.'); })
+      .catch(function (e) { msg($('cal-msg'), e.message, true); });
+  }
+
+  function runCalendar() {
+    var c = calSettings();
+    var from = ($('f-from') || {}).value || '';
+    var to = ($('f-to') || {}).value || '';
+    if (!from || !to) return msg($('cal-msg'), '기간을 먼저 지정하세요.', true);
+    if (!c.clientId) return msg($('cal-msg'), '구글 클라이언트 ID 를 입력하고 설정을 저장하세요.', true);
+
+    // 캘린더에 넣을 건 화면에서 보고 있는 그대로 — 기간 + 체크된 예약완료
+    var rows = filtered().filter(function (r) { return r.checked !== false && r.use_date; });
+    if (!rows.length) return msg($('cal-msg'), '기간 안에 체크된 예약이 없습니다.', true);
+
+    var btn = $('cal-run');
+    if (btn) { btn.disabled = true; btn.textContent = '추가 중...'; }
+    var box = $('cal-log');
+    if (box) { box.innerHTML = ''; box.classList.remove('hidden'); }
+    msg($('cal-msg'), '');
+    calLog(from + ' ~ ' + to + '  대상 ' + rows.length + '건');
+
+    window.TennisCal.sync(rows, {
+      clientId: c.clientId, titlePrefix: c.titlePrefix, guests: c.guests,
+      from: from, to: to, log: calLog,
+    }).then(function (r) {
+      calLog('끝났습니다 — ' + r.created + '/' + r.total + '건 추가');
+      msg($('cal-msg'), r.created + '건을 캘린더에 넣었습니다.');
+    }).catch(function (e) {
+      calLog('✗ ' + e.message);
+      msg($('cal-msg'), e.message, true);
+    }).then(function () {
+      if (btn) { btn.disabled = false; btn.textContent = '캘린더에 추가하기'; }
     });
   }
 
@@ -478,6 +572,30 @@
       });
     }
 
+    var range = nextMonthRange();
+    if ($('f-from') && !$('f-from').value) $('f-from').value = range.from;
+    if ($('f-to') && !$('f-to').value) $('f-to').value = range.to;
+    ['f-from', 'f-to'].forEach(function (id) {
+      var el = $(id);
+      if (el) el.addEventListener('change', renderReservations);
+    });
+    var fNext = $('f-next');
+    if (fNext) fNext.addEventListener('click', function () {
+      var r = nextMonthRange();
+      $('f-from').value = r.from; $('f-to').value = r.to;
+      renderReservations();
+    });
+    var fAll = $('f-all');
+    if (fAll) fAll.addEventListener('click', function () {
+      $('f-from').value = ''; $('f-to').value = '';
+      renderReservations();
+    });
+
+    var calSave = $('cal-save');
+    if (calSave) calSave.addEventListener('click', saveCalSettings);
+    var calRun = $('cal-run');
+    if (calRun) calRun.addEventListener('click', runCalendar);
+
     var table = $('resv-table');
     if (table) table.addEventListener('change', function (e) {
       if (e.target.id === 'chk-all') return setAll(e.target.checked);
@@ -489,8 +607,11 @@
     loadAccounts();
     api('/tennis/settings')
       .then(function (d) {
-        var n = (d.settings || {}).headcount;
-        if (n && $('settle-people')) $('settle-people').value = n;
+        var st = d.settings || {};
+        if (st.headcount && $('settle-people')) $('settle-people').value = st.headcount;
+        if (st.cal_client && $('cal-client')) $('cal-client').value = st.cal_client;
+        if (st.cal_title && $('cal-title')) $('cal-title').value = st.cal_title;
+        if (st.cal_guests && $('cal-guests')) $('cal-guests').value = st.cal_guests;
       })
       .catch(function () { /* 없으면 기본값을 쓴다 */ })
       .then(function () { return loadPrices(); })

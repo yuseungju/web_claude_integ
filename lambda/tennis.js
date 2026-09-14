@@ -568,7 +568,7 @@ async function route(ctx, event, method, path) {
       // 이번 달 포함 최근 3개월(현재월 -2)부터. 앞으로 잡힌 예약은 모두 포함한다.
       // 체크는 tn_checks 에 따로 있고, 기록이 없으면 기본 체크 상태로 본다.
       `SELECT r.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
-              r.team, r.people, r.collected_at, a.login_id, a.person,
+              r.team, r.people, r.raw, r.collected_at, a.login_id, a.person,
               COALESCE(c.checked, TRUE) AS checked
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id

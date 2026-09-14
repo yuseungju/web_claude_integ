@@ -381,9 +381,50 @@ div>
         </div>
 
         <div class="field-card">
+          <div class="field-label">구글 캘린더에 추가</div>
+          <p class="step-desc">
+            위 <strong>기간</strong>에 걸린 <strong>체크된 예약완료</strong> 건을 캘린더에 넣습니다.
+            이 기능이 만든 일정(<code>(AI작성)</code>)은 먼저 지우고 다시 만들기 때문에,
+            여러 번 눌러도 중복되지 않습니다. 손으로 만든 일정은 건드리지 않습니다.
+          </p>
+
+          <div class="cal-grid">
+            <div class="input-wrap">
+              <label for="cal-client">구글 클라이언트 ID</label>
+              <input type="text" id="cal-client" autocomplete="off"
+                     placeholder="000000000000-xxxxxxxx.apps.googleusercontent.com">
+            </div>
+            <div class="input-wrap">
+              <label for="cal-title">제목 앞부분</label>
+              <input type="text" id="cal-title" placeholder="테니슈웅 (대치유수지)" maxlength="40">
+            </div>
+          </div>
+          <div class="input-wrap cal-wide">
+            <label for="cal-guests">참석자 이메일 <span class="step-tip">쉼표로 구분</span></label>
+            <input type="text" id="cal-guests" autocomplete="off"
+                   placeholder="a@example.com, b@example.com">
+          </div>
+
+          <div class="cal-actions">
+            <button type="button" id="cal-save">설정 저장</button>
+            <button type="button" id="cal-run" class="run-btn">캘린더에 추가하기</button>
+          </div>
+          <div id="cal-msg" class="error-msg hidden"></div>
+          <div id="cal-log" class="run-result hidden"></div>
+        </div>
+
+        <div class="field-card">
           <div class="field-label">
             모든 계정 예약완료 내역
             <span id="resv-count" class="step-tip"></span>
+          </div>
+          <div class="filter-row">
+            <label for="f-from">기간</label>
+            <input type="date" id="f-from">
+            <span class="price-sep">~</span>
+            <input type="date" id="f-to">
+            <button type="button" id="f-next">차월</button>
+            <button type="button" id="f-all">전체</button>
           </div>
           <div id="resv-table" class="resv-wrap">
             <p class="step-desc">아직 수집한 내역이 없습니다.</p>
@@ -400,7 +441,9 @@ div>
     </footer>
   </div>
 
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="app.js"></script>
+  <script src="calendar.js"></script>
   <script src="history.js"></script>
 </body>
 </html>

@@ -675,3 +675,62 @@ body.wide-tab .container { max-width: 1400px; }
 .settle-even { color: #8b949e; }
 
 .settle-rest { color: #8b949e; }
+
+/* ── 기간 필터 ── */
+.filter-row { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; flex-wrap: wrap; }
+.filter-row label { color: #8b949e; font-size: 0.86rem; }
+.filter-row input[type="date"] {
+  padding: 8px 11px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 0.84rem;
+  color-scheme: dark;
+}
+.filter-row input[type="date"]:focus { outline: none; border-color: #58a6ff; }
+.filter-row button {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #e6edf3;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.filter-row button:hover { border-color: #58a6ff; color: #58a6ff; }
+
+/* ── 구글 캘린더 ── */
+.cal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0 12px; }
+.cal-wide { margin-bottom: 14px; }
+.cal-actions { display: flex; gap: 8px; align-items: center; }
+.cal-actions #cal-save {
+  flex: none;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 11px 16px;
+  color: #e6edf3;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.cal-actions #cal-save:hover { border-color: #58a6ff; color: #58a6ff; }
+.cal-actions .run-btn { flex: 1; margin: 0; }
+
+#cal-log {
+  margin-top: 14px;
+  padding: 12px 14px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.8;
+  color: #8b949e;
+}
+#cal-log .ok   { color: #3fb950; }
+#cal-log .fail { color: #f85149; }
+
+@media (max-width: 640px) { .cal-grid { grid-template-columns: 1fr; } }
