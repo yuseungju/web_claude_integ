@@ -13,7 +13,7 @@ const crypto = require('crypto');
 
 const SITE_HOST = 'www.xn--vk1b79znxd34c61h.kr';
 const CHECK_PATH = '/?act=info.page&pcode=check';
-const MAX_PAGE = 4;
+const MAX_PAGE = 10;
 
 /* ── 비밀번호 암호화 ────────────────────────────────────────────
  * 예약 사이트 비밀번호는 우리가 대신 로그인해야 해서 되돌릴 수 있어야 한다.
@@ -205,23 +205,51 @@ const pagePaths = n => [
   `${CHECK_PATH}&p=${n}`,
 ];
 
+/**
+ * 페이지 파라미터 이름을 1페이지의 "페이지 이동 링크"에서 찾는다.
+ * 본문 아무 데나 있는 page= 를 주워오면 엉뚱한 걸 집을 수 있어,
+ * 이 페이지(pcode=check)를 가리키는 링크만 본다.
+ */
+function detectPageParam(html) {
+  const links = [...html.matchAll(/(?:href|onclick)\s*=\s*["'][^"']*pcode=check[^"']*["']/gi)]
+    .map(m => m[0]);
+  for (const l of links) {
+    const hit = l.match(/[?&](page|cpage|pageNo|page_no|p)=(\d+)/i);
+    if (hit && Number(hit[2]) > 1) return hit[1];
+  }
+  const any = html.match(/[?&](page|cpage|pageNo|page_no|p)=\d+/i);
+  return any ? any[1] : null;
+}
+
+const bodyHash = html => crypto.createHash('sha1')
+  .update(html.replace(/\s+/g, ' ')).digest('hex').slice(0, 12);
+
 async function collect(cookie, firstPage) {
   const all = [];
   const diag = [];
+  const seen = new Set();          // 같은 쪽을 두 번 읽지 않기 위한 내용 지문
   let pageParam = null;
 
   for (let n = 1; n <= MAX_PAGE; n++) {
     let res = null;
+
     if (n === 1) {
       res = firstPage ? { status: 200, html: firstPage } : await request('GET', CHECK_PATH, { cookie });
+      pageParam = detectPageParam(res.html);
     } else if (pageParam) {
       res = await request('GET', `${CHECK_PATH}&${pageParam}=${n}`, { cookie });
     } else {
-      // 1페이지에서 파라미터 이름을 못 찾았으면 후보를 한 번씩 시도
+      // 링크에서 못 찾았으면 후보를 시도하되, 1쪽과 내용이 달라야 인정한다.
+      // 이 사이트는 파라미터가 틀려도 200 에 1쪽을 그대로 돌려주기 때문이다.
       for (const p of pagePaths(n)) {
         const r = await request('GET', p, { cookie });
-        if (r.status === 200) { res = r; pageParam = p.match(/&(\w+)=\d+$/)[1]; break; }
+        if (r.status === 200 && !seen.has(bodyHash(r.html))) {
+          res = r;
+          pageParam = p.match(/&(\w+)=\d+$/)[1];
+          break;
+        }
       }
+      if (!res) { diag.push({ page: n, note: '페이지 파라미터를 찾지 못해 중단' }); break; }
     }
     if (!res) break;
 
@@ -231,18 +259,19 @@ async function collect(cookie, firstPage) {
       break;
     }
 
-    // 1페이지에서 실제 페이지 파라미터 이름을 찾아 둔다
-    if (n === 1 && !pageParam) {
-      const hit = res.html.match(/[?&](page|cpage|p)=\d+/i);
-      if (hit) pageParam = hit[1];
+    // 앞 쪽과 내용이 같으면 더 넘길 페이지가 없다는 뜻이다
+    const h = bodyHash(res.html);
+    if (seen.has(h)) {
+      diag.push({ page: n, note: '앞 페이지와 같은 내용 — 마지막 페이지로 보고 중단' });
+      break;
     }
+    seen.add(h);
 
     const rows = parseReservations(res.html, n);
     all.push(...rows);
-    diag.push({ page: n, bytes: res.html.length, rows: rows.length });
+    diag.push({ page: n, param: pageParam, bytes: res.html.length, rows: rows.length });
 
-    // 더 이상 페이지가 없으면 멈춘다
-    if (n > 1 && rows.length === 0) break;
+    if (n > 1 && rows.length === 0) break;   // 빈 쪽이면 더 볼 것이 없다
   }
   return { rows: all, diag, pageParam };
 }
@@ -392,30 +421,41 @@ async function route(ctx, event, method, path) {
       return fail('수집 실패: ' + e.message);
     }
 
+    // 이 계정의 기존 내역을 지우고 방금 읽은 것으로 통째로 갈아끼운다.
+    // 덧붙이기만 하면 사이트에서 취소된 건이 우리 쪽에 계속 남는다.
+    // 한 트랜잭션 안에서 처리해, 중간에 실패하면 예전 내역이 그대로 남는다.
     let saved = 0;
-    for (const r of result.rows) {
-      const q = await pool.query(
-        `INSERT INTO tn_reservations
-           (device_key, account_id, reserve_no, facility, use_date, use_time, status, amount, team, people, page_no, raw)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-         ON CONFLICT (account_id, reserve_no) DO UPDATE
-           SET facility=EXCLUDED.facility, use_date=EXCLUDED.use_date, use_time=EXCLUDED.use_time,
-               status=EXCLUDED.status, amount=EXCLUDED.amount, team=EXCLUDED.team,
-               people=EXCLUDED.people, raw=EXCLUDED.raw, collected_at=NOW()
-         RETURNING (xmax = 0) AS inserted`,
-        [uid, acc.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
-         r.team, r.people, r.page_no, r.raw]);
-      if (q.rows[0].inserted) saved++;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const gone = await client.query('DELETE FROM tn_reservations WHERE account_id=$1', [acc.id]);
+      for (const r of result.rows) {
+        await client.query(
+          `INSERT INTO tn_reservations
+             (device_key, account_id, reserve_no, facility, use_date, use_time, status, amount, team, people, page_no, raw)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+           ON CONFLICT (account_id, reserve_no) DO NOTHING`,
+          [uid, acc.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
+           r.team, r.people, r.page_no, r.raw]);
+        saved++;
+      }
+      await client.query('COMMIT');
+      result.removed = gone.rowCount;
+    } catch (e) {
+      await client.query('ROLLBACK');
+      client.release();
+      return fail('저장 실패: ' + e.message);
     }
+    client.release();
 
-    // 사이트 예약번호를 못 읽어 지문으로 저장한 건수. 버리지는 않는다.
+    // 사이트 접수번호를 못 읽어 지문으로 저장한 건수. 버리지는 않는다.
     const noNumber = result.rows.filter(r => r.no_from === 'fingerprint').length;
-    const status = `예약완료 ${result.rows.length}건 · 신규 ${saved}건`;
+    const status = `예약완료 ${result.rows.length}건 저장 (이전 ${result.removed}건 교체)`;
     await pool.query('UPDATE tn_accounts SET last_sync_at=NOW(), last_sync_status=$1 WHERE id=$2', [status, acc.id]);
 
     const out = {
       ok: true, login_id: acc.login_id, found: result.rows.length,
-      saved, skipped: noNumber, message: status, diag: result.diag,
+      saved, removed: result.removed, skipped: noNumber, message: status, diag: result.diag,
     };
     // 파싱이 어긋났을 때 구조를 보려면 debug:true 로 부른다 (앞 3행만)
     if (debug) out.sample = result.rows.slice(0, 3).map(r => ({
@@ -452,7 +492,7 @@ async function route(ctx, event, method, path) {
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id
         WHERE r.device_key = $1
-        ORDER BY r.use_date DESC NULLS LAST, r.id DESC
+        ORDER BY r.use_date ASC NULLS LAST, r.facility ASC, r.use_time ASC, r.id ASC
         LIMIT 2000`, [uid]);
     return resp(200, { reservations: rows, total: rows.length });
   }
