@@ -21,6 +21,8 @@ const APPS = [
     desc: '보유 판정 · 계열별 순위 · 일정 · 배틀 퀴즈' },
   { dir: 'workKit', url: 'workKit', title: 'Work Kit',
     desc: '기사·웹소설 작성, 일정 공유, 엑셀 비교 등 업무 도구 모음' },
+  { dir: 'tennis', url: 'tennis', title: '대치유수지 예약 자동화',
+    desc: '코트·시간 설정을 크롬 확장에 넘겨 예약을 자동화' },
 ];
 
 function rmrf(p) {

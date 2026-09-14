@@ -1,7 +1,7 @@
 {
   "name": "web-claude-integ",
   "version": "1.0.0",
-  "description": "한 도메인 아래 경로로 나뉜 앱 모음 (nol / pgo / workKit)",
+  "description": "한 도메인 아래 경로로 나뉜 앱 모음 (nol / pgo / workKit / tennis)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

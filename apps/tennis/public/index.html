@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>대치유수지 예약 자동화</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>대치유수지 예약 자동화</h1>
+      <p class="subtitle">크롬 익스텐션 기반 자동 예약 시스템</p>
+    </header>
+
+    <!-- 탭 -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="run">▶&nbsp; 예약 실행</button>
+      <button class="tab-btn" data-tab="setup">⚙&nbsp; 초기 설정</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════ 탭1: 예약 실행 ═══ -->
+    <div id="tab-run" class="tab-panel active">
+      <form id="resv-form">
+
+        <div class="field-card">
+          <div class="field-label">
+            <span class="label-icon">📅</span>
+            <span>예약 요일</span>
+            <small>복수 선택 가능</small>
+          </div>
+          <div class="checkbox-row">
+            <label class="day-box"><input type="checkbox" name="week" value="1" checked /><span>월</span></label>
+            <label class="day-box"><input type="checkbox" name="week" value="2" checked /><span>화</span></label>
+            <label class="day-box"><input type="checkbox" name="week" value="3" checked /><span>수</span></label>
+            <label class="day-box"><input type="checkbox" name="week" value="4" checked /><span>목</span></label>
+            <label class="day-box"><input type="checkbox" name="week" value="5" checked /><span>금</span></label>
+            <label class="day-box"><input type="checkbox" name="week" value="6" /><span>토</span></label>
+            <label class="day-box"><input type="checkbox" name="week" value="0" /><span>일</span></label>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">
+            <span class="label-icon">🗓️</span>
+            <span>예약 년월</span>
+          </div>
+          <div class="yearmonth-row">
+            <div class="input-wrap">
+              <label for="year">년도</label>
+              <input type="text" id="year" maxlength="4" placeholder="2026" />
+            </div>
+            <div class="input-wrap">
+              <label for="month">월</label>
+              <input type="text" id="month" maxlength="2" placeholder="02" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">
+            <span class="label-icon">🕐</span>
+            <span>예약 시간</span>
+            <small>복수 선택 가능</small>
+          </div>
+          <div class="checkbox-row">
+            <label class="day-box wide"><input type="checkbox" name="time" value="3" /><span>오후 1시</span></label>
+            <label class="day-box wide"><input type="checkbox" name="time" value="4" /><span>오후 3시</span></label>
+            <label class="day-box wide"><input type="checkbox" name="time" value="5" /><span>오후 5시</span></label>
+            <label class="day-box wide"><input type="checkbox" name="time" value="6" checked /><span>오후 7시</span></label>
+          </div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">
+            <span class="label-icon">🏃</span>
+            <span>예약 종목</span>
+          </div>
+          <div class="radio-row">
+            <label class="sport-box">
+              <input type="radio" name="type" value="8" checked />
+              <span>🎾 테니스</span>
+            </label>
+            <label class="sport-box">
+              <input type="radio" name="type" value="7" />
+              <span>⚽ 축구장</span>
+            </label>
+            <label class="sport-box">
+              <input type="radio" name="type" value="11" />
+              <span>🥅 풋살</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 테니스 코트 선택 (테니스일 때만 노출) -->
+        <div class="field-card" id="court-card">
+          <div class="field-label">
+            <span class="label-icon">🎾</span>
+            <span>테니스 코트</span>
+            <small>복수 선택 가능 · 앞쪽 코트부터 우선</small>
+          </div>
+          <div class="checkbox-row">
+            <label class="day-box wide"><input type="checkbox" name="court" value="8" checked /><span>A 코트</span></label>
+            <label class="day-box wide"><input type="checkbox" name="court" value="9" checked /><span>B 코트</span></label>
+            <label class="day-box wide"><input type="checkbox" name="court" value="10" checked /><span>C 코트</span></label>
+          </div>
+        </div>
+
+        <div class="field-row-three">
+          <div class="field-card">
+            <div class="field-label">
+              <span class="label-icon">🔢</span>
+              <span>예약건수 제한</span>
+            </div>
+            <input type="number" id="maxcnt" value="120" min="1" max="999" />
+          </div>
+          <div class="field-card">
+            <div class="field-label">
+              <span class="label-icon">👥</span>
+              <span>인원수</span>
+            </div>
+            <input type="number" id="personnel" value="5" min="1" max="99" />
+          </div>
+          <div class="field-card">
+            <div class="field-label">
+              <span class="label-icon">⏱️</span>
+              <span>재시도 딜레이</span>
+              <small>ms (1000=1초)</small>
+            </div>
+            <input type="number" id="delay" value="100" min="0" max="9999" />
+          </div>
+        </div>
+
+        <div class="field-card" style="margin-top:14px">
+          <div class="field-label">
+            <span class="label-icon">🏷️</span>
+            <span>팀명</span>
+          </div>
+          <input type="text" id="team" value="ERP" maxlength="30" placeholder="팀명 입력" />
+        </div>
+
+        <div class="field-card login-card">
+          <div class="field-label">
+            <span class="label-icon">🔐</span>
+            <span>예약 사이트 로그인</span>
+          </div>
+          <div class="yearmonth-row">
+            <div class="input-wrap">
+              <label for="user-id">아이디</label>
+              <input type="text" id="user-id" placeholder="아이디" autocomplete="username" maxlength="20" />
+            </div>
+            <div class="input-wrap">
+              <label for="user-pw">비밀번호</label>
+              <input type="password" id="user-pw" placeholder="비밀번호" autocomplete="current-password" maxlength="20" />
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="run-btn">
+          <span>▶</span> 실행하기
+        </button>
+        <div id="error-msg" class="error-msg hidden"></div>
+        <div id="run-result" class="run-result hidden"></div>
+      </form>
+
+      <div id="ext-status" class="ext-badge disconnected">⚠ 익스텐션 미연결 — 초기 설정 탭을 먼저 완료하세요</div>
+      <div class="notice-box">
+        💡 익스텐션이 설치되지 않은 경우 <button class="link-btn" data-tab="setup">초기 설정</button> 탭을 먼저 완료하세요.
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ 탭2: 초기 설정 ═══ -->
+    <div id="tab-setup" class="tab-panel">
+
+      <div class="setup-intro">
+        최초 1회만 설정하면 이후에는 <strong>예약 실행</strong> 탭만 사용하시면 됩니다.
+      </div>
+
+      <!-- STEP 1 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num">1</div>
+          <div class="step-title">익스텐션 파일 다운로드</div>
+        </div>
+        <p class="step-desc">아래 세 파일을 동일한 폴더(예: <code>바탕화면/대치예약</code>)에 저장하세요.</p>
+        <div class="download-row">
+          <a href="downloads/contentscript.js" download="contentscript.js" class="dl-btn">
+            <span class="dl-icon">⬇</span>
+            <div>
+              <div class="dl-name">contentscript.js</div>
+              <div class="dl-sub">자동 예약 스크립트</div>
+            </div>
+          </a>
+          <a href="downloads/background.js" download="background.js" class="dl-btn">
+            <span class="dl-icon">⬇</span>
+            <div>
+              <div class="dl-name">background.js</div>
+              <div class="dl-sub">설정값 수신 스크립트</div>
+            </div>
+          </a>
+          <a href="downloads/manifest.json" download="manifest.json" class="dl-btn">
+            <span class="dl-icon">⬇</span>
+            <div>
+              <div class="dl-name">manifest.json</div>
+              <div class="dl-sub">익스텐션 설정 파일</div>
+            </div>
+          </a>
+        </div>
+        <div class="step-tip">
+          📁 폴더 구조 예시:<br/>
+          <code>대치예약/</code><br/>
+          <code>&nbsp;&nbsp;├─ contentscript.js</code><br/>
+          <code>&nbsp;&nbsp;├─ background.js</code><br/>
+          <code>&nbsp;&nbsp;└─ manifest.json</code>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num">2</div>
+          <div class="step-title">크롬 익스텐션 관리 페이지 열기</div>
+        </div>
+        <p class="step-desc">크롬 주소창에 아래 주소를 입력하고 Enter를 누르세요.</p>
+        <div class="code-block">
+          <span id="ext-url">chrome://extensions/</span>
+          <button class="copy-btn" data-copy="chrome://extensions/">복사</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num">3</div>
+          <div class="step-title">개발자 모드 켜기</div>
+        </div>
+        <p class="step-desc">익스텐션 관리 페이지 <strong>우측 상단</strong>의 <strong>개발자 모드</strong> 토글을 <span class="badge-on">ON</span> 으로 켜주세요.</p>
+        <div class="screen-mock">
+          <div class="mock-bar">
+            <span class="mock-title">확장 프로그램</span>
+            <div class="mock-toggle">
+              <span class="toggle-label">개발자 모드</span>
+              <div class="toggle-on">ON</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <div class="step-title">폴더 불러오기</div>
+        </div>
+        <p class="step-desc">개발자 모드 활성화 후 나타나는 <strong>"압축해제된 확장 프로그램을 로드합니다"</strong> 버튼을 클릭하고, STEP 1에서 파일을 저장한 폴더를 선택하세요.</p>
+        <div class="screen-mock">
+          <div class="mock-btns">
+            <div class="mock-btn-primary">압축해제된 확장 프로그램을 로드합니다</div>
+            <div class="mock-btn-secondary">확장 프로그램 패키징</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-num">5</div>
+          <div class="step-title">설치 확인</div>
+        </div>
+        <p class="step-desc">익스텐션 목록에 <strong>"대치유수지 예약 자동화"</strong>가 표시되고 활성화(파란 토글)되어 있으면 설치 완료입니다.</p>
+        <div class="screen-mock">
+          <div class="mock-ext-item">
+            <div class="mock-ext-icon">🎾</div>
+            <div class="mock-ext-info">
+              <div class="mock-ext-name">대치유수지 예약 자동화</div>
+              <div class="mock-ext-id">ID: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+            </div>
+            <div class="mock-ext-toggle">
+              <div class="toggle-on">ON</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 6 -->
+      <div class="step-card step-done">
+        <div class="step-header">
+          <div class="step-num done">✓</div>
+          <div class="step-title">설정 완료!</div>
+        </div>
+        <p class="step-desc">이제 <strong>예약 실행</strong> 탭에서 조건을 설정하고 실행하기 버튼을 누르면 됩니다.</p>
+        <button class="go-run-btn" data-tab="run">예약 실행 탭으로 이동 →</button>
+      </div>
+
+    </div><!-- /tab-setup -->
+
+    <footer>
+      <p>대치유수지 예약 자동화 &nbsp;|&nbsp; Powered by <strong>AWS Amplify</strong></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

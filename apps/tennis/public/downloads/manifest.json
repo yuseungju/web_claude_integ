@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "대치유수지 예약 자동화",
+  "version": "3.2",
+  "description": "대치유수지체육공원 예약 자동화. 웹 런처에서 설정을 받아 동작합니다.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.xn--vk1b79znxd34c61h.kr/*",
+        "https://*.amplifyapp.com/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": [
+        "contentscript.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://*.amplifyapp.com/*",
+      "http://localhost/*",
+      "http://127.0.0.1/*"
+    ]
+  }
+}

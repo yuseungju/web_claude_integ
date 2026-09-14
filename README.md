@@ -9,6 +9,7 @@
 | SAP 업무 활용 정리 | `/nol/` | `apps/nol/public/` | 정적 문서 사이트 |
 | 사라님을 위한 포켓몬 쓸모분석 | `/pgo/` | `apps/pgo/public/` | 포켓몬GO 보유/버림 판정 도구 |
 | Work Kit | `/workKit/` | `apps/workKit/public/` | 기사·웹소설 작성, 일정 공유 등 업무 도구 |
+| 대치유수지 예약 자동화 | `/tennis/` | `apps/tennis/public/` | 설정을 크롬 확장에 넘겨 예약을 자동화 |
 
 ```
 apps/<앱>/public/   →   dist/<URL경로>/   →   https://.../<URL경로>/
