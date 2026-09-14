@@ -301,13 +301,32 @@
       <div id="hist-main">
 
         <div class="field-card">
+          <div class="field-label">동기화 코드</div>
+          <p class="step-desc">
+            계정 목록과 수집한 내역은 이 코드로 묶여 서버에 저장됩니다.
+            <strong>다른 PC에서 같은 코드를 넣으면 같은 목록이 그대로 보입니다.</strong>
+            아래 코드를 복사해 두세요 — 이 브라우저 데이터를 지우면 코드도 사라집니다.
+          </p>
+          <div class="sync-row">
+            <input type="text" id="sync-code" spellcheck="false" autocomplete="off">
+            <button type="button" id="sync-copy">복사</button>
+            <button type="button" id="sync-apply">적용</button>
+          </div>
+          <div id="sync-msg" class="error-msg hidden"></div>
+          <p class="step-tip sync-warn">
+            코드를 아는 사람은 이 목록을 볼 수 있습니다. 짧거나 뻔한 값으로 바꾸지 마세요.
+            (영문·숫자·하이픈 8~64자)
+          </p>
+        </div>
+
+        <div class="field-card">
           <div class="field-label">
             대치유수지 계정
             <span id="acc-count" class="step-tip"></span>
           </div>
           <p class="step-desc">
             대치유수지 예약 사이트에 쓰는 <strong>자동로그인 계정</strong>을 원하는 만큼 등록하세요.
-            계정마다 로그인해 <code>예약확인</code> 1~4쪽을 훑어
+            계정마다 로그인해 <code>예약확인</code> 1~10쪽을 훑어
             <strong>예약완료</strong> 건만 모아 한 표로 보여줍니다.
             비밀번호는 암호화해 보관하고 화면에 다시 보여주지 않습니다.
           </p>

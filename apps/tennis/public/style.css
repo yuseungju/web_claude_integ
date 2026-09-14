@@ -546,3 +546,36 @@ footer strong { color: #6e7681; }
 }
 
 .resv-dow { color: #8b949e; text-align: center; width: 1%; }
+
+/* ── 동기화 코드 ── */
+.sync-row { display: flex; gap: 8px; align-items: center; }
+.sync-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+.sync-row input:focus { outline: none; border-color: #58a6ff; }
+.sync-row button {
+  flex: none;
+  padding: 10px 14px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+.sync-row button:hover { border-color: #58a6ff; color: #58a6ff; }
+.sync-warn { display: block; margin-top: 10px; line-height: 1.6; }
+
+@media (max-width: 480px) {
+  .sync-row { flex-wrap: wrap; }
+  .sync-row input { flex: 1 1 100%; }
+  .sync-row button { flex: 1; }
+}

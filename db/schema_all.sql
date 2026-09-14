@@ -4,7 +4,7 @@
 --
 -- 배포할 때 db/migrate.js 가 이 파일을 RDS에 실행합니다.
 -- 모든 구문은 여러 번 실행해도 안전해야 합니다 (CREATE ... IF NOT EXISTS).
--- 생성: 2026-09-14T09:18:01.054Z
+-- 생성: 2026-09-14T09:30:38.023Z
 -- ============================================================
 
 -- ===== common/common_schema.sql =====
@@ -446,15 +446,16 @@ CREATE INDEX IF NOT EXISTS idx_ai_summary_files_summary ON ai_summary_files(summ
 -- 계정마다 로그인해 "예약확인" 페이지(?act=info.page&pcode=check)를
 -- 1~4쪽 훑어 예약완료 건만 모아 둔다.
 --
--- 이 웹의 로그인(users)과는 아무 상관이 없다. 포켓몬 보관함과 같이
--- 브라우저가 발급한 device_key 로 목록을 구분한다.
+-- 이 웹의 로그인(users)과는 아무 상관이 없다. device_key(화면에서는 "동기화 코드")
+-- 하나로 목록을 묶는다. 처음 오면 브라우저가 무작위로 만들어 저장하고,
+-- 다른 PC 에 같은 코드를 넣으면 같은 목록이 그대로 보인다.
 --
 -- 비밀번호는 우리가 대신 로그인해야 해서 되돌릴 수 있어야 한다.
 -- lambda/tennis.js 가 AES-256-GCM 으로 암호화해 password_enc 에 넣고,
 -- 로그인할 때만 복호화한다. (형식: iv:authTag:ciphertext, 전부 base64)
 -- ============================================================
 
--- 예약 사이트 계정 — 한 기기(device_key)에 여러 개를 등록한다
+-- 예약 사이트 계정 — 한 동기화 코드(device_key)에 여러 개를 등록한다
 CREATE TABLE IF NOT EXISTS tn_accounts (
   id           SERIAL       PRIMARY KEY,
   device_key   TEXT         NOT NULL,

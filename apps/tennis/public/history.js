@@ -16,16 +16,26 @@
 
   var $ = function (id) { return document.getElementById(id); };
 
-  /** 이 브라우저의 기기 키 — 없으면 만들어 저장한다 */
+  var KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
+
+  /**
+   * 동기화 코드 — 목록을 서버에서 묶는 열쇠다.
+   * 처음 오면 무작위로 만들어 저장하고, 다른 PC 에서 같은 코드를 넣으면
+   * 같은 목록이 보인다. 그래서 "기기 키" 가 아니라 사용자가 옮길 수 있는 값이다.
+   */
   function deviceKey() {
     var k = '';
     try { k = localStorage.getItem(LS_KEY) || ''; } catch (e) { /* 저장이 막힌 환경 */ }
-    if (!/^[A-Za-z0-9-]{8,64}$/.test(k)) {
-      k = (crypto && crypto.randomUUID) ? crypto.randomUUID()
-        : 'k-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    if (!KEY_RE.test(k)) {
+      k = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : 'k-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
       try { localStorage.setItem(LS_KEY, k); } catch (e) { /* 이번 세션만 유지된다 */ }
     }
     return k;
+  }
+
+  function setDeviceKey(k) {
+    try { localStorage.setItem(LS_KEY, k); } catch (e) { /* 저장이 막힌 환경 */ }
   }
 
   function api(path, opts) {
@@ -197,8 +207,43 @@
       '</tbody></table>';
   }
 
+  /* ── 동기화 코드 ──────────────────────────────────────── */
+  function initSyncCode() {
+    var field = $('sync-code');
+    if (field) field.value = deviceKey();
+
+    var copyBtn = $('sync-copy');
+    if (copyBtn) copyBtn.addEventListener('click', function () {
+      var v = ($('sync-code') || {}).value || '';
+      var done = function () { msg($('sync-msg'), '복사했습니다. 다른 PC 에서 이 코드를 넣으세요.'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(v).then(done, function () {
+          msg($('sync-msg'), '복사가 막혀 있습니다. 코드를 직접 선택해 복사하세요.', true);
+        });
+      } else {
+        // 클립보드 API 가 없는 환경에서는 선택만 해 준다
+        if (field && field.select) field.select();
+        done();
+      }
+    });
+
+    var applyBtn = $('sync-apply');
+    if (applyBtn) applyBtn.addEventListener('click', function () {
+      var v = (($('sync-code') || {}).value || '').trim();
+      if (!KEY_RE.test(v)) {
+        return msg($('sync-msg'), '영문·숫자·하이픈 8~64자여야 합니다.', true);
+      }
+      setDeviceKey(v);
+      msg($('sync-msg'), '코드를 적용했습니다. 목록을 다시 불러옵니다.');
+      loadAccounts();
+      loadReservations();
+    });
+  }
+
   /* ── 연결 ─────────────────────────────────────────────── */
   function init() {
+    initSyncCode();
+
     var addBtn = $('acc-add-btn');
     if (addBtn) addBtn.addEventListener('click', addAccount);
 
