@@ -1,27 +1,46 @@
 /**
- * 예약내역 탭 — 예약 사이트 계정 관리와 예약완료 내역 수집.
+ * 예약내역 탭 — 대치유수지 예약 사이트 계정 목록과 예약완료 내역.
  *
- * 서버(lambda/tennis.js)가 계정별로 직접 로그인해서 긁어오므로
+ * 이 웹의 로그인과는 아무 상관이 없다. 브라우저가 한 번 발급한 기기 키로
+ * 목록을 구분한다(포켓몬 보관함과 같은 방식). 여기 등록하는 건 오로지
+ * 대치유수지 사이트에 자동 로그인할 계정이다. 여러 개 등록할 수 있다.
+ *
+ * 서버(lambda/tennis.js)가 계정마다 직접 로그인해서 긁어오므로
  * 이 화면은 목록을 보여주고 수집을 시작시키는 역할만 한다.
- * 로그인 토큰은 Work Kit 과 같은 localStorage.token 을 쓴다.
  */
 (function () {
   'use strict';
 
   var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+  var LS_KEY = 'tennis.deviceKey.v1';
 
   var $ = function (id) { return document.getElementById(id); };
-  var show = function (el, on) { if (el) el.classList.toggle('hidden', !on); };
-  var token = function () { try { return localStorage.getItem('token') || ''; } catch (e) { return ''; } };
+
+  /** 이 브라우저의 기기 키 — 없으면 만들어 저장한다 */
+  function deviceKey() {
+    var k = '';
+    try { k = localStorage.getItem(LS_KEY) || ''; } catch (e) { /* 저장이 막힌 환경 */ }
+    if (!/^[A-Za-z0-9-]{8,64}$/.test(k)) {
+      k = (crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : 'k-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      try { localStorage.setItem(LS_KEY, k); } catch (e) { /* 이번 세션만 유지된다 */ }
+    }
+    return k;
+  }
 
   function api(path, opts) {
     opts = opts || {};
-    var headers = { 'Content-Type': 'application/json' };
-    if (token()) headers.Authorization = 'Bearer ' + token();
-    return fetch(API + path, {
+    var body = opts.body || {};
+    var url = API + path;
+    if (!opts.method || opts.method === 'GET' || opts.method === 'DELETE') {
+      url += (path.indexOf('?') < 0 ? '?' : '&') + 'key=' + encodeURIComponent(deviceKey());
+    } else {
+      body.key = deviceKey();
+    }
+    return fetch(url, {
       method: opts.method || 'GET',
-      headers: headers,
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      headers: { 'Content-Type': 'application/json' },
+      body: (opts.method && opts.method !== 'GET') ? JSON.stringify(body) : undefined,
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         if (!res.ok) throw new Error(data.error || ('요청 실패 (' + res.status + ')'));
@@ -43,31 +62,6 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   };
 
-  /* ── 로그인 ───────────────────────────────────────────── */
-  function refreshAuth() {
-    var logged = !!token();
-    show($('hist-login'), !logged);
-    show($('hist-main'), logged);
-    if (logged) { loadAccounts(); loadReservations(); }
-  }
-
-  function doLogin() {
-    var email = ($('hist-email') || {}).value || '';
-    var pw = ($('hist-pw') || {}).value || '';
-    if (!email || !pw) return msg($('hist-login-msg'), '이메일과 비밀번호를 입력하세요.', true);
-    msg($('hist-login-msg'), '로그인 중...');
-    api('/auth/login', { method: 'POST', body: { email: email, password: pw } })
-      .then(function (d) {
-        try {
-          localStorage.setItem('token', d.token);
-          localStorage.setItem('user', JSON.stringify(d.user));
-        } catch (e) { /* 저장이 막혀 있어도 이번 세션은 동작한다 */ }
-        msg($('hist-login-msg'), '');
-        refreshAuth();
-      })
-      .catch(function (e) { msg($('hist-login-msg'), e.message, true); });
-  }
-
   /* ── 계정 ─────────────────────────────────────────────── */
   function loadAccounts() {
     return api('/tennis/accounts').then(function (d) { renderAccounts(d.accounts || []); })
@@ -76,6 +70,8 @@
 
   function renderAccounts(list) {
     var box = $('acc-list');
+    var cnt = $('acc-count');
+    if (cnt) cnt.textContent = list.length ? '(' + list.length + '개)' : '';
     if (!box) return;
     if (!list.length) {
       box.innerHTML = '<p class="resv-empty">등록된 계정이 없습니다. 위에서 추가하세요.</p>';
@@ -112,7 +108,8 @@
     api('/tennis/accounts', { method: 'POST', body: { login_id: id.trim(), password: pw, label: label.trim() } })
       .then(function () {
         $('acc-id').value = ''; $('acc-pw').value = ''; $('acc-label').value = '';
-        msg($('acc-msg'), '저장했습니다.');
+        $('acc-id').focus();                       // 연달아 여러 개 넣기 쉽게
+        msg($('acc-msg'), '저장했습니다. 계속 추가할 수 있습니다.');
         return loadAccounts();
       })
       .catch(function (e) { msg($('acc-msg'), e.message, true); });
@@ -202,13 +199,14 @@
 
   /* ── 연결 ─────────────────────────────────────────────── */
   function init() {
-    var loginBtn = $('hist-login-btn');
-    if (loginBtn) loginBtn.addEventListener('click', doLogin);
-    var pwField = $('hist-pw');
-    if (pwField) pwField.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
-
     var addBtn = $('acc-add-btn');
     if (addBtn) addBtn.addEventListener('click', addAccount);
+
+    // 메모 칸에서 엔터 → 바로 추가 (여러 개 넣을 때 편하다)
+    var labelField = $('acc-label');
+    if (labelField) labelField.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addAccount(); }
+    });
 
     var syncBtn = $('sync-btn');
     if (syncBtn) syncBtn.addEventListener('click', syncAll);
@@ -231,7 +229,8 @@
       }
     });
 
-    refreshAuth();
+    loadAccounts();
+    loadReservations();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

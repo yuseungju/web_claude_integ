@@ -306,21 +306,25 @@ async function inspectBookingForm(cookie, { type, year, month }) {
 }
 
 /* ── 라우팅 ────────────────────────────────────────────────── */
+// 이 웹의 로그인과는 무관하다. 포켓몬 보관함처럼 브라우저가 발급한
+// 기기 키로 목록을 구분한다 — 등록하는 건 대치유수지 계정일 뿐이다.
+const DEVICE_KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
+
 async function route(ctx, event, method, path) {
-  const { pool, resp, getBody, verifyToken } = ctx;
+  const { pool, resp, getBody } = ctx;
   if (!path.startsWith('/tennis/')) return null;
 
-  const user = verifyToken(event);
-  if (!user) return resp(401, { error: '로그인이 필요합니다.' });
-  const uid = user.id;
   const body = getBody(event);
+  const qs = event.queryStringParameters || {};
+  const uid = body.key || qs.key || '';
+  if (!DEVICE_KEY_RE.test(uid)) return resp(400, { error: '기기 키가 올바르지 않습니다.' });
 
   /* 계정 목록 — 비밀번호는 내려보내지 않는다 */
   if (path === '/tennis/accounts' && method === 'GET') {
     const { rows } = await pool.query(
       `SELECT a.id, a.login_id, a.label, a.is_active, a.last_sync_at, a.last_sync_status,
               (SELECT count(*)::int FROM tn_reservations r WHERE r.account_id = a.id) AS reservations
-         FROM tn_accounts a WHERE a.user_id = $1 ORDER BY a.id`, [uid]);
+         FROM tn_accounts a WHERE a.device_key = $1 ORDER BY a.id`, [uid]);
     return resp(200, { accounts: rows });
   }
 
@@ -332,9 +336,9 @@ async function route(ctx, event, method, path) {
     if (!loginId || !password) return resp(400, { error: '아이디와 비밀번호를 입력하세요.' });
 
     const { rows } = await pool.query(
-      `INSERT INTO tn_accounts (user_id, login_id, password_enc, label)
+      `INSERT INTO tn_accounts (device_key, login_id, password_enc, label)
             VALUES ($1, $2, $3, $4)
-       ON CONFLICT (user_id, login_id)
+       ON CONFLICT (device_key, login_id)
        DO UPDATE SET password_enc = EXCLUDED.password_enc,
                      label = EXCLUDED.label,
                      updated_at = NOW()
@@ -345,13 +349,13 @@ async function route(ctx, event, method, path) {
 
   const acctM = path.match(/^\/tennis\/accounts\/(\d+)$/);
   if (acctM && method === 'DELETE') {
-    const r = await pool.query('DELETE FROM tn_accounts WHERE id=$1 AND user_id=$2', [acctM[1], uid]);
+    const r = await pool.query('DELETE FROM tn_accounts WHERE id=$1 AND device_key=$2', [acctM[1], uid]);
     if (!r.rowCount) return resp(404, { error: '계정을 찾을 수 없습니다.' });
     return resp(200, { ok: true });
   }
   if (acctM && method === 'PUT') {
     const r = await pool.query(
-      'UPDATE tn_accounts SET is_active=$1, label=COALESCE($2,label), updated_at=NOW() WHERE id=$3 AND user_id=$4',
+      'UPDATE tn_accounts SET is_active=$1, label=COALESCE($2,label), updated_at=NOW() WHERE id=$3 AND device_key=$4',
       [body.is_active !== false, body.label ?? null, acctM[1], uid]);
     if (!r.rowCount) return resp(404, { error: '계정을 찾을 수 없습니다.' });
     return resp(200, { ok: true });
@@ -364,7 +368,7 @@ async function route(ctx, event, method, path) {
     if (!accountId) return resp(400, { error: 'account_id 가 필요합니다.' });
 
     const { rows: accs } = await pool.query(
-      'SELECT id, login_id, password_enc FROM tn_accounts WHERE id=$1 AND user_id=$2', [accountId, uid]);
+      'SELECT id, login_id, password_enc FROM tn_accounts WHERE id=$1 AND device_key=$2', [accountId, uid]);
     if (!accs.length) return resp(404, { error: '계정을 찾을 수 없습니다.' });
     const acc = accs[0];
 
@@ -392,7 +396,7 @@ async function route(ctx, event, method, path) {
     for (const r of result.rows) {
       const q = await pool.query(
         `INSERT INTO tn_reservations
-           (user_id, account_id, reserve_no, facility, use_date, use_time, status, amount, team, people, page_no, raw)
+           (device_key, account_id, reserve_no, facility, use_date, use_time, status, amount, team, people, page_no, raw)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
          ON CONFLICT (account_id, reserve_no) DO UPDATE
            SET facility=EXCLUDED.facility, use_date=EXCLUDED.use_date, use_time=EXCLUDED.use_time,
@@ -424,7 +428,7 @@ async function route(ctx, event, method, path) {
   /* 예약 신청 폼 구조 확인 — 조회만 하고 제출은 하지 않는다 */
   if (path === '/tennis/inspect' && method === 'POST') {
     const { rows: accs } = await pool.query(
-      'SELECT id, login_id, password_enc FROM tn_accounts WHERE id=$1 AND user_id=$2',
+      'SELECT id, login_id, password_enc FROM tn_accounts WHERE id=$1 AND device_key=$2',
       [body.account_id, uid]);
     if (!accs.length) return resp(404, { error: '계정을 찾을 수 없습니다.' });
 
@@ -447,7 +451,7 @@ async function route(ctx, event, method, path) {
               r.team, r.people, r.collected_at, a.login_id, a.label
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id
-        WHERE r.user_id = $1
+        WHERE r.device_key = $1
         ORDER BY r.use_date DESC NULLS LAST, r.id DESC
         LIMIT 2000`, [uid]);
     return resp(200, { reservations: rows, total: rows.length });

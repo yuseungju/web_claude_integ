@@ -4,7 +4,7 @@
 --
 -- 배포할 때 db/migrate.js 가 이 파일을 RDS에 실행합니다.
 -- 모든 구문은 여러 번 실행해도 안전해야 합니다 (CREATE ... IF NOT EXISTS).
--- 생성: 2026-09-14T09:03:42.028Z
+-- 생성: 2026-09-14T09:18:01.054Z
 -- ============================================================
 
 -- ===== common/common_schema.sql =====
@@ -442,37 +442,41 @@ CREATE INDEX IF NOT EXISTS idx_ai_summary_files_summary ON ai_summary_files(summ
 -- ============================================================
 -- [대치유수지 예약 자동화 / tennis] 계정 · 예약내역 스키마
 --
--- 예약 사이트 계정을 여러 개 등록해 두고, 계정별로 로그인해
--- "예약확인" 페이지(?act=info.page&pcode=check)를 1~4페이지 훑어
--- 예약완료 건만 모아 둔다.
+-- 대치유수지 예약 사이트에 쓰는 자동로그인 계정을 여러 개 등록해 두고,
+-- 계정마다 로그인해 "예약확인" 페이지(?act=info.page&pcode=check)를
+-- 1~4쪽 훑어 예약완료 건만 모아 둔다.
 --
--- 비밀번호는 평문으로 두지 않는다. lambda/tennis.js 가 AES-256-GCM 으로
--- 암호화해 password_enc 에 넣고, 로그인할 때만 복호화한다.
--- (형식: iv:authTag:ciphertext, 전부 base64)
+-- 이 웹의 로그인(users)과는 아무 상관이 없다. 포켓몬 보관함과 같이
+-- 브라우저가 발급한 device_key 로 목록을 구분한다.
+--
+-- 비밀번호는 우리가 대신 로그인해야 해서 되돌릴 수 있어야 한다.
+-- lambda/tennis.js 가 AES-256-GCM 으로 암호화해 password_enc 에 넣고,
+-- 로그인할 때만 복호화한다. (형식: iv:authTag:ciphertext, 전부 base64)
 -- ============================================================
 
--- 예약 사이트 계정
+-- 예약 사이트 계정 — 한 기기(device_key)에 여러 개를 등록한다
 CREATE TABLE IF NOT EXISTS tn_accounts (
   id           SERIAL       PRIMARY KEY,
-  user_id      INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_key   TEXT         NOT NULL,
   login_id     VARCHAR(100) NOT NULL,
   password_enc TEXT         NOT NULL,
   label        VARCHAR(100) NOT NULL DEFAULT '',
   is_active    BOOLEAN      NOT NULL DEFAULT TRUE,
+  sort_no      INTEGER      NOT NULL DEFAULT 0,
   last_sync_at     TIMESTAMPTZ,
   last_sync_status TEXT     NOT NULL DEFAULT '',
   created_at   TIMESTAMPTZ  DEFAULT NOW(),
   updated_at   TIMESTAMPTZ  DEFAULT NOW(),
-  UNIQUE (user_id, login_id)
+  UNIQUE (device_key, login_id)
 );
-CREATE INDEX IF NOT EXISTS idx_tn_accounts_user ON tn_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_tn_accounts_device ON tn_accounts(device_key, id);
 
 -- 수집한 예약완료 내역
---   reserve_no : 사이트가 부여한 예약번호. 같은 계정 안에서 유일하다고 보고
---                (account_id, reserve_no) 로 중복 수집을 막는다.
+--   reserve_no : 사이트가 부여한 접수번호(예: 20260914090010_5061).
+--                못 읽으면 내용으로 만든 지문을 넣어 중복만 막는다.
 CREATE TABLE IF NOT EXISTS tn_reservations (
   id           SERIAL       PRIMARY KEY,
-  user_id      INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  device_key   TEXT         NOT NULL,
   account_id   INTEGER      NOT NULL REFERENCES tn_accounts(id) ON DELETE CASCADE,
   reserve_no   VARCHAR(80)  NOT NULL,
   facility     TEXT         NOT NULL DEFAULT '',
@@ -487,11 +491,5 @@ CREATE TABLE IF NOT EXISTS tn_reservations (
   collected_at TIMESTAMPTZ  DEFAULT NOW(),
   UNIQUE (account_id, reserve_no)
 );
-CREATE INDEX IF NOT EXISTS idx_tn_reservations_user ON tn_reservations(user_id, use_date DESC);
-CREATE INDEX IF NOT EXISTS idx_tn_reservations_acct ON tn_reservations(account_id);
-
--- 처음 만들 때는 위 CREATE TABLE 로 충분하지만, 이미 만들어진 DB 에는
--- 컬럼이 없다. CREATE TABLE IF NOT EXISTS 는 기존 테이블을 고치지 않으므로
--- 아래로 보강한다. (이 컬럼을 참조하는 인덱스는 없다)
-ALTER TABLE tn_reservations ADD COLUMN IF NOT EXISTS team   TEXT NOT NULL DEFAULT '';
-ALTER TABLE tn_reservations ADD COLUMN IF NOT EXISTS people SMALLINT;
+CREATE INDEX IF NOT EXISTS idx_tn_reservations_device ON tn_reservations(device_key, use_date DESC);
+CREATE INDEX IF NOT EXISTS idx_tn_reservations_acct   ON tn_reservations(account_id);
