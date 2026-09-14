@@ -168,18 +168,21 @@
       box.innerHTML = '<p class="step-desc">아직 수집한 내역이 없습니다.</p>';
       return;
     }
+    // 모든 계정의 내역을 한 표로 합치고, 어느 계정으로 잡은 건지는 맨 뒤에 붙인다
     box.innerHTML =
       '<table class="resv-table"><thead><tr>' +
-      '<th>계정</th><th>이용일</th><th>시간</th><th>시설</th><th>금액</th><th>예약번호</th>' +
+      '<th>#</th><th>이용일</th><th>시간</th><th>시설</th><th>금액</th><th>예약번호</th><th>계정</th>' +
       '</tr></thead><tbody>' +
-      list.map(function (r) {
+      list.map(function (r, i) {
         return '<tr>' +
-          '<td>' + esc(r.login_id) + (r.label ? ' <span class="step-tip">' + esc(r.label) + '</span>' : '') + '</td>' +
+          '<td class="resv-idx">' + (i + 1) + '</td>' +
           '<td>' + esc(r.use_date ? String(r.use_date).slice(0, 10) : '-') + '</td>' +
           '<td>' + esc(r.use_time || '-') + '</td>' +
           '<td>' + esc(r.facility || '-') + '</td>' +
-          '<td>' + (r.amount != null ? Number(r.amount).toLocaleString('ko-KR') + '원' : '-') + '</td>' +
+          '<td class="resv-amt">' + (r.amount != null ? Number(r.amount).toLocaleString('ko-KR') + '원' : '-') + '</td>' +
           '<td>' + esc(r.reserve_no) + '</td>' +
+          '<td class="resv-acct">' + esc(r.login_id) +
+            (r.label ? '<br><span class="step-tip">' + esc(r.label) + '</span>' : '') + '</td>' +
           '</tr>';
       }).join('') +
       '</tbody></table>';

@@ -454,3 +454,7 @@ footer strong { color: #6e7681; }
   .acc-row { grid-template-columns: 1fr; }
   .acc-meta { text-align: left; }
 }
+
+.resv-idx  { color: #94a3b8; text-align: right; width: 1%; }
+.resv-amt  { text-align: right; }
+.resv-acct { color: #475569; }
