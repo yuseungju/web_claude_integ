@@ -380,6 +380,26 @@ div>
           <div id="settle-table" class="resv-wrap"></div>
         </div>
 
+
+        <div class="field-card">
+          <div class="field-label">
+            모든 계정 예약완료 내역
+            <span id="resv-count" class="step-tip"></span>
+          </div>
+          <div class="filter-row">
+            <label for="f-from">기간</label>
+            <input type="date" id="f-from">
+            <span class="price-sep">~</span>
+            <input type="date" id="f-to">
+            <button type="button" id="f-next">차월</button>
+            <button type="button" id="f-all">전체</button>
+          </div>
+          <div id="resv-table" class="resv-wrap">
+            <p class="step-desc">아직 수집한 내역이 없습니다.</p>
+          </div>
+        </div>
+
+
         <div class="field-card">
           <div class="field-label">구글 캘린더에 추가</div>
           <p class="step-desc">
@@ -400,25 +420,6 @@ div>
             <textarea id="cal-text" readonly spellcheck="false"></textarea>
           </div>
         </div>
-
-        <div class="field-card">
-          <div class="field-label">
-            모든 계정 예약완료 내역
-            <span id="resv-count" class="step-tip"></span>
-          </div>
-          <div class="filter-row">
-            <label for="f-from">기간</label>
-            <input type="date" id="f-from">
-            <span class="price-sep">~</span>
-            <input type="date" id="f-to">
-            <button type="button" id="f-next">차월</button>
-            <button type="button" id="f-all">전체</button>
-          </div>
-          <div id="resv-table" class="resv-wrap">
-            <p class="step-desc">아직 수집한 내역이 없습니다.</p>
-          </div>
-        </div>
-
       </div><!-- /hist-main -->
 
     </div><!-- /tab-history -->

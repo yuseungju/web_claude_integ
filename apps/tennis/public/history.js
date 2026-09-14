@@ -294,6 +294,7 @@
       }).join('') +
       '</tbody></table>';
 
+    refreshPrompt(false);        // 펼쳐져 있으면 체크 변경을 따라간다
     var all = $('chk-all');
     if (all) all.checked = list.every(function (r) { return r.checked !== false; });
     renderSummary();
@@ -519,23 +520,38 @@
     return lines.join('\n');
   }
 
-  function makePrompt() {
+  /** 지시문 내용을 다시 만든다. 이미 펼쳐져 있으면 체크를 바꿀 때마다 따라간다. */
+  function refreshPrompt(force) {
+    var box = $('cal-out');
+    if (!box) return null;
+    if (!force && box.classList.contains('hidden')) return null;   // 아직 안 펼쳤으면 가만히 둔다
+
     var from = ($('f-from') || {}).value || '';
     var to = ($('f-to') || {}).value || '';
-    if (!from || !to) return msg($('cal-msg'), '기간을 먼저 지정하세요.', true);
+    if (!from || !to) return { error: '기간을 먼저 지정하세요.' };
 
     // 화면에서 보고 있는 그대로 — 기간 안의 체크된 예약완료 건
     var rows = filtered().filter(function (r) {
       return r.checked !== false && r.use_date && timeRange(r.use_time);
     });
-    if (!rows.length) return msg($('cal-msg'), '기간 안에 체크된 예약이 없습니다.', true);
+    if (!rows.length) {
+      if ($('cal-text')) $('cal-text').value = '';
+      if ($('cal-out-info')) $('cal-out-info').textContent = '';
+      return { error: '기간 안에 체크된 예약이 없습니다.' };
+    }
 
     var text = buildPrompt(rows, from, to);
-    var box = $('cal-out');
-    if (box) box.classList.remove('hidden');
+    box.classList.remove('hidden');
     if ($('cal-text')) $('cal-text').value = text;
     if ($('cal-out-info')) $('cal-out-info').textContent = rows.length + '건 · ' + text.length + '자';
-    msg($('cal-msg'), '아래 내용을 복사해 클로드에게 붙여넣으세요.');
+    return { count: rows.length };
+  }
+
+  function makePrompt() {
+    var r = refreshPrompt(true);
+    if (!r) return;
+    if (r.error) return msg($('cal-msg'), r.error, true);
+    msg($('cal-msg'), '아래 내용을 복사해 클로드에게 붙여넣으세요. 체크를 바꾸면 자동으로 다시 만들어집니다.');
   }
 
   function copyPrompt() {
