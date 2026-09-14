@@ -4,7 +4,7 @@
 --
 -- 배포할 때 db/migrate.js 가 이 파일을 RDS에 실행합니다.
 -- 모든 구문은 여러 번 실행해도 안전해야 합니다 (CREATE ... IF NOT EXISTS).
--- 생성: 2026-09-14T07:10:02.301Z
+-- 생성: 2026-09-14T07:53:10.600Z
 -- ============================================================
 
 -- ===== common/common_schema.sql =====
@@ -27,17 +27,6 @@ CREATE TABLE IF NOT EXISTS users (
   section_labels  JSONB        DEFAULT '["","","","",""]',
   created_at      TIMESTAMPTZ  DEFAULT NOW()
 );
--- 이미 users 테이블이 있는 DB(예전 기사작성 스키마로 만든 것)에는 아래 컬럼이 없다.
--- CREATE TABLE IF NOT EXISTS 는 기존 테이블을 고치지 않으므로 컬럼을 따로 보강해야 하고,
--- 이 보강은 반드시 인덱스 생성보다 **먼저** 와야 한다 (없는 컬럼에 인덱스를 걸면 실패).
-ALTER TABLE users ADD COLUMN IF NOT EXISTS provider       VARCHAR(20) NOT NULL DEFAULT 'email';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_id    VARCHAR(255);
-ALTER TABLE users ADD COLUMN IF NOT EXISTS save_limit     INTEGER     NOT NULL DEFAULT 5;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS writing_style  TEXT        DEFAULT '';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS article_style  TEXT        DEFAULT '';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS section_guides JSONB       DEFAULT '["","","","",""]';
-ALTER TABLE users ADD COLUMN IF NOT EXISTS section_labels JSONB       DEFAULT '["","","","",""]';
-
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email    ON users(email);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_provider ON users(provider, provider_id) WHERE provider_id IS NOT NULL;
 
@@ -63,10 +52,6 @@ CREATE TABLE IF NOT EXISTS user_saves (
   collab_share_token VARCHAR(64),
   share_token        VARCHAR(64)
 );
--- users 와 같은 이유로 컬럼 보강을 인덱스보다 먼저 둔다
-ALTER TABLE user_saves ADD COLUMN IF NOT EXISTS collab_share_token VARCHAR(64);
-ALTER TABLE user_saves ADD COLUMN IF NOT EXISTS share_token        VARCHAR(64);
-
 CREATE INDEX IF NOT EXISTS idx_user_saves_user_menu ON user_saves(user_id, menu_key);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_saves_share_token ON user_saves(share_token) WHERE share_token IS NOT NULL;
 

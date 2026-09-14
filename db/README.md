@@ -24,8 +24,9 @@ db/
 ## 규칙
 
 **모든 구문은 여러 번 실행해도 안전해야 한다.** 배포할 때마다 돌기 때문이다.
-`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
-만 쓴다.
+지금은 `CREATE TABLE IF NOT EXISTS` 27개와 `CREATE INDEX IF NOT EXISTS` 30개, 이 두 가지뿐이다.
+컬럼을 추가해야 하면 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 를 쓰되, 반드시 그 컬럼을
+참조하는 인덱스보다 **먼저** 와야 한다(없는 컬럼에 인덱스를 걸면 실패한다).
 
 **한 테이블은 한 파일만 정의한다.** 앱이 늘어날수록 이름이 겹치기 쉬운데
 `CREATE TABLE IF NOT EXISTS` 는 조용히 넘어가 버려서, 먼저 실행된 쪽 정의가 이기고
@@ -85,7 +86,7 @@ npm run db:build          # schema_all.sql 재생성
 DB_HOST=... DB_NAME=... DB_USER=... DB_PASSWORD=... node db/migrate.js
 ```
 
-빈 스키마에서 전체가 한 번에 생성되는지 확인했다 — 27개 테이블 생성 성공, FK 순서 문제 없음.
+빈 스키마에 두 번 연속 실행해도 27개가 그대로 만들어지는 것까지 확인했다 (FK 순서 문제 없음).
 
-스키마에 정의된 테이블과 `lambda/` 가 실제로 쓰는 테이블은 일치해야 한다 (현재 27 : 27).
-안 쓰는 테이블을 남겨두면 새 DB 를 만들 때마다 따라다닌다.
+DB 실제 · 스키마 정의 · `lambda/` 사용 테이블이 모두 27개로 일치한다.
+안 쓰는 테이블을 남겨두면 새 DB 를 만들 때마다 따라다니므로, 쓰지 않게 되면 바로 걷어낸다.
