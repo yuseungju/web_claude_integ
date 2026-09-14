@@ -17,6 +17,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="run">▶&nbsp; 예약 실행</button>
       <button class="tab-btn" data-tab="setup">⚙&nbsp; 초기 설정</button>
+      <button class="tab-btn" data-tab="history">📋&nbsp; 예약내역</button>
     </div>
 
     <!-- ═══════════════════════════════════════ 탭1: 예약 실행 ═══ -->
@@ -294,11 +295,91 @@
 
     </div><!-- /tab-setup -->
 
+    <!-- ═══════════════════════════════════════ 탭3: 예약내역 ═══ -->
+    <div id="tab-history" class="tab-panel">
+
+      <!-- 로그인 안 했을 때 -->
+      <div id="hist-login" class="field-card hidden">
+        <div class="field-label">로그인이 필요합니다</div>
+        <p class="step-desc">
+          예약 사이트 계정과 수집한 내역은 서버에 저장됩니다.
+          Work Kit 과 같은 계정을 씁니다.
+        </p>
+        <div class="field-row-two">
+          <div class="input-wrap">
+            <label for="hist-email">이메일</label>
+            <input type="email" id="hist-email" autocomplete="username" placeholder="you@example.com">
+          </div>
+          <div class="input-wrap">
+            <label for="hist-pw">비밀번호</label>
+            <input type="password" id="hist-pw" autocomplete="current-password" placeholder="••••••••">
+          </div>
+        </div>
+        <button type="button" id="hist-login-btn" class="run-btn">로그인</button>
+        <div id="hist-login-msg" class="error-msg hidden"></div>
+      </div>
+
+      <!-- 로그인 했을 때 -->
+      <div id="hist-main" class="hidden">
+
+        <div class="field-card">
+          <div class="field-label">예약 사이트 계정</div>
+          <p class="step-desc">
+            여기 등록한 계정으로 하나씩 로그인해서
+            <code>예약확인</code> 페이지 1~4쪽을 훑어 <strong>예약완료</strong> 건만 모읍니다.
+            비밀번호는 암호화해서 보관하고 화면에 다시 보여주지 않습니다.
+          </p>
+
+          <div class="field-row-three">
+            <div class="input-wrap">
+              <label for="acc-id">아이디</label>
+              <input type="text" id="acc-id" autocomplete="off" placeholder="예약 사이트 아이디">
+            </div>
+            <div class="input-wrap">
+              <label for="acc-pw">비밀번호</label>
+              <input type="password" id="acc-pw" autocomplete="new-password" placeholder="••••••••">
+            </div>
+            <div class="input-wrap">
+              <label for="acc-label">메모 <span class="step-tip">(선택)</span></label>
+              <input type="text" id="acc-label" placeholder="예: 본인 / 가족">
+            </div>
+          </div>
+          <button type="button" id="acc-add-btn" class="run-btn">계정 추가</button>
+          <div id="acc-msg" class="error-msg hidden"></div>
+
+          <div id="acc-list" class="acc-list"></div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">예약완료 내역 수집</div>
+          <p class="step-desc">
+            등록한 계정을 순서대로 돌면서 수집합니다. 계정 수만큼 시간이 걸립니다.
+          </p>
+          <button type="button" id="sync-btn" class="run-btn">전체 계정 수집</button>
+          <div id="sync-log" class="run-result hidden"></div>
+        </div>
+
+        <div class="field-card">
+          <div class="field-label">
+            모든 계정 예약완료 내역
+            <span id="resv-count" class="step-tip"></span>
+          </div>
+          <div id="resv-table" class="resv-wrap">
+            <p class="step-desc">아직 수집한 내역이 없습니다.</p>
+          </div>
+        </div>
+
+      </div><!-- /hist-main -->
+
+    </div><!-- /tab-history -->
+
+
     <footer>
       <p>대치유수지 예약 자동화 &nbsp;|&nbsp; Powered by <strong>AWS Amplify</strong></p>
     </footer>
   </div>
 
   <script src="app.js"></script>
+  <script src="history.js"></script>
 </body>
 </html>

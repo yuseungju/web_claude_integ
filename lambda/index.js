@@ -22,6 +22,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const https = require('https');
 const pgo = require('./pgo');
+const tennis = require('./tennis');
 
 const DB_CONFIG = {
   host:     process.env.DB_HOST,
@@ -3194,6 +3195,13 @@ exports.handler = async (event) => {
   }
 
   try {
+    // [대치유수지 예약] tn_ 테이블만 다루는 독립 모듈 (lambda/tennis.js)
+    if (path.startsWith('/tennis/')) {
+      const tnRes = await tennis.route(
+        { pool, resp, getBody: getBodyAr, verifyToken: verifyTokenAr }, event, method, path);
+      if (tnRes) return tnRes;
+    }
+
     // workKit 백엔드에 없던 라우트(댓글·반응·북마크)를 먼저 본다
     const social = await routeSocial(event, method, path);
     if (social) return social;

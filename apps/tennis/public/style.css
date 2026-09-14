@@ -413,3 +413,44 @@ footer strong { color: #6e7681; }
   .day-box span { width: 40px; height: 40px; }
   .download-row { flex-direction: column; }
 }
+
+/* ─── 예약내역 탭 ─────────────────────────────────────────── */
+.acc-list { margin-top: 14px; }
+
+.acc-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+.acc-main   { font-size: 15px; }
+.acc-meta   { font-size: 12px; color: #64748b; text-align: right; line-height: 1.5; }
+.acc-actions { display: flex; gap: 8px; }
+
+#sync-log {
+  max-height: 220px;
+  overflow-y: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/* 표가 좁은 화면에서 본문을 밀지 않도록 자기 영역 안에서만 가로 스크롤한다 */
+.resv-wrap { overflow-x: auto; }
+
+.resv-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.resv-table th,
+.resv-table td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; white-space: nowrap; }
+.resv-table th { background: #f8fafc; font-weight: 600; color: #475569; }
+.resv-table tbody tr:hover { background: #f8fafc; }
+
+@media (max-width: 640px) {
+  .acc-row { grid-template-columns: 1fr; }
+  .acc-meta { text-align: left; }
+}

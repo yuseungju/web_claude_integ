@@ -13,7 +13,7 @@ const DB_DIR = __dirname;
 const OUTPUT_FILE = path.join(DB_DIR, 'schema_all.sql');
 
 // common 을 먼저 깔고(users 등 공통), 그 다음 앱별 스키마
-const APP_ORDER = ['common', 'nol', 'pgo', 'workkit'];
+const APP_ORDER = ['common', 'nol', 'pgo', 'workkit', 'tennis'];
 
 /** 배포 때 돌면 안 되는 구문 — 있으면 빌드를 멈춘다 */
 const DESTRUCTIVE = /\b(DROP\s+(TABLE|SCHEMA|DATABASE|INDEX)|TRUNCATE|DELETE\s+FROM)\b/i;
