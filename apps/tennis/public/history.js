@@ -117,6 +117,23 @@
     });
   }
 
+  /**
+   * 화면 상태를 서버에 남긴다. 목록이 공용이라 다른 PC 에서 열어도
+   * 같은 기간·같은 계산 결과가 그대로 보인다.
+   * 실패해도 화면은 그대로 쓸 수 있으므로 조용히 넘어간다.
+   */
+  function saveSettings(obj) {
+    return api('/tennis/settings', { method: 'POST', body: { settings: obj } })
+      .catch(function () { /* 저장 실패해도 계산은 화면에서 그대로 된다 */ });
+  }
+
+  function saveRange() {
+    saveSettings({
+      f_from: ($('f-from') || {}).value || '',
+      f_to: ($('f-to') || {}).value || '',
+    });
+  }
+
   /* ── 계정 ─────────────────────────────────────────────── */
   function loadAccounts() {
     return api('/tennis/accounts').then(function (d) { renderAccounts(d.accounts || []); })
@@ -253,6 +270,8 @@
         renderReservations();          // 금액 열까지 다시 그린다 (여기서 stale 이 켜진다)
         renderSummary();               // 합계·정산은 이 버튼을 눌렀을 때만 계산한다
         done('price');
+        // 다시 열었을 때 이 결과가 그대로 보이도록 표시를 남긴다
+        saveSettings({ computed_at: String(Date.now()) });
         msg($('price-msg'), '저장했습니다. 아래 합계와 정산을 다시 계산했습니다.');
       })
       .catch(function (e) { msg($('price-msg'), e.message, true); });
@@ -822,23 +841,20 @@
       }
     });
 
-    var range = nextMonthRange();
-    if ($('f-from') && !$('f-from').value) $('f-from').value = range.from;
-    if ($('f-to') && !$('f-to').value) $('f-to').value = range.to;
     ['f-from', 'f-to'].forEach(function (id) {
       var el = $(id);
-      if (el) el.addEventListener('change', renderReservations);
+      if (el) el.addEventListener('change', function () { renderReservations(); saveRange(); });
     });
     var fNext = $('f-next');
     if (fNext) fNext.addEventListener('click', function () {
       var r = nextMonthRange();
       $('f-from').value = r.from; $('f-to').value = r.to;
-      renderReservations();
+      renderReservations(); saveRange();
     });
     var fAll = $('f-all');
     if (fAll) fAll.addEventListener('click', function () {
       $('f-from').value = ''; $('f-to').value = '';
-      renderReservations();
+      renderReservations(); saveRange();
     });
 
     var calMake = $('cal-make');
@@ -863,13 +879,30 @@
     });
 
     loadAccounts();
+
+    // 저장해 둔 기간과 계산 여부를 먼저 읽고, 그 상태로 화면을 만든다
+    var wasComputed = false;
     api('/tennis/settings')
       .then(function (d) {
         var st = d.settings || {};
+        var range = nextMonthRange();       // 저장된 게 없으면 차월 1일~말일
+        if ($('f-from')) $('f-from').value = st.f_from !== undefined ? st.f_from : range.from;
+        if ($('f-to')) $('f-to').value = st.f_to !== undefined ? st.f_to : range.to;
+        wasComputed = !!st.computed_at;
       })
-      .catch(function () { /* 없으면 기본값을 쓴다 */ })
+      .catch(function () {
+        var range = nextMonthRange();
+        if ($('f-from') && !$('f-from').value) $('f-from').value = range.from;
+        if ($('f-to') && !$('f-to').value) $('f-to').value = range.to;
+      })
       .then(function () { return loadPrices(); })
-      .then(loadReservations);
+      .then(loadReservations)
+      .then(function () {
+        // 전에 계산해 뒀다면 그 결과를 바로 보여 준다. 다시 누를 필요가 없다.
+        if (!wasComputed) return;
+        renderSummary();
+        done('price');
+      });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
