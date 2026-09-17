@@ -411,7 +411,7 @@
         won(months.reduce(function (a, m) { return a + totals[m]; }, 0)) + '</td></tr>' +
       '</tbody></table>';
 
-    renderSettle(picked);
+    renderSettle(picked, all);
   }
 
   /* ── 정산 ─────────────────────────────────────────────────
@@ -425,22 +425,26 @@
    * 그 사람이 그 금액을 내야 하므로, 위 정산과 섞지 않고 따로 보여준다.
    * 이름으로 묶으므로 한 사람이 여러 건을 받아도 한 줄로 합쳐진다.
    */
-  function renderTransfers(rows) {
-    var box = $('transfer-table');
-    if (!box) return;
-
-    var owed = {};
-    var total = 0;
+  /** 양도자별로 "받은 돈" 을 모은다. 정산에서 그만큼 빼기 위한 것이다. */
+  function transferTotals(rows) {
+    var got = {};
     (rows || []).forEach(function (r) {
       if (r.checked !== false) return;                 // 체크된 건은 우리가 쓴 것
       var who = String(r.transferee || '').trim();
       if (!who) return;                                // 이름을 안 적었으면 집계에서 뺀다
-      var v = priceOf(r);
-      owed[who] = (owed[who] || 0) + v;
-      total += v;
+      got[who] = (got[who] || 0) + priceOf(r);
     });
+    return got;
+  }
 
-    var names = Object.keys(owed).sort();
+  function renderTransfers(rows) {
+    var box = $('transfer-table');
+    if (!box) return;
+
+    var got = transferTotals(rows);
+    var names = Object.keys(got).sort();
+    var total = names.reduce(function (acc, n) { return acc + got[n]; }, 0);
+
     if (!names.length) {
       box.innerHTML = '<p class="resv-empty">체크를 해제하고 양도자 이름을 적으면 여기에 모입니다.</p>';
       return;
@@ -448,7 +452,7 @@
 
     box.innerHTML =
       '<table class="resv-table sum-table"><thead><tr>' +
-      '<th>양도자</th><th class="resv-amt">건수</th><th class="resv-amt">낼 돈</th>' +
+      '<th>양도자</th><th class="resv-amt">건수</th><th class="resv-amt">받은 돈</th>' +
       '</tr></thead><tbody>' +
       names.map(function (n) {
         var cnt = (rows || []).filter(function (r) {
@@ -456,14 +460,14 @@
         }).length;
         return '<tr><td class="resv-acct">' + esc(n) + '</td>' +
           '<td class="resv-amt">' + cnt + '건</td>' +
-          '<td class="resv-amt settle-pay">' + won(owed[n]) + ' 내기</td></tr>';
+          '<td class="resv-amt settle-pay">-' + won(got[n]) + '</td></tr>';
       }).join('') +
       '<tr class="sum-row"><td>합계</td><td class="resv-amt"></td>' +
-      '<td class="resv-amt sum-cell">' + won(total) + '</td></tr>' +
+      '<td class="resv-amt sum-cell">-' + won(total) + '</td></tr>' +
       '</tbody></table>';
   }
 
-  function renderSettle(picked) {
+  function renderSettle(picked, all) {
     var box = $('settle-table');
     if (!box) return;
 
@@ -476,6 +480,13 @@
       total += v;
     });
 
+    // 양도자는 그 자리를 넘기고 돈을 받았다. 받은 만큼 낸 돈에서 뺀다.
+    // 이렇게 해야 "덜 낸 사람" 으로 잡혀 정산에서 마이너스가 된다.
+    var got = transferTotals(all);
+    Object.keys(got).forEach(function (n) {
+      paid[n] = (paid[n] || 0) - got[n];
+    });
+
     var names = Object.keys(paid).sort();
     var headcount = Number(($('settle-people') || {}).value) || 0;
     if (!names.length || headcount < 1) {
@@ -483,7 +494,11 @@
       return;
     }
 
-    var share = Math.round(total / headcount);
+    // 양도로 들어온 돈은 밖에서 들어온 수입이라 그룹의 순지출을 줄인다.
+    // 개인의 낸 돈에서만 빼면 총액과 개인 합이 어긋나므로 여기서도 뺀다.
+    var gotSum = Object.keys(got).reduce(function (a, n) { return a + got[n]; }, 0);
+    var net = total - gotSum;
+    var share = Math.round(net / headcount);
     box.innerHTML =
       '<table class="resv-table sum-table"><thead><tr>' +
       '<th>이름</th><th class="resv-amt">낸 돈</th><th class="resv-amt">부담액</th>' +
@@ -493,8 +508,10 @@
         var cls = diff > 0 ? 'settle-get' : (diff < 0 ? 'settle-pay' : 'settle-even');
         var text = diff > 0 ? won(diff) + ' 받기'
           : (diff < 0 ? won(-diff) + ' 내기' : '정산 없음');
+        var p = paid[n];
         return '<tr><td class="resv-acct">' + esc(n) + '</td>' +
-          '<td class="resv-amt">' + won(paid[n]) + '</td>' +
+          '<td class="resv-amt' + (p < 0 ? ' settle-pay' : '') + '">' +
+            (p < 0 ? '-' + won(-p) : won(p)) + '</td>' +
           '<td class="resv-amt">' + won(share) + '</td>' +
           '<td class="resv-amt ' + cls + '">' + text + '</td></tr>';
       }).join('') +
@@ -506,7 +523,9 @@
           '<td class="resv-amt settle-pay">각 ' + won(share) + ' 내기</td></tr>'
         : '') +
       '<tr class="sum-row"><td>합계</td>' +
-      '<td class="resv-amt">' + won(total) + '</td>' +
+      '<td class="resv-amt">' + won(net) +
+        (gotSum ? '<br><span class="step-tip">' + won(total) + ' − 양도 ' + won(gotSum) + '</span>' : '') +
+      '</td>' +
       '<td class="resv-amt">' + headcount + '명 × ' + won(share) + '</td>' +
       '<td class="resv-amt sum-cell">1인당 ' + won(share) + '</td></tr>' +
       '</tbody></table>';
@@ -530,7 +549,7 @@
       .catch(function (e) { msg($('price-msg'), '금액 저장 실패: ' + e.message, true); });
   }
 
-  /** 체크를 해제한 건을 넘겨받은 사람. 그 사람이 그 금액을 내야 한다. */
+  /** 체크를 해제한 건을 넘기고 돈을 받은 사람. 받은 만큼 정산에서 빠진다. */
   function setTransferee(no, name) {
     var row = null;
     for (var i = 0; i < state.rows.length; i++) {

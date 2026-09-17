@@ -510,7 +510,7 @@ footer strong { color: #6e7681; }
   border-radius: 8px;
 }
 
-.resv-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.resv-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; line-height: 1.35; }
 .resv-table th {
   position: sticky;
   top: 0;
@@ -518,12 +518,12 @@ footer strong { color: #6e7681; }
   color: #8b949e;
   font-weight: 600;
   text-align: left;
-  padding: 10px 12px;
+  padding: 6px 8px;
   border-bottom: 1px solid #30363d;
   white-space: nowrap;
 }
 .resv-table td {
-  padding: 10px 12px;
+  padding: 4px 8px;
   border-bottom: 1px solid #21262d;
   color: #e6edf3;
   white-space: nowrap;
@@ -533,7 +533,7 @@ footer strong { color: #6e7681; }
 
 .resv-idx  { color: #6e7681; text-align: right; width: 1%; }
 .resv-amt  { text-align: right; font-variant-numeric: tabular-nums; }
-.resv-no   { color: #8b949e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+.resv-no   { color: #8b949e; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.7rem; }
 .resv-acct { color: #58a6ff; }
 .resv-acct .acc-tag { margin-left: 6px; }
 
@@ -624,7 +624,7 @@ footer strong { color: #6e7681; }
 
 /* ── 체크 열 ── */
 .resv-chk { width: 1%; text-align: center; }
-.resv-chk input { width: 15px; height: 15px; accent-color: #58a6ff; cursor: pointer; }
+.resv-chk input { width: 13px; height: 13px; accent-color: #58a6ff; cursor: pointer; }
 .resv-table tbody tr.row-off td { opacity: 0.4; }
 .resv-table tbody tr.row-off td.resv-chk { opacity: 1; }
 
@@ -787,13 +787,13 @@ body.wide-tab .container { max-width: 1400px; }
 
 /* ── 금액 직접입력 ── */
 .amt-input {
-  width: 76px;
-  padding: 5px 8px;
+  width: 68px;
+  padding: 2px 6px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 5px;
   color: #e6edf3;
-  font-size: 0.84rem;
+  font-size: 0.76rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -806,16 +806,16 @@ body.wide-tab .container { max-width: 1400px; }
 .amt-input { -moz-appearance: textfield; }
 
 /* ── 양도자 ── */
-.resv-tr { min-width: 165px; }
+.resv-tr { min-width: 140px; }
 .tr-input {
   width: 100%;
-  min-width: 150px;
-  padding: 5px 8px;
+  min-width: 130px;
+  padding: 2px 6px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 5px;
   color: #e6edf3;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
 }
 .tr-input:hover:not(:disabled) { border-color: #30363d; }
 .tr-input:focus { outline: none; border-color: #58a6ff; background: #0d1117; }
