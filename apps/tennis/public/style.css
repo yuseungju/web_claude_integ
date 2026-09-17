@@ -825,3 +825,15 @@ body.wide-tab .container { max-width: 1400px; }
 .resv-table tbody tr.row-off td.resv-tr { opacity: 1; }
 
 .settle-sub { margin-top: 24px; }
+
+/* 인라인 힌트 — .step-tip 은 큰 안내박스라 문장 속에 쓰면 덮인다 */
+.hint {
+  font-size: 0.74rem;
+  color: #6e7681;
+  font-weight: 400;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.pay-arrow { color: #6e7681; text-align: center; width: 1%; }

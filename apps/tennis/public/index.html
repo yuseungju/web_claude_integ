@@ -303,7 +303,7 @@
         <div class="field-card">
           <div class="field-label">
             대치유수지 계정
-            <span id="acc-count" class="step-tip"></span>
+            <span id="acc-count" class="hint"></span>
           </div>
           <p class="step-desc">
             대치유수지 예약 사이트에 쓰는 <strong>자동로그인 계정</strong>을 원하는 만큼 등록하세요.
@@ -344,7 +344,7 @@
         <div class="field-card">
           <div class="field-label">
             모든 계정 예약완료 내역
-            <span id="resv-count" class="step-tip"></span>
+            <span id="resv-count" class="hint"></span>
           </div>
           <div class="filter-row">
             <label for="f-from">기간</label>
@@ -378,7 +378,7 @@
         <div class="field-card">
           <div class="field-label">
             이름별 월 합계
-            <span class="step-tip">체크된 건만 · 최근 3개월</span>
+            <span class="hint">체크된 건만 · 최근 3개월</span>
           </div>
           <div id="sum-table" class="resv-wrap"></div>
         </div>
@@ -398,13 +398,23 @@
 
           <div class="field-label settle-sub">
             양도
-            <span class="step-tip">체크 해제 + 양도자 이름</span>
+            <span class="hint">체크 해제 + 양도자 이름</span>
           </div>
           <p class="step-desc">
             자리를 넘기고 <strong>돈을 받은 사람</strong>입니다. 받은 만큼 위 정산의
             <strong>낸 돈에서 빠져</strong> 마이너스로 잡힙니다.
           </p>
           <div id="transfer-table" class="resv-wrap"></div>
+
+          <div class="field-label settle-sub">
+            송금
+            <span class="hint">거래 횟수가 가장 적게</span>
+          </div>
+          <p class="step-desc">
+            받을 사람과 낼 사람을 큰 금액부터 짝지어, <strong>각자 한두 번만 보내면</strong>
+            끝나도록 묶었습니다.
+          </p>
+          <div id="pay-table" class="resv-wrap"></div>
         </div>
 
 
@@ -425,7 +435,7 @@
 
           <div id="cal-out" class="cal-out hidden">
             <div class="cal-out-head">
-              <span id="cal-out-info" class="step-tip"></span>
+              <span id="cal-out-info" class="hint"></span>
               <button type="button" id="cal-copy">복사</button>
             </div>
             <textarea id="cal-text" readonly spellcheck="false"></textarea>

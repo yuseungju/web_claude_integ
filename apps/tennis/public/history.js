@@ -523,11 +523,70 @@
           '<td class="resv-amt settle-pay">각 ' + won(share) + ' 내기</td></tr>'
         : '') +
       '<tr class="sum-row"><td>합계</td>' +
-      '<td class="resv-amt">' + won(net) +
-        (gotSum ? '<br><span class="step-tip">' + won(total) + ' − 양도 ' + won(gotSum) + '</span>' : '') +
-      '</td>' +
+      '<td class="resv-amt">' + won(net) + '</td>' +
       '<td class="resv-amt">' + headcount + '명 × ' + won(share) + '</td>' +
       '<td class="resv-amt sum-cell">1인당 ' + won(share) + '</td></tr>' +
+      '</tbody></table>';
+
+    renderPayments(paid, names, share, headcount);
+  }
+
+  /**
+   * 누가 누구에게 얼마를 보낼지.
+   *
+   * 받을 사람(+)과 낼 사람(−)을 각각 큰 금액부터 놓고 앞에서부터 짝지어
+   * 가능한 만큼 보낸다. 한 번 짝지을 때마다 둘 중 적어도 한 쪽은 잔액이
+   * 0이 되므로, 송금 횟수가 (사람 수 − 1) 을 넘지 않는다. 모두가 한 사람에게
+   * 몰아주는 방식보다 대체로 적고, 무엇보다 각자 한두 번만 보내면 끝난다.
+   *
+   * 이름이 없는 인원("그 외 N명")도 각자 한 사람으로 세어 번호를 붙인다.
+   * 뭉뚱그리면 누가 누구에게 보내야 하는지가 안 나오기 때문이다.
+   */
+  function renderPayments(paid, names, share, headcount) {
+    var box = $('pay-table');
+    if (!box) return;
+
+    var bal = [];
+    names.forEach(function (n) { bal.push({ name: n, v: paid[n] - share }); });
+    var rest = headcount - names.length;
+    for (var i = 1; i <= rest; i++) bal.push({ name: '그 외 ' + i, v: -share });
+
+    var plus = bal.filter(function (x) { return x.v > 0; })
+      .sort(function (a, b) { return b.v - a.v; });
+    var minus = bal.filter(function (x) { return x.v < 0; })
+      .map(function (x) { return { name: x.name, v: -x.v }; })
+      .sort(function (a, b) { return b.v - a.v; });
+
+    if (!plus.length || !minus.length) {
+      box.innerHTML = '<p class="resv-empty">주고받을 것이 없습니다.</p>';
+      return;
+    }
+
+    var pays = [];
+    var pi = 0, mi = 0;
+    while (pi < plus.length && mi < minus.length) {
+      var amount = Math.min(plus[pi].v, minus[mi].v);
+      if (amount > 0) pays.push({ from: minus[mi].name, to: plus[pi].name, amount: amount });
+      plus[pi].v -= amount;
+      minus[mi].v -= amount;
+      if (plus[pi].v === 0) pi++;
+      if (minus[mi].v === 0) mi++;
+    }
+
+    var totalPay = pays.reduce(function (a, p) { return a + p.amount; }, 0);
+    box.innerHTML =
+      '<table class="resv-table sum-table"><thead><tr>' +
+      '<th>보내는 사람</th><th></th><th>받는 사람</th><th class="resv-amt">금액</th>' +
+      '</tr></thead><tbody>' +
+      pays.map(function (p) {
+        return '<tr>' +
+          '<td class="settle-pay">' + esc(p.from) + '</td>' +
+          '<td class="pay-arrow">→</td>' +
+          '<td class="settle-get">' + esc(p.to) + '</td>' +
+          '<td class="resv-amt sum-cell">' + won(p.amount) + '</td></tr>';
+      }).join('') +
+      '<tr class="sum-row"><td>' + pays.length + '번</td><td></td><td></td>' +
+      '<td class="resv-amt">' + won(totalPay) + '</td></tr>' +
       '</tbody></table>';
   }
 
