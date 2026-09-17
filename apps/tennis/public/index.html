@@ -386,13 +386,11 @@
         <div class="field-card">
           <div class="field-label">정산</div>
           <p class="step-desc">
-            체크된 예약의 총액을 전체 인원으로 나눠 1인당 부담액을 구하고,
+            체크된 예약의 총액을 <strong>5명</strong>으로 나눠 1인당 부담액을 구하고,
             이름별로 <strong>더 낸 만큼 받고 덜 낸 만큼 냅니다.</strong>
           </p>
           <div class="settle-input">
-            <label for="settle-people">전체 인원</label>
-            <input type="number" id="settle-people" min="1" max="200" value="5">
-            <span class="price-sep">명</span>
+            <span class="hint">정산 인원 5명 — 유승주 · 이길환 · 한사라 · 홍석기 · 이태인</span>
           </div>
           <div id="settle-table" class="resv-wrap"></div>
 

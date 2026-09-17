@@ -22,6 +22,10 @@
 
   var state = { rows: [], prices: [] };     // 화면이 들고 있는 현재 자료
 
+  // 정산 대상은 이 다섯 명으로 고정이다. 예약을 하나도 안 잡은 사람도
+  // 부담액은 똑같이 지므로 명단에 항상 올라와 있어야 한다.
+  var MEMBERS = ['유승주', '이길환', '한사라', '홍석기', '이태인'];
+
   /**
    * 아래쪽 계산(합계·정산·지시문)은 표에서 고른 것이 기준이다.
    * 체크나 기간이 바뀌면 그 결과가 낡은 것이 되므로, 자동으로 다시 계산하지 않고
@@ -487,10 +491,17 @@
       paid[n] = (paid[n] || 0) - got[n];
     });
 
-    var names = Object.keys(paid).sort();
-    var headcount = Number(($('settle-people') || {}).value) || 0;
-    if (!names.length || headcount < 1) {
-      box.innerHTML = '<p class="resv-empty">체크된 내역과 전체 인원을 입력하면 정산이 나옵니다.</p>';
+    // 명단 다섯 명은 무조건 보여 준다. 예약이 없어도 낼 돈이 있기 때문이다.
+    // 명단에 없는 이름이 자료에 있으면 뒤에 붙인다 — 조용히 빠지면 돈이 샌다.
+    var names = MEMBERS.slice();
+    Object.keys(paid).sort().forEach(function (n) {
+      if (names.indexOf(n) < 0) names.push(n);
+    });
+    names.forEach(function (n) { if (paid[n] === undefined) paid[n] = 0; });
+    var headcount = names.length;
+
+    if (!total && !Object.keys(got).length) {
+      box.innerHTML = '<p class="resv-empty">체크된 내역이 없습니다.</p>';
       return;
     }
 
@@ -515,13 +526,6 @@
           '<td class="resv-amt">' + won(share) + '</td>' +
           '<td class="resv-amt ' + cls + '">' + text + '</td></tr>';
       }).join('') +
-      // 예약을 잡지 않은 인원도 부담액을 낸다. 이름을 모르니 묶어서 보여준다.
-      (headcount > names.length
-        ? '<tr><td class="settle-rest">그 외 ' + (headcount - names.length) + '명</td>' +
-          '<td class="resv-amt">0원</td>' +
-          '<td class="resv-amt">' + won(share) + '</td>' +
-          '<td class="resv-amt settle-pay">각 ' + won(share) + ' 내기</td></tr>'
-        : '') +
       '<tr class="sum-row"><td>합계</td>' +
       '<td class="resv-amt">' + won(net) + '</td>' +
       '<td class="resv-amt">' + headcount + '명 × ' + won(share) + '</td>' +
@@ -539,17 +543,13 @@
    * 0이 되므로, 송금 횟수가 (사람 수 − 1) 을 넘지 않는다. 모두가 한 사람에게
    * 몰아주는 방식보다 대체로 적고, 무엇보다 각자 한두 번만 보내면 끝난다.
    *
-   * 이름이 없는 인원("그 외 N명")도 각자 한 사람으로 세어 번호를 붙인다.
-   * 뭉뚱그리면 누가 누구에게 보내야 하는지가 안 나오기 때문이다.
+   * 정산 대상은 고정 명단 다섯 명이라 모두 이름으로 나온다.
    */
   function renderPayments(paid, names, share, headcount) {
     var box = $('pay-table');
     if (!box) return;
 
-    var bal = [];
-    names.forEach(function (n) { bal.push({ name: n, v: paid[n] - share }); });
-    var rest = headcount - names.length;
-    for (var i = 1; i <= rest; i++) bal.push({ name: '그 외 ' + i, v: -share });
+    var bal = names.map(function (n) { return { name: n, v: paid[n] - share }; });
 
     var plus = bal.filter(function (x) { return x.v > 0; })
       .sort(function (a, b) { return b.v - a.v; });
@@ -822,15 +822,6 @@
       }
     });
 
-    var people = $('settle-people');
-    if (people) {
-      people.addEventListener('input', function () { renderSummary(); });
-      people.addEventListener('change', function () {
-        api('/tennis/settings', { method: 'POST', body: { settings: { headcount: people.value } } })
-          .catch(function () { /* 저장 실패해도 화면 계산은 그대로 된다 */ });
-      });
-    }
-
     var range = nextMonthRange();
     if ($('f-from') && !$('f-from').value) $('f-from').value = range.from;
     if ($('f-to') && !$('f-to').value) $('f-to').value = range.to;
@@ -875,7 +866,6 @@
     api('/tennis/settings')
       .then(function (d) {
         var st = d.settings || {};
-        if (st.headcount && $('settle-people')) $('settle-people').value = st.headcount;
       })
       .catch(function () { /* 없으면 기본값을 쓴다 */ })
       .then(function () { return loadPrices(); })
