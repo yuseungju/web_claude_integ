@@ -787,7 +787,7 @@ body.wide-tab .container { max-width: 1400px; }
 
 /* ── 금액 직접입력 ── */
 .amt-input {
-  width: 92px;
+  width: 76px;
   padding: 5px 8px;
   background: transparent;
   border: 1px solid transparent;
@@ -806,9 +806,10 @@ body.wide-tab .container { max-width: 1400px; }
 .amt-input { -moz-appearance: textfield; }
 
 /* ── 양도자 ── */
-.resv-tr { width: 1%; }
+.resv-tr { min-width: 165px; }
 .tr-input {
-  width: 110px;
+  width: 100%;
+  min-width: 150px;
   padding: 5px 8px;
   background: transparent;
   border: 1px solid transparent;
