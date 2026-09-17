@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS tn_checks (
   reserve_no VARCHAR(80) NOT NULL,
   checked    BOOLEAN     NOT NULL DEFAULT TRUE,
   amount     INTEGER,
+  transferee VARCHAR(60) NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (device_key, reserve_no)
 );
@@ -96,3 +97,6 @@ CREATE TABLE IF NOT EXISTS tn_settings (
 );
 
 ALTER TABLE tn_checks ADD COLUMN IF NOT EXISTS amount INTEGER;
+
+-- transferee: 체크를 해제한 건을 넘겨받은 사람. 그 사람이 그 금액을 내야 한다.
+ALTER TABLE tn_checks ADD COLUMN IF NOT EXISTS transferee VARCHAR(60) NOT NULL DEFAULT '';

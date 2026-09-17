@@ -507,17 +507,22 @@ async function route(ctx, event, method, path) {
     // 금액이 비어 있으면(null) 시간대 단가를 쓰고, 값이 있으면 그 값이 이긴다.
     const hasChecked = Object.prototype.hasOwnProperty.call(body, 'checked');
     const hasAmount = Object.prototype.hasOwnProperty.call(body, 'amount');
+    const hasTransferee = Object.prototype.hasOwnProperty.call(body, 'transferee');
     const amount = (hasAmount && body.amount !== null && body.amount !== '')
       ? Math.max(0, Math.round(Number(body.amount) || 0))
       : null;
+    const transferee = String(body.transferee || '').trim().slice(0, 60);
 
     await pool.query(
-      `INSERT INTO tn_checks (device_key, reserve_no, checked, amount) VALUES ($1,$2,$3,$4)
+      `INSERT INTO tn_checks (device_key, reserve_no, checked, amount, transferee)
+            VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (device_key, reserve_no) DO UPDATE SET
-         checked    = CASE WHEN $5 THEN EXCLUDED.checked ELSE tn_checks.checked END,
-         amount     = CASE WHEN $6 THEN EXCLUDED.amount  ELSE tn_checks.amount  END,
+         checked    = CASE WHEN $6 THEN EXCLUDED.checked    ELSE tn_checks.checked    END,
+         amount     = CASE WHEN $7 THEN EXCLUDED.amount     ELSE tn_checks.amount     END,
+         transferee = CASE WHEN $8 THEN EXCLUDED.transferee ELSE tn_checks.transferee END,
          updated_at = NOW()`,
-      [uid, no, body.checked !== false, amount, hasChecked, hasAmount]);
+      [uid, no, body.checked !== false, amount, transferee,
+       hasChecked, hasAmount, hasTransferee]);
     return resp(200, { ok: true });
   }
 
@@ -581,7 +586,8 @@ async function route(ctx, event, method, path) {
       // 체크는 tn_checks 에 따로 있고, 기록이 없으면 기본 체크 상태로 본다.
       `SELECT r.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
               r.team, r.people, r.raw, r.collected_at, a.login_id, a.person,
-              COALESCE(c.checked, TRUE) AS checked, c.amount AS amount_override
+              COALESCE(c.checked, TRUE) AS checked, c.amount AS amount_override,
+              COALESCE(c.transferee, '') AS transferee
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id
          LEFT JOIN tn_checks c ON c.device_key = r.device_key AND c.reserve_no = r.reserve_no

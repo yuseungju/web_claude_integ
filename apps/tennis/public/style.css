@@ -804,3 +804,23 @@ body.wide-tab .container { max-width: 1400px; }
 .amt-input::-webkit-outer-spin-button,
 .amt-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .amt-input { -moz-appearance: textfield; }
+
+/* ── 양도자 ── */
+.resv-tr { width: 1%; }
+.tr-input {
+  width: 110px;
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.82rem;
+}
+.tr-input:hover:not(:disabled) { border-color: #30363d; }
+.tr-input:focus { outline: none; border-color: #58a6ff; background: #0d1117; }
+.tr-input:disabled { color: #484f58; cursor: not-allowed; }
+.tr-input::placeholder { color: #484f58; }
+/* 체크를 해제한 행은 흐려지지만 양도자 칸은 읽을 수 있어야 한다 */
+.resv-table tbody tr.row-off td.resv-tr { opacity: 1; }
+
+.settle-sub { margin-top: 24px; }

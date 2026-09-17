@@ -309,7 +309,7 @@
       '<table class="resv-table"><thead><tr>' +
       '<th class="resv-chk"><input type="checkbox" id="chk-all" title="전체 선택"></th>' +
       '<th>#</th><th>이용일</th><th>요일</th><th>시간</th><th>시설</th>' +
-      '<th>단체</th><th>인원</th><th>금액</th><th>접수번호</th><th>계정</th>' +
+      '<th>단체</th><th>인원</th><th>금액</th><th>양도자</th><th>접수번호</th><th>계정</th>' +
       '</tr></thead><tbody>' +
       list.map(function (r, i) {
         var d = r.use_date ? String(r.use_date).slice(0, 10) : '';
@@ -329,6 +329,11 @@
             (r.amount_override != null && r.amount_override !== '' ? ' data-own="1"' : '') +
             ' title="비우면 시간대 단가(' + basePriceOf(r) + '원)로 되돌아갑니다">' +
           '</td>' +
+          '<td class="resv-tr">' +
+            '<input type="text" class="tr-input" maxlength="20" value="' + esc(r.transferee || '') + '"' +
+            ' placeholder="' + (on ? '' : '넘겨받은 사람') + '"' +
+            (on ? ' disabled title="체크를 해제하면 입력할 수 있습니다"' : '') + '>' +
+          '</td>' +
           '<td class="resv-no">' + esc(/^X-/.test(r.reserve_no) ? '—' : r.reserve_no) + '</td>' +
           '<td class="resv-acct">' + esc(r.person || r.login_id) +
             (r.person ? '<span class="acc-tag">' + esc(r.login_id) + '</span>' : '') + '</td>' +
@@ -346,7 +351,9 @@
     var box = $('sum-table');
     if (!box) return;
 
-    var picked = filtered().filter(function (r) { return r.checked !== false && r.use_date; });
+    var all = filtered();
+    renderTransfers(all);                              // 체크 해제 + 양도자 이름
+    var picked = all.filter(function (r) { return r.checked !== false && r.use_date; });
     if (!picked.length) {
       box.innerHTML = '<p class="resv-empty">체크된 내역이 없습니다.</p>';
       return;
@@ -413,6 +420,49 @@
    * 인원을 사람 수가 아니라 직접 받는 이유는, 예약을 잡지 않은 사람도
    * 함께 쓰는 경우가 있어서다.
    */
+  /**
+   * 양도 정산 — 체크를 해제하고 넘겨받은 사람 이름을 적은 건들.
+   * 그 사람이 그 금액을 내야 하므로, 위 정산과 섞지 않고 따로 보여준다.
+   * 이름으로 묶으므로 한 사람이 여러 건을 받아도 한 줄로 합쳐진다.
+   */
+  function renderTransfers(rows) {
+    var box = $('transfer-table');
+    if (!box) return;
+
+    var owed = {};
+    var total = 0;
+    (rows || []).forEach(function (r) {
+      if (r.checked !== false) return;                 // 체크된 건은 우리가 쓴 것
+      var who = String(r.transferee || '').trim();
+      if (!who) return;                                // 이름을 안 적었으면 집계에서 뺀다
+      var v = priceOf(r);
+      owed[who] = (owed[who] || 0) + v;
+      total += v;
+    });
+
+    var names = Object.keys(owed).sort();
+    if (!names.length) {
+      box.innerHTML = '<p class="resv-empty">체크를 해제하고 양도자 이름을 적으면 여기에 모입니다.</p>';
+      return;
+    }
+
+    box.innerHTML =
+      '<table class="resv-table sum-table"><thead><tr>' +
+      '<th>양도자</th><th class="resv-amt">건수</th><th class="resv-amt">낼 돈</th>' +
+      '</tr></thead><tbody>' +
+      names.map(function (n) {
+        var cnt = (rows || []).filter(function (r) {
+          return r.checked === false && String(r.transferee || '').trim() === n;
+        }).length;
+        return '<tr><td class="resv-acct">' + esc(n) + '</td>' +
+          '<td class="resv-amt">' + cnt + '건</td>' +
+          '<td class="resv-amt settle-pay">' + won(owed[n]) + ' 내기</td></tr>';
+      }).join('') +
+      '<tr class="sum-row"><td>합계</td><td class="resv-amt"></td>' +
+      '<td class="resv-amt sum-cell">' + won(total) + '</td></tr>' +
+      '</tbody></table>';
+  }
+
   function renderSettle(picked) {
     var box = $('settle-table');
     if (!box) return;
@@ -478,6 +528,21 @@
     stale();
     api('/tennis/check', { method: 'POST', body: { reserve_no: no, amount: value } })
       .catch(function (e) { msg($('price-msg'), '금액 저장 실패: ' + e.message, true); });
+  }
+
+  /** 체크를 해제한 건을 넘겨받은 사람. 그 사람이 그 금액을 내야 한다. */
+  function setTransferee(no, name) {
+    var row = null;
+    for (var i = 0; i < state.rows.length; i++) {
+      if (state.rows[i].reserve_no === no) { row = state.rows[i]; break; }
+    }
+    if (!row) return;
+    row.transferee = String(name || '').trim();
+
+    // 표를 다시 그리면 입력 중 포커스가 튄다. 아래 계산만 낡음으로 표시한다.
+    stale();
+    api('/tennis/check', { method: 'POST', body: { reserve_no: no, transferee: row.transferee } })
+      .catch(function (e) { msg($('price-msg'), '양도자 저장 실패: ' + e.message, true); });
   }
 
   /* ── 체크 ─────────────────────────────────────────────── */
@@ -723,6 +788,8 @@
           setAmount(tr.dataset.no, e.target.value);
           e.target.dataset.own = String(e.target.value).trim() === '' ? '' : '1';
         }
+      } else if (e.target.classList.contains('tr-input')) {
+        if (tr) setTransferee(tr.dataset.no, e.target.value);
       }
     });
 

@@ -4,7 +4,7 @@
 --
 -- 배포할 때 db/migrate.js 가 이 파일을 RDS에 실행합니다.
 -- 모든 구문은 여러 번 실행해도 안전해야 합니다 (CREATE ... IF NOT EXISTS).
--- 생성: 2026-09-17T02:23:29.355Z
+-- 생성: 2026-09-17T02:27:45.695Z
 -- ============================================================
 
 -- ===== common/common_schema.sql =====
@@ -508,6 +508,7 @@ CREATE TABLE IF NOT EXISTS tn_checks (
   reserve_no VARCHAR(80) NOT NULL,
   checked    BOOLEAN     NOT NULL DEFAULT TRUE,
   amount     INTEGER,
+  transferee VARCHAR(60) NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (device_key, reserve_no)
 );
@@ -537,3 +538,6 @@ CREATE TABLE IF NOT EXISTS tn_settings (
 );
 
 ALTER TABLE tn_checks ADD COLUMN IF NOT EXISTS amount INTEGER;
+
+-- transferee: 체크를 해제한 건을 넘겨받은 사람. 그 사람이 그 금액을 내야 한다.
+ALTER TABLE tn_checks ADD COLUMN IF NOT EXISTS transferee VARCHAR(60) NOT NULL DEFAULT '';
