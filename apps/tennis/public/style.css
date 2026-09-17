@@ -784,3 +784,23 @@ body.wide-tab .container { max-width: 1400px; }
   opacity: 0.45;
   cursor: default;
 }
+
+/* ── 금액 직접입력 ── */
+.amt-input {
+  width: 92px;
+  padding: 5px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.84rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.amt-input:hover  { border-color: #30363d; }
+.amt-input:focus  { outline: none; border-color: #58a6ff; background: #0d1117; }
+/* 직접 넣은 값은 한눈에 구분되게 */
+.amt-input[data-own="1"] { color: #58a6ff; font-weight: 600; }
+.amt-input::-webkit-outer-spin-button,
+.amt-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.amt-input { -moz-appearance: textfield; }

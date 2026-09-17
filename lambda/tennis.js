@@ -501,11 +501,23 @@ async function route(ctx, event, method, path) {
   if (path === '/tennis/check' && method === 'POST') {
     const no = String(body.reserve_no || '');
     if (!no) return resp(400, { error: 'reserve_no 가 필요합니다.' });
+
+    // 체크와 금액을 같은 곳에 둔다. 둘 다 접수번호로 묶이므로 재수집해도 남는다.
+    // 보낸 항목만 고친다 — 금액만 보냈는데 체크가 초기화되면 안 되기 때문이다.
+    // 금액이 비어 있으면(null) 시간대 단가를 쓰고, 값이 있으면 그 값이 이긴다.
+    const hasChecked = Object.prototype.hasOwnProperty.call(body, 'checked');
+    const hasAmount = Object.prototype.hasOwnProperty.call(body, 'amount');
+    const amount = (hasAmount && body.amount !== null && body.amount !== '')
+      ? Math.max(0, Math.round(Number(body.amount) || 0))
+      : null;
+
     await pool.query(
-      `INSERT INTO tn_checks (device_key, reserve_no, checked) VALUES ($1,$2,$3)
-       ON CONFLICT (device_key, reserve_no)
-       DO UPDATE SET checked = EXCLUDED.checked, updated_at = NOW()`,
-      [uid, no, body.checked !== false]);
+      `INSERT INTO tn_checks (device_key, reserve_no, checked, amount) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (device_key, reserve_no) DO UPDATE SET
+         checked    = CASE WHEN $5 THEN EXCLUDED.checked ELSE tn_checks.checked END,
+         amount     = CASE WHEN $6 THEN EXCLUDED.amount  ELSE tn_checks.amount  END,
+         updated_at = NOW()`,
+      [uid, no, body.checked !== false, amount, hasChecked, hasAmount]);
     return resp(200, { ok: true });
   }
 
@@ -569,7 +581,7 @@ async function route(ctx, event, method, path) {
       // 체크는 tn_checks 에 따로 있고, 기록이 없으면 기본 체크 상태로 본다.
       `SELECT r.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
               r.team, r.people, r.raw, r.collected_at, a.login_id, a.person,
-              COALESCE(c.checked, TRUE) AS checked
+              COALESCE(c.checked, TRUE) AS checked, c.amount AS amount_override
          FROM tn_reservations r
          JOIN tn_accounts a ON a.id = r.account_id
          LEFT JOIN tn_checks c ON c.device_key = r.device_key AND c.reserve_no = r.reserve_no

@@ -260,13 +260,22 @@
     return m ? Number(m[1]) : null;
   }
 
-  function priceOf(row) {
+  /** 시간대 단가로 매긴 기본 금액 */
+  function basePriceOf(row) {
     var h = startHour(row.use_time);
     if (h == null) return 0;
     for (var i = 0; i < state.prices.length; i++) {
       if (state.prices[i].hour === h) return state.prices[i].price || 0;
     }
     return 0;
+  }
+
+  /** 실제로 쓸 금액 — 직접 넣은 값이 있으면 그게 이긴다 */
+  function priceOf(row) {
+    if (row.amount_override !== null && row.amount_override !== undefined && row.amount_override !== '') {
+      return Number(row.amount_override) || 0;
+    }
+    return basePriceOf(row);
   }
 
   /* ── 내역 ─────────────────────────────────────────────── */
@@ -315,7 +324,11 @@
           '<td>' + esc(r.facility || '-') + '</td>' +
           '<td>' + esc(r.team || '-') + '</td>' +
           '<td class="resv-amt">' + (r.people != null ? r.people + '명' : '-') + '</td>' +
-          '<td class="resv-amt">' + won(priceOf(r)) + '</td>' +
+          '<td class="resv-amt">' +
+            '<input type="number" class="amt-input" min="0" step="100" value="' + priceOf(r) + '"' +
+            (r.amount_override != null && r.amount_override !== '' ? ' data-own="1"' : '') +
+            ' title="비우면 시간대 단가(' + basePriceOf(r) + '원)로 되돌아갑니다">' +
+          '</td>' +
           '<td class="resv-no">' + esc(/^X-/.test(r.reserve_no) ? '—' : r.reserve_no) + '</td>' +
           '<td class="resv-acct">' + esc(r.person || r.login_id) +
             (r.person ? '<span class="acc-tag">' + esc(r.login_id) + '</span>' : '') + '</td>' +
@@ -447,6 +460,24 @@
       '<td class="resv-amt">' + headcount + '명 × ' + won(share) + '</td>' +
       '<td class="resv-amt sum-cell">1인당 ' + won(share) + '</td></tr>' +
       '</tbody></table>';
+  }
+
+  /** 행의 금액을 직접 고친다. 비우면 시간대 단가로 되돌아간다. */
+  function setAmount(no, raw) {
+    var row = null;
+    for (var i = 0; i < state.rows.length; i++) {
+      if (state.rows[i].reserve_no === no) { row = state.rows[i]; break; }
+    }
+    if (!row) return;
+
+    var trimmed = String(raw == null ? '' : raw).trim();
+    var value = trimmed === '' ? null : Math.max(0, Math.round(Number(trimmed) || 0));
+    row.amount_override = value;
+
+    // 표를 통째로 다시 그리면 입력 중 포커스가 튄다. 아래 계산만 낡음으로 표시한다.
+    stale();
+    api('/tennis/check', { method: 'POST', body: { reserve_no: no, amount: value } })
+      .catch(function (e) { msg($('price-msg'), '금액 저장 실패: ' + e.message, true); });
   }
 
   /* ── 체크 ─────────────────────────────────────────────── */
@@ -684,9 +715,15 @@
     var table = $('resv-table');
     if (table) table.addEventListener('change', function (e) {
       if (e.target.id === 'chk-all') return setAll(e.target.checked);
-      if (!e.target.classList.contains('row-chk')) return;
       var tr = e.target.closest('tr');
-      if (tr) setChecked(tr.dataset.no, e.target.checked);
+      if (e.target.classList.contains('row-chk')) {
+        if (tr) setChecked(tr.dataset.no, e.target.checked);
+      } else if (e.target.classList.contains('amt-input')) {
+        if (tr) {
+          setAmount(tr.dataset.no, e.target.value);
+          e.target.dataset.own = String(e.target.value).trim() === '' ? '' : '1';
+        }
+      }
     });
 
     loadAccounts();

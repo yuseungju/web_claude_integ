@@ -60,10 +60,13 @@ CREATE INDEX IF NOT EXISTS idx_tn_reservations_acct   ON tn_reservations(account
 -- tn_reservations 는 수집할 때마다 통째로 지웠다 다시 넣는다. 체크를 거기
 -- 두면 매번 사라지므로 따로 뺐다. 접수번호(reserve_no)로 묶어 두면
 -- 다시 수집해도 같은 예약은 체크가 그대로 유지된다.
+-- amount: 사용자가 직접 넣은 금액. 비어 있으면 tn_prices 의 시간대 단가를 쓴다.
+-- 월마다 요금이 달라질 수 있어 행별로 덮어쓸 수 있게 뒀다.
 CREATE TABLE IF NOT EXISTS tn_checks (
   device_key TEXT        NOT NULL,
   reserve_no VARCHAR(80) NOT NULL,
   checked    BOOLEAN     NOT NULL DEFAULT TRUE,
+  amount     INTEGER,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (device_key, reserve_no)
 );
@@ -91,3 +94,5 @@ CREATE TABLE IF NOT EXISTS tn_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (device_key, name)
 );
+
+ALTER TABLE tn_checks ADD COLUMN IF NOT EXISTS amount INTEGER;
