@@ -46,61 +46,19 @@
             <div class="pgo-qhints" id="qHints" hidden></div>
           </div>
         </div>
-        <div class="pgo-field">
-          <label for="type1">타입</label>
-          <select class="pgo-select" id="type1"></select>
-        </div>
-        <div class="pgo-field">
-          <label for="tier">보유 판정</label>
-          <select class="pgo-select" id="tier">
-            <option value="">전체</option>
-          </select>
-        </div>
-        <div class="pgo-field">
-          <label for="cls">계열(등급)</label>
-          <select class="pgo-select" id="cls">
-            <option value="">전체 등급</option>
-          </select>
-        </div>
-        <div class="pgo-field">
-          <label for="gen">세대</label>
-          <select class="pgo-select" id="gen">
-            <option value="">전체 세대</option>
-          </select>
-        </div>
-        <div class="pgo-field">
-          <label for="form">폼</label>
-          <select class="pgo-select" id="form">
-            <option value="all">전체 포함</option>
-            <option value="base">기본 폼만</option>
-            <option value="only">특수 폼만</option>
-          </select>
-        </div>
-        <div class="pgo-field">
-          <label for="sort">정렬</label>
-          <select class="pgo-select" id="sort">
-            <option value="tier">보유 등급 ↑</option>
-            <option value="tierWorst">보유 등급 ↓ (버릴 것부터)</option>
-            <option value="rank">현재 성능 순위 ↑</option>
-            <option value="worst">현재 성능 순위 ↓</option>
-            <option value="dps">DPS</option>
-            <option value="bulk">내구</option>
-            <option value="maxCp">최대 CP</option>
-            <option value="atk">공격</option>
-            <option value="def">방어</option>
-            <option value="sta">체력</option>
-            <option value="dex">도감 번호</option>
-            <option value="name">이름</option>
-          </select>
-        </div>
+      </div>
+      <div class="pgo-radios" id="tierRadios">
+        <label class="pgo-radio"><input type="radio" name="tierPick" value="" checked /><span>전체</span></label>
+        <label class="pgo-radio"><input type="radio" name="tierPick" value="keep" /><span>보유 이상</span></label>
+        <label class="pgo-radio"><input type="radio" name="tierPick" value="drop" /><span>버림</span></label>
       </div>
       <div id="tierLegend" style="margin-top:.85rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center"></div>
       <div style="margin-top:.75rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
         <span class="pgo-chip" id="count">—</span>
-        <label class="pgo-chip" style="cursor:pointer">
-          <input type="checkbox" id="unreleased" style="margin:0" /> 미출시 폼 포함
+        <label class="pgo-chip" style="cursor:pointer;gap:.4rem">
+          <input type="checkbox" id="simple" style="margin:0" checked /> 간단히 보기
         </label>
-        <button class="pgo-btn ghost" id="reset" type="button">필터 초기화</button>
+        <button class="pgo-btn ghost" id="reset" type="button">초기화</button>
       </div>
     </div>
 

@@ -1048,3 +1048,78 @@ body.pgo {
 @media (max-width: 560px) {
   .pgo-qhint-dex { display: none; }
 }
+
+/* ── 도감 등급 라디오 ──────────────────────────────────────────
+   드롭다운을 걷어내고 전체 / 보유 이상 / 버림 세 갈래만 남겼다. */
+.pgo-radios {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-top: .75rem;
+}
+.pgo-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .42rem .8rem;
+  border: 1px solid var(--pgo-line);
+  border-radius: 999px;
+  background: var(--pgo-surface-2, rgba(255, 255, 255, .03));
+  font-size: .88rem;
+  cursor: pointer;
+  user-select: none;
+}
+.pgo-radio input { margin: 0; accent-color: var(--pgo-accent, #ffcb05); }
+.pgo-radio:has(input:checked) {
+  border-color: var(--pgo-accent, #ffcb05);
+  background: rgba(255, 203, 5, .12);
+  color: var(--pgo-text, #fff);
+}
+
+/* ── 간단히 보기 — 한 줄에 한 마리 ─────────────────────────────
+   설명·스탯을 빼고 사진과 이름만 남겨 한 화면에 최대한 많이 담는다.
+   넓은 화면에서는 줄이 과하게 길어지므로 여러 열로 흘려보낸다. */
+.pgo-grid.simple {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: .3rem;
+}
+.pgo-row {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  width: 100%;
+  padding: .18rem .5rem;
+  border: 1px solid var(--pgo-line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--pgo-surface, rgba(255, 255, 255, .02));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pgo-row:hover { border-color: var(--pgo-accent, #ffcb05); }
+.pgo-row-img {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  object-fit: contain;
+}
+.pgo-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: .9rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pgo-row .pgo-tier-tag { flex: none; }
+.pgo-row.tier-0 { border-left-color: #ffcb05; }
+.pgo-row.tier-1 { border-left-color: #3fcf8e; }
+.pgo-row.tier-2 { border-left-color: #6fc9ff; }
+.pgo-row.tier-3 { border-left-color: #ee6b6b; }
+
+@media (max-width: 560px) {
+  .pgo-grid.simple { grid-template-columns: 1fr; }
+}

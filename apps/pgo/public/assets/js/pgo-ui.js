@@ -128,6 +128,19 @@
     </button>`;
   }
 
+  /**
+   * 간단히 보기용 한 줄 카드 — 사진·이름·등급만.
+   * 한 화면에 최대한 많이 담으려고 설명과 스탯을 모두 뺐다.
+   */
+  function rowCard(p) {
+    const t = P.tier(p);
+    return `<button class="pgo-row tier-${t.id}" data-idx="${p.idx}">
+      ${imgTag(p, 'pgo-row-img')}
+      <span class="pgo-row-name">${esc(p.n)}</span>
+      <span class="pgo-tier-tag t${t.id}">${esc(t.short)}</span>
+    </button>`;
+  }
+
   /** <select>에 포켓몬 목록 채우기 */
   function fillPokemonSelect(sel, opts) {
     const list = (opts && opts.list) || P.pokemon.filter(p => p.r);
@@ -420,7 +433,7 @@
   }
 
   global.PGOUI = {
-    esc, typeBadge, classBadge, rankBadge, tierBanner, inheritedNote, multClass, multText, multHtml, imgTag, card,
+    esc, typeBadge, classBadge, rankBadge, tierBanner, inheritedNote, multClass, multText, multHtml, imgTag, card, rowCard,
     fillPokemonSelect, fillTypeSelect, mountPicker, byId, byKey, statBars, defenseSummary,
     rankSummary, movesetBlock, verdictLine, reviewLine, reviewBlock, openDetail, closeDetail, bindModal, boot,
   };

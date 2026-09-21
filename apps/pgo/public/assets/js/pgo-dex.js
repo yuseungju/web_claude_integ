@@ -25,28 +25,27 @@
     worst: (a, b) => (b.rank.overall || 0) - (a.rank.overall || 0),
   };
 
+  /** 등급 라디오에서 고른 값 — '' 전체 / keep 보유 이상 / drop 버림 */
+  function tierPick() {
+    const on = els.tierRadios.querySelector('input[name="tierPick"]:checked');
+    return on ? on.value : '';
+  }
+
   function apply() {
     const q = els.q.value;
-    const type = Number(els.type1.value) || 0;
-    const gen = Number(els.gen.value) || 0;
-    const cls = els.cls.value;
-    const form = els.form.value;
-    const tier = els.tier.value;
+    const pick = tierPick();
+    const worst = P.TIERS[P.TIERS.length - 1].id;
 
+    // 타입·세대·계열·폼은 거르지 않는다. 이름으로 찾고 등급으로만 좁힌다.
     filtered = P.pokemon.filter(p => {
-      if (!els.unreleased.checked && !p.r) return false;
+      if (!p.r) return false;                            // 미출시 폼은 등급이 의미 없다
       if (!P.matches(p, q)) return false;
-      if (type && !p.t.includes(type)) return false;
-      if (gen && p.g !== gen) return false;
-      if (cls !== '' && p.c !== Number(cls)) return false;
-      if (tier === 'keep' && p.tier > 1) return false;          // 보유할 만한 것만
-      else if (tier !== '' && tier !== 'keep' && p.tier !== Number(tier)) return false;
-      if (form === 'base' && p.f) return false;
-      if (form === 'only' && !p.f) return false;
+      if (pick === 'keep' && p.tier > 1) return false;    // 보유 이상 = 필수 보유 + 보유
+      if (pick === 'drop' && p.tier !== worst) return false;
       return true;
     });
 
-    filtered.sort(SORTERS[els.sort.value] || SORTERS.tier);
+    filtered.sort(SORTERS.tier);                          // 항상 잠재 순위 순
 
     els.count.textContent = `${filtered.length.toLocaleString('ko-KR')}종`;
     shown = 0;
@@ -59,7 +58,9 @@
     if (!slice.length && shown === 0) {
       els.grid.innerHTML = '<div class="pgo-empty" style="grid-column:1/-1">조건에 맞는 포켓몬이 없습니다.</div>';
     }
-    els.grid.insertAdjacentHTML('beforeend', slice.map(UI.card).join(''));
+    const simple = els.simple.checked;
+    els.grid.classList.toggle('simple', simple);
+    els.grid.insertAdjacentHTML('beforeend', slice.map(simple ? UI.rowCard : UI.card).join(''));
     shown += slice.length;
     els.more.hidden = shown >= filtered.length;
     els.more.textContent = `더 보기 (${filtered.length - shown}종 남음)`;
@@ -77,10 +78,8 @@
     const query = (q || '').trim();
     if (!query) { box.hidden = true; box.innerHTML = ''; return; }
 
-    // 미출시 폼은 등급이 의미 없으므로 기본에서는 뺀다 (체크를 켜면 같이 본다)
-    const pool = els.unreleased && els.unreleased.checked
-      ? P.pokemon : P.pokemon.filter(p => p.r);
-    const hits = pool.filter(p => P.matches(p, query)).slice(0, 8);
+    // 미출시 폼은 등급이 의미 없으므로 뺀다
+    const hits = P.pokemon.filter(p => p.r && P.matches(p, query)).slice(0, 8);
 
     if (!hits.length) {
       box.innerHTML = '<div class="pgo-qhint-empty">검색 결과가 없습니다</div>';
@@ -101,12 +100,8 @@
   }
 
   function render() {
-    ['q', 'type1', 'gen', 'cls', 'form', 'sort', 'tier', 'count', 'grid', 'more', 'reset', 'unreleased', 'qHints']
+    ['q', 'count', 'grid', 'more', 'reset', 'simple', 'qHints', 'tierRadios']
       .forEach(id => { els[id] = $(id); });
-
-    els.tier.insertAdjacentHTML('beforeend',
-      '<option value="keep">보유할 것만 (S+A)</option>'
-      + P.TIERS.map(t => `<option value="${t.id}">${t.ko}만</option>`).join(''));
 
     // 등급 범례 — 각 등급의 뜻과 해당 종 수
     const counts = {};
@@ -116,15 +111,6 @@
          <span class="pgo-tier-tag t${t.id}">${t.ko}</span>
          <span style="color:var(--pgo-text-mute)">${t.desc} · ${counts[t.id] || 0}종</span>
        </span>`).join('');
-
-    UI.fillTypeSelect(els.type1);
-
-    els.cls.insertAdjacentHTML('beforeend', P.CLASSES
-      .map(c => `<option value="${c.id}">${c.ko}</option>`).join(''));
-
-    const gens = [...new Set(P.pokemon.map(p => p.g))].sort((a, b) => a - b);
-    els.gen.insertAdjacentHTML('beforeend',
-      gens.map(g => `<option value="${g}">${g}세대</option>`).join(''));
 
     let timer;
     els.q.addEventListener('input', () => {
@@ -149,26 +135,20 @@
     els.q.addEventListener('keydown', e => {
       if (e.key === 'Escape' && els.qHints) els.qHints.hidden = true;
     });
-    ['type1', 'gen', 'cls', 'form', 'sort', 'tier'].forEach(id => els[id].addEventListener('change', apply));
-    els.unreleased.addEventListener('change', apply);
+    els.tierRadios.addEventListener('change', apply);
+    els.simple.addEventListener('change', apply);
 
     els.reset.addEventListener('click', () => {
       els.q.value = '';
       if (els.qHints) els.qHints.hidden = true;
-      els.type1.value = '';
-      els.gen.value = '';
-      els.cls.value = '';
-      els.form.value = 'all';
-      els.tier.value = '';
-      els.sort.value = 'tier';
-      els.unreleased.checked = false;
+      els.tierRadios.querySelector('input[value=""]').checked = true;
       apply();
     });
 
     els.more.addEventListener('click', renderMore);
 
     els.grid.addEventListener('click', e => {
-      const btn = e.target.closest('.pgo-card');
+      const btn = e.target.closest('.pgo-card, .pgo-row');
       if (btn) UI.openDetail(UI.byId(btn.dataset.idx));
     });
 
