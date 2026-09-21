@@ -15,8 +15,8 @@ const path = require('path');
 
 const SRC_EVENTS = 'https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/events.json';
 const SRC_RAIDS = 'https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data/raids.json';
-const GODEX = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'data', 'godex.json');
-const OUT = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'data', 'events.json');
+const GODEX = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'data', 'godex.json');
+const OUT = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'data', 'events.json');
 
 function get(url) {
   return new Promise((resolve, reject) => {

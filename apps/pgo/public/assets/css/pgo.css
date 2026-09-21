@@ -976,3 +976,49 @@ body.pgo {
   .pgo-cmp-side:last-child { flex-direction: row; text-align: left; }
   .pgo-cmp-side:last-child .pgo-fighter-types { justify-content: flex-start; }
 }
+
+/* ─── 도감 검색 빠른 결과 ────────────────────────────────────
+   아래 그리드까지 내려가지 않고 이름 옆에서 바로 보유/버림을 본다 */
+.pgo-qwrap { position: relative; }
+
+.pgo-qhints {
+  position: absolute;
+  z-index: 40;
+  left: 0; right: 0; top: calc(100% + 4px);
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--pgo-panel, #161b22);
+  border: 1px solid var(--pgo-line, #30363d);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+
+.pgo-qhint {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  width: 100%;
+  padding: .45rem .6rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--pgo-line-soft, #21262d);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pgo-qhint:last-child { border-bottom: none; }
+.pgo-qhint:hover,
+.pgo-qhint:focus-visible { background: var(--pgo-hover, #1c2128); outline: none; }
+
+.pgo-qhint-img  { width: 32px; height: 32px; flex: none; }
+.pgo-qhint-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pgo-qhint-dex  { flex: none; color: var(--pgo-text-mute, #8b949e); font-size: .8rem; }
+.pgo-qhint .pgo-tier-tag { flex: none; }
+
+.pgo-qhint-empty {
+  padding: .6rem;
+  color: var(--pgo-text-mute, #8b949e);
+  font-size: .85rem;
+  text-align: center;
+}

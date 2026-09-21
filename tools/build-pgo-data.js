@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ENDPOINT = 'https://beta.pokeapi.co/graphql/v1beta';
-const OUT = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'data', 'pokedex.json');
+const OUT = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'data', 'pokedex.json');
 
 // GO에서 의미 있는 폼만 추린다 (코스튬/모양만 다른 폼 제외)
 const FORM_KEEP = /-(mega|mega-x|mega-y|primal|alola|galar|hisui|paldea|origin|therian|altered|sky|attack|defense|speed|zen|black|white|resolute|pirouette|blade|dusk-mane|dawn-wings|ultra|crowned|ice|shadow-rider|10|complete|dusk|midnight)$/;

@@ -41,7 +41,10 @@
       <div class="pgo-controls">
         <div class="pgo-field">
           <label for="q">검색 (한글명 · 영문명 · 도감번호)</label>
-          <input class="pgo-input" id="q" type="search" placeholder="예: 괴력몬, machamp, 68" autocomplete="off" />
+          <div class="pgo-qwrap">
+            <input class="pgo-input" id="q" type="search" placeholder="예: 괴력몬, machamp, 68" autocomplete="off" />
+            <div class="pgo-qhints" id="qHints" hidden></div>
+          </div>
         </div>
         <div class="pgo-field">
           <label for="type1">타입</label>

@@ -10,8 +10,8 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const DEX = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'data', 'pokedex.json');
-const OUT_DIR = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'sprites');
+const DEX = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'data', 'pokedex.json');
+const OUT_DIR = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'sprites');
 const BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
 const CONCURRENCY = 12;
 

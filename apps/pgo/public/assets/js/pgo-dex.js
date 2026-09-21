@@ -65,8 +65,43 @@
     els.more.textContent = `더 보기 (${filtered.length - shown}종 남음)`;
   }
 
+  /**
+   * 검색창 바로 아래에 띄우는 빠른 결과.
+   * 아래 그리드까지 내려가지 않고 이름 옆에서 바로 보유/버림을 보려는 것이다.
+   * 누르면 그 포켓몬 상세가 열린다.
+   */
+  function renderHints(q) {
+    const box = els.qHints;
+    if (!box) return;
+
+    const query = (q || '').trim();
+    if (!query) { box.hidden = true; box.innerHTML = ''; return; }
+
+    // 미출시 폼은 등급이 의미 없으므로 기본에서는 뺀다 (체크를 켜면 같이 본다)
+    const pool = els.unreleased && els.unreleased.checked
+      ? P.pokemon : P.pokemon.filter(p => p.r);
+    const hits = pool.filter(p => P.matches(p, query)).slice(0, 8);
+
+    if (!hits.length) {
+      box.innerHTML = '<div class="pgo-qhint-empty">검색 결과가 없습니다</div>';
+      box.hidden = false;
+      return;
+    }
+
+    box.innerHTML = hits.map(p => {
+      const t = P.tier(p);
+      return `<button type="button" class="pgo-qhint" data-k="${UI.esc(p.k)}">
+        ${UI.imgTag(p, 'pgo-qhint-img')}
+        <span class="pgo-qhint-name">${UI.esc(p.n)}</span>
+        <span class="pgo-qhint-dex">#${p.d}</span>
+        <span class="pgo-tier-tag t${t.id}">${UI.esc(t.ko)}</span>
+      </button>`;
+    }).join('');
+    box.hidden = false;
+  }
+
   function render() {
-    ['q', 'type1', 'gen', 'cls', 'form', 'sort', 'tier', 'count', 'grid', 'more', 'reset', 'unreleased']
+    ['q', 'type1', 'gen', 'cls', 'form', 'sort', 'tier', 'count', 'grid', 'more', 'reset', 'unreleased', 'qHints']
       .forEach(id => { els[id] = $(id); });
 
     els.tier.insertAdjacentHTML('beforeend',
@@ -93,14 +128,33 @@
 
     let timer;
     els.q.addEventListener('input', () => {
+      renderHints(els.q.value);          // 힌트는 바로 (아래 그리드만 살짝 늦춘다)
       clearTimeout(timer);
       timer = setTimeout(apply, 180);
+    });
+
+    // 힌트를 누르면 그 포켓몬 상세를 연다.
+    // 상자가 없는 페이지에서도 여기서 죽지 않도록 있을 때만 건다.
+    if (els.qHints) els.qHints.addEventListener('click', e => {
+      const btn = e.target.closest('.pgo-qhint');
+      if (!btn) return;
+      const p = P.pokemon.find(x => x.k === btn.dataset.k);
+      if (p) UI.openDetail(p);
+    });
+
+    // 바깥을 누르거나 Esc 를 누르면 닫는다
+    document.addEventListener('click', e => {
+      if (els.qHints && !e.target.closest('.pgo-qwrap')) els.qHints.hidden = true;
+    });
+    els.q.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && els.qHints) els.qHints.hidden = true;
     });
     ['type1', 'gen', 'cls', 'form', 'sort', 'tier'].forEach(id => els[id].addEventListener('change', apply));
     els.unreleased.addEventListener('change', apply);
 
     els.reset.addEventListener('click', () => {
       els.q.value = '';
+      if (els.qHints) els.qHints.hidden = true;
       els.type1.value = '';
       els.gen.value = '';
       els.cls.value = '';

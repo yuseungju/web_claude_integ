@@ -19,9 +19,9 @@ const zlib = require('zlib');
 
 const SRC = 'https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json';
 const SRC_PVPOKE = 'https://raw.githubusercontent.com/pvpoke/pvpoke/master/src/data/gamemaster.json';
-const DEX = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'data', 'pokedex.json');
-const OUT = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'data', 'godex.json');
-const SPRITE_DIR = path.join(__dirname, '..', 'public', 'pgo', 'assets', 'sprites');
+const DEX = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'data', 'pokedex.json');
+const OUT = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'data', 'godex.json');
+const SPRITE_DIR = path.join(__dirname, '..', 'apps', 'pgo', 'public', 'assets', 'sprites');
 
 /** 등급 코드 */
 const CLASS = { LEGENDARY: 1, MYTHIC: 2, ULTRA_BEAST: 3 };
