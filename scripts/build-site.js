@@ -23,6 +23,8 @@ const APPS = [
     desc: '기사·웹소설 작성, 일정 공유, 엑셀 비교 등 업무 도구 모음' },
   { dir: 'tennis', url: 'tennis', title: '대치유수지 예약 자동화',
     desc: '코트·시간 설정을 크롬 확장에 넘겨 예약을 자동화' },
+  { dir: 'test', url: 'test', title: 'AI 대화 (Hermes)',
+    desc: '로컬 Hermes 에 붙는 대화형 AI — 대화가 메모리로 남는다' },
 ];
 
 function rmrf(p) {

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 대화 (Hermes)</title>
+  <link rel="stylesheet" href="/test/style.css" />
+</head>
+<body>
+  <div class="wrap">
+
+    <aside class="side">
+      <div class="side-top">
+        <button id="newChat" class="btn btn-primary block">+ 새 대화</button>
+      </div>
+      <div id="chatList" class="chat-list"></div>
+      <div class="side-foot">
+        <button id="cfgBtn" class="btn block">⚙️ 연결 설정</button>
+        <div id="status" class="status">확인 중…</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="head">
+        <h1 id="title" class="title">새 대화</h1>
+        <span id="memo" class="memo"></span>
+      </header>
+
+      <div id="log" class="log">
+        <div class="hello">
+          <h2>Hermes 대화형 AI</h2>
+          <p>
+            내 PC에서 돌고 있는 <b>Hermes</b>에 직접 붙습니다.<br />
+            대화는 <b>메모리로 보관</b>되어, 다음에 이어서 물어보면 앞 내용을 기억합니다.
+          </p>
+          <p class="hello-note">
+            먼저 터미널에서 <code>hermes gateway</code> 를 켜 두세요.<br />
+            연결이 안 되면 좌측 하단 <b>연결 설정</b>을 확인하세요.
+          </p>
+        </div>
+      </div>
+
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="무엇이든 물어보세요.  (Enter 전송 · Shift+Enter 줄바꿈)"></textarea>
+        <button id="send" class="btn btn-primary">보내기</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- 연결 설정 -->
+  <div class="overlay" id="cfgModal">
+    <div class="modal">
+      <div class="modal-head">
+        <b>Hermes 연결 설정</b>
+        <button class="x" id="cfgClose">×</button>
+      </div>
+      <div class="modal-body">
+        <label>엔드포인트</label>
+        <input id="cfgUrl" type="text" placeholder="http://127.0.0.1:8642" />
+        <p class="hint">
+          <code>hermes gateway</code> 가 띄우는 API 서버 주소입니다. 기본 포트는 <b>8642</b>입니다.
+        </p>
+
+        <label>API 서버 키</label>
+        <input id="cfgKey" type="password" placeholder="~/.hermes/.env 의 API_SERVER_KEY" />
+        <p class="hint">
+          브라우저에만 저장되며 서버로 보내지 않습니다. 내 PC의 Hermes 외에는 아무 데도 가지 않습니다.
+        </p>
+
+        <label>모델 <span class="hint-inline">(비우면 Hermes 기본값)</span></label>
+        <input id="cfgModel" type="text" placeholder="hermes-agent" />
+
+        <div class="modal-foot">
+          <button id="cfgTest" class="btn">연결 테스트</button>
+          <span style="flex:1"></span>
+          <button id="cfgSave" class="btn btn-primary">저장</button>
+        </div>
+        <div id="cfgResult" class="cfg-result" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/test/app.js"></script>
+</body>
+</html>
