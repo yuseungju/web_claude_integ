@@ -1,22 +1,27 @@
 /**
- * /sap/* — SAP 운영 문의 AI 응답. sap_ 테이블만 다루는 독립 모듈.
+ * /sap/* — SAP 운영 문의 AI 응답.
  *
  * 호출 경로
  *   Lambda → EC2 인증 프록시(:8646) → hermes proxy(127.0.0.1:8645) → Nous Portal
  *
- * 대화 연속성
- *   hermes proxy 는 /v1/responses 를 중계하지 않는다(허용: chat/completions,
- *   completions, embeddings, models). 그래서 previous_response_id 로 서버에
- *   맡기는 방식을 쓸 수 없고, 우리가 sap_messages 에 쌓아둔 히스토리를 매 요청에
- *   실어 보낸다. 대신 대화 이력이 우리 DB 에 남아 문의 유형 분석에 바로 쓸 수 있다.
+ * DB 를 쓰지 않는다
+ *   RDS 는 2026-10-12 해지됐고 되살릴 계획이 없다(CLAUDE.md). 그래서 대화 기록을
+ *   서버에 두지 않고 **브라우저가 히스토리를 들고 매 요청에 함께 보낸다**.
+ *   hermes proxy 가 /v1/responses 를 중계하지 않아(허용: chat/completions,
+ *   completions, embeddings, models) previous_response_id 로 서버에 맡기는 길도
+ *   없으므로, 어차피 전체 히스토리를 실어야 한다 — 그 보관처만 브라우저로 옮긴 셈이다.
+ *
+ *   한계: 브라우저를 바꾸면 대화가 사라지고, 문의 이력이 서버에 쌓이지 않는다.
+ *   이력 분석이 필요해지면 DynamoDB(사실상 무료)를 붙이면 된다.
+ *
+ * 사용량은 CloudWatch 로그로 남긴다 — 모델을 고르려면 실측값이 필요하다.
  *
  * SAP 조회는 아직 붙어 있지 않다. 사내망 접근이 열리면 도구로 추가한다.
- * 그때까지는 조회가 필요한 질문이면 그렇다고 말하고, 아니면 일반 지식으로 답한다.
  *
  * 필요한 환경변수
  *   HERMES_URL    예: http://3.26.56.6:8646
  *   PROXY_TOKEN   EC2 authproxy 와 나눠 갖는 비밀값
- *   AI_MODEL      기본 모델 (요청에서 model 을 주면 그쪽이 우선)
+ *   AI_MODEL      기본 모델 (요청의 model 이 우선)
  */
 const http = require('node:http');
 const https = require('node:https');
@@ -25,10 +30,11 @@ const HERMES_URL  = (process.env.HERMES_URL || '').replace(/\/$/, '');
 const PROXY_TOKEN = process.env.PROXY_TOKEN || '';
 const MODEL       = process.env.AI_MODEL || 'openai/gpt-6-luna';
 
-const MAX_INPUT   = 20000;   // 질문 한 건의 길이 상한(자)
-const MAX_TURNS   = 24;      // 컨텍스트에 싣는 최근 메시지 수
-const MAX_TOKENS  = 1500;    // 출력 상한
-const TIMEOUT_MS  = 25000;   // API Gateway 29초보다 짧게
+const MAX_INPUT    = 20000;   // 질문 한 건의 길이 상한(자)
+const MAX_HISTORY  = 24;      // 컨텍스트에 싣는 최근 메시지 수
+const MAX_HIST_CH  = 60000;   // 히스토리 전체 길이 상한(자) — 비용 폭주 방지
+const MAX_TOKENS   = 1500;
+const TIMEOUT_MS   = 25000;   // API Gateway 29초보다 짧게
 
 const SYSTEM = [
   '당신은 SAP ERP 운영 문의를 돕는 어시스턴트입니다.',
@@ -91,57 +97,27 @@ function callAI(messages, model) {
   });
 }
 
-/* ── 저장소 ──────────────────────────────────────────── */
-async function getConversationId(pool, userKey, convId) {
-  if (convId) {
-    const { rows } = await pool.query(
-      'SELECT id FROM sap_conversations WHERE id = $1 AND user_key = $2', [convId, userKey]);
-    if (rows.length) return Number(rows[0].id);
+/** 클라이언트가 보낸 히스토리를 신뢰하지 않고 모양·길이를 다듬는다. */
+function sanitizeHistory(raw) {
+  if (!Array.isArray(raw)) return [];
+  const kept = [];
+  let chars = 0;
+  // 최근 것부터 담다가 상한에 닿으면 멈춘다(오래된 쪽이 잘린다)
+  for (let i = raw.length - 1; i >= 0 && kept.length < MAX_HISTORY; i--) {
+    const m = raw[i];
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
+    const content = String(m.content || '').slice(0, MAX_INPUT);
+    if (!content) continue;
+    if (chars + content.length > MAX_HIST_CH) break;
+    chars += content.length;
+    kept.push({ role: m.role, content });
   }
-  const { rows } = await pool.query(
-    `INSERT INTO sap_conversations (user_key, source) VALUES ($1, 'web') RETURNING id`, [userKey]);
-  return Number(rows[0].id);
-}
-
-/** 최근 MAX_TURNS 개를 시간순으로 돌려준다. content 는 JSONB 에 문자열로 들어있다. */
-async function loadHistory(pool, convId) {
-  const { rows } = await pool.query(
-    `SELECT role, content FROM sap_messages
-      WHERE conv_id = $1 AND dropped = false
-      ORDER BY seq DESC LIMIT $2`, [convId, MAX_TURNS]);
-  return rows.reverse().map((r) => ({
-    role: r.role,
-    content: typeof r.content === 'string' ? r.content : String(r.content),
-  }));
-}
-
-async function appendMessages(pool, convId, items) {
-  const { rows } = await pool.query(
-    'SELECT COALESCE(MAX(seq), 0) AS s FROM sap_messages WHERE conv_id = $1', [convId]);
-  let seq = Number(rows[0].s);
-  for (const m of items) {
-    seq += 1;
-    await pool.query(
-      'INSERT INTO sap_messages (conv_id, seq, role, content) VALUES ($1, $2, $3, $4)',
-      [convId, seq, m.role, JSON.stringify(m.content)]);
-  }
-  await pool.query('UPDATE sap_conversations SET last_at = now() WHERE id = $1', [convId]);
-}
-
-async function logCall(pool, convId, out) {
-  try {
-    const u = out.usage || {};
-    await pool.query(
-      `INSERT INTO sap_ai_calls (conv_id, model, input_tokens, output_tokens, latency_ms, cost_usd)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [convId, out.model, u.prompt_tokens || 0, u.completion_tokens || 0,
-       out.latencyMs, u.cost || 0]);
-  } catch (e) { console.error('[sap] 사용량 기록 실패:', e.message); }
+  return kept.reverse();
 }
 
 /* ── 라우트 ──────────────────────────────────────────── */
 async function route(ctx, event, method, path) {
-  const { pool, resp, getBody } = ctx;
+  const { resp, getBody } = ctx;          // pool 은 쓰지 않는다 (DB 없음)
   if (!path.startsWith('/sap/')) return null;
 
   if (!HERMES_URL || !PROXY_TOKEN) {
@@ -150,10 +126,6 @@ async function route(ctx, event, method, path) {
 
   const body = getBody(event) || {};
   const qs = event.queryStringParameters || {};
-  const userKey = String(body.userKey || qs.userKey || '').trim();
-  if (!/^[A-Za-z0-9._@-]{3,64}$/.test(userKey)) {
-    return resp(400, { error: '사용자 키가 올바르지 않습니다.' });
-  }
 
   /* 질문 → 답변 */
   if (path === '/sap/ask' && method === 'POST') {
@@ -161,64 +133,33 @@ async function route(ctx, event, method, path) {
     if (!text) return resp(400, { error: '메시지가 비어 있습니다.' });
     if (text.length > MAX_INPUT) return resp(400, { error: `메시지가 너무 깁니다(${MAX_INPUT}자 제한).` });
 
-    const convId = await getConversationId(pool, userKey, body.convId);
-    const history = await loadHistory(pool, convId);
-    const userMsg = { role: 'user', content: text };
-    const messages = [{ role: 'system', content: SYSTEM }, ...history, userMsg];
+    const history = sanitizeHistory(body.history);
+    const messages = [
+      { role: 'system', content: SYSTEM },
+      ...history,
+      { role: 'user', content: text },
+    ];
 
     try {
       const out = await callAI(messages, body.model);
-      await appendMessages(pool, convId, [userMsg, { role: 'assistant', content: out.text }]);
-      await logCall(pool, convId, out);
-      console.log(`[sap] conv=${convId} ${out.model} ${out.latencyMs}ms `
-        + `in=${out.usage.prompt_tokens} out=${out.usage.completion_tokens} cost=${out.usage.cost}`);
+      const u = out.usage || {};
+      console.log(`[sap] ${out.model} ${out.latencyMs}ms `
+        + `in=${u.prompt_tokens} out=${u.completion_tokens} cost=${u.cost} turns=${history.length + 2}`);
       return resp(200, {
-        convId, text: out.text, model: out.model,
-        latencyMs: out.latencyMs, usage: out.usage,
+        text: out.text,
+        model: out.model,
+        latencyMs: out.latencyMs,
+        usage: u,
         turns: history.length + 2,
         continued: history.length > 0,
       });
     } catch (e) {
       console.error('[sap] 호출 실패:', e.message);
-      return resp(502, { error: e.message, convId });
+      return resp(502, { error: e.message });
     }
   }
 
-  /* 대화 목록 */
-  if (path === '/sap/conversations' && method === 'GET') {
-    const { rows } = await pool.query(
-      `SELECT c.id, c.title, c.created_at, c.last_at,
-              (SELECT count(*)::int FROM sap_messages m WHERE m.conv_id = c.id) AS messages
-         FROM sap_conversations c
-        WHERE c.user_key = $1 ORDER BY c.last_at DESC LIMIT 30`, [userKey]);
-    return resp(200, { conversations: rows });
-  }
-
-  /* 대화 내용 */
-  if (path === '/sap/messages' && method === 'GET') {
-    const convId = Number(qs.convId);
-    if (!convId) return resp(400, { error: 'convId 가 필요합니다.' });
-    const { rows } = await pool.query(
-      `SELECT m.seq, m.role, m.content FROM sap_messages m
-         JOIN sap_conversations c ON c.id = m.conv_id
-        WHERE m.conv_id = $1 AND c.user_key = $2 AND m.dropped = false
-        ORDER BY m.seq`, [convId, userKey]);
-    return resp(200, { convId, messages: rows });
-  }
-
-  /* 사용량 집계 — 모델 비교의 근거 */
-  if (path === '/sap/usage' && method === 'GET') {
-    const { rows } = await pool.query(
-      `SELECT model, count(*)::int AS calls,
-              sum(input_tokens)::int  AS input_tokens,
-              sum(output_tokens)::int AS output_tokens,
-              round(avg(latency_ms))::int AS avg_ms,
-              round(sum(cost_usd)::numeric, 4) AS cost_usd
-         FROM sap_ai_calls GROUP BY model ORDER BY calls DESC`);
-    return resp(200, { usage: rows });
-  }
-
-  /* 프록시 상태 */
+  /* 프록시 상태 — 연결 점검용 */
   if (path === '/sap/health' && method === 'GET') {
     try {
       const u = new URL(HERMES_URL + '/healthz');

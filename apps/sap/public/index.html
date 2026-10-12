@@ -24,9 +24,8 @@ header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:s
 h1{font-size:19px;margin:0;font-weight:600}
 h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;font-family:var(--m);margin-top:2px}
 .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-select,button,input{font-family:var(--b);font-size:13px;color:var(--fg);background:var(--sunken);
-  border:1px solid var(--line);border-radius:6px;padding:7px 10px}
-button{cursor:pointer}
+select,button{font-family:var(--b);font-size:13px;color:var(--fg);background:var(--sunken);
+  border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 button:disabled{opacity:.5;cursor:default}
 #log{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;min-height:110px}
@@ -43,7 +42,7 @@ button:disabled{opacity:.5;cursor:default}
 form{display:flex;gap:9px;align-items:flex-end}
 textarea{flex:1;min-width:0;font-family:var(--b);font-size:14.5px;color:var(--fg);background:var(--surface);
   border:1px solid var(--line);border-radius:8px;padding:11px 13px;resize:vertical;min-height:56px;line-height:1.5}
-textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .hint{font-size:11.5px;color:var(--muted);margin-top:8px;font-family:var(--m)}
 </style>
 </head>
@@ -51,7 +50,7 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
 <div class="wrap">
 
   <header>
-    <h1>SAP 운영 문의 AI<small id="info">준비 중…</small></h1>
+    <h1>SAP 운영 문의 AI<small id="info">대화는 이 브라우저에만 저장됩니다</small></h1>
     <div class="tools">
       <select id="model" title="모델">
         <option value="openai/gpt-6-luna">gpt-6-luna · 15원/건</option>
@@ -68,31 +67,31 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
   <div id="log"><p class="empty">ABAP 소스를 붙여넣고 질문하면 분석 결과가 여기 표시됩니다.</p></div>
 
   <form id="f">
-    <textarea id="q" placeholder="예) 아래 소스에서 거래처 필터가 안 먹는 이유는?&#10;[ABAP 소스 붙여넣기]"></textarea>
+    <textarea id="q" placeholder="예) 아래 소스에서 거래처 필터가 안 먹는 이유는?"></textarea>
     <button class="primary" id="send" type="submit">보내기</button>
   </form>
-  <p class="hint">Ctrl+Enter 전송 · 대화는 이어집니다(앞 질문을 기억) · 모델을 바꿔가며 같은 질문으로 비교해 보세요</p>
+  <p class="hint">Ctrl+Enter 전송 · 앞선 대화를 기억합니다 · 모델을 바꿔가며 같은 질문으로 비교해 보세요</p>
 
 </div>
 
 <script>
 var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+var STORE = 'sapChat';
 
-var userKey = (function () {
-  try {
-    var v = localStorage.getItem('sapUserKey');
-    if (!v) { v = 'web-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('sapUserKey', v); }
-    return v;
-  } catch (e) { return 'web-anon'; }
+/* 서버에 DB 가 없어서(RDS 해지) 대화는 브라우저가 들고 있다가 매 요청에 함께 보낸다.
+   저장이 막힌 환경(시크릿 창 등)에서도 메모리로 동작하면 되므로 try/catch 로 감싼다. */
+var history = (function () {
+  try { return JSON.parse(localStorage.getItem(STORE) || '[]'); } catch (e) { return []; }
 })();
-var convId = null;
+
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(history.slice(-40))); } catch (e) {}
+}
 
 var log = document.getElementById('log');
 var q = document.getElementById('q');
 var send = document.getElementById('send');
 var modelSel = document.getElementById('model');
-var info = document.getElementById('info');
-info.textContent = userKey;
 
 function add(who, text, cls, meta) {
   var e = log.querySelector('.empty');
@@ -105,7 +104,9 @@ function add(who, text, cls, meta) {
   if (meta) {
     var m = document.createElement('div');
     m.className = 'meta';
-    meta.forEach(function (t) { var s = document.createElement('span'); s.textContent = t; m.appendChild(s); });
+    meta.filter(Boolean).forEach(function (t) {
+      var s = document.createElement('span'); s.textContent = t; m.appendChild(s);
+    });
     d.appendChild(m);
   }
   log.appendChild(d);
@@ -113,10 +114,16 @@ function add(who, text, cls, meta) {
   return d;
 }
 
+/* 새로고침해도 이어서 보이도록 지난 대화를 먼저 그린다 */
+history.forEach(function (m) {
+  add(m.role === 'user' ? '나' : 'AI', m.content, m.role === 'user' ? 'me' : '');
+});
+
 document.getElementById('f').addEventListener('submit', function (ev) {
   ev.preventDefault();
   var text = q.value.trim();
   if (!text) return;
+
   add('나', text, 'me');
   q.value = '';
   send.disabled = true;
@@ -125,22 +132,25 @@ document.getElementById('f').addEventListener('submit', function (ev) {
   fetch(API + '/sap/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userKey: userKey, convId: convId, text: text, model: modelSel.value }),
+    body: JSON.stringify({ text: text, history: history, model: modelSel.value }),
   })
   .then(function (r) { return r.json(); })
   .then(function (d) {
     pending.remove();
     if (d.error) { add('오류', d.error, 'err'); return; }
-    convId = d.convId;
+
+    history.push({ role: 'user', content: text });
+    history.push({ role: 'assistant', content: d.text });
+    save();
+
     var u = d.usage || {};
     add('AI', d.text, '', [
       d.model,
       (d.latencyMs / 1000).toFixed(1) + '초',
-      '입력 ' + (u.input_tokens != null ? u.input_tokens : (u.prompt_tokens != null ? u.prompt_tokens : '?')) + ' 토큰',
-      '출력 ' + (u.output_tokens != null ? u.output_tokens : (u.completion_tokens != null ? u.completion_tokens : '?')) + ' 토큰',
-      u.cost != null ? '약 ' + Math.round(u.cost * 1450) + '원' : '',
+      '입력 ' + (u.prompt_tokens != null ? u.prompt_tokens : '?') + ' 토큰',
+      '출력 ' + (u.completion_tokens != null ? u.completion_tokens : '?') + ' 토큰',
+      u.cost != null ? '약 ' + Math.max(1, Math.round(u.cost * 1450)) + '원' : '',
       d.continued ? '이어진 대화' : '새 대화',
-      '대화 #' + d.convId,
     ]);
   })
   .catch(function (err) { pending.remove(); add('오류', err.message, 'err'); })
@@ -152,7 +162,8 @@ q.addEventListener('keydown', function (e) {
 });
 
 document.getElementById('reset').addEventListener('click', function () {
-  convId = null;
+  history = [];
+  save();
   log.innerHTML = '<p class="empty">새 대화를 시작합니다.</p>';
   q.focus();
 });
