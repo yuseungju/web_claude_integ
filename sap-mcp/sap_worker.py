@@ -47,7 +47,12 @@ _LOCK = threading.Lock()
 # ── 읽기 전용 가드 ───────────────────────────────────────
 # 운영 시스템이다. 조회만 한다. 실수로든 모델 지시로든 쓰기가 나가지 않도록
 # 세션 수준에서 막는다. datapreview 는 POST 지만 SELECT 조회라 허용한다.
-_ALLOWED_POST = "/sap/bc/adt/datapreview/freestyle"
+# POST 지만 조회인 엔드포인트만 연다. 그 외 POST 와 모든 PUT/DELETE/PATCH 는 막는다.
+_ALLOWED_POST = (
+    "/sap/bc/adt/datapreview/freestyle",          # 자유 SELECT
+    "/sap/bc/adt/repository/informationsystem/usageReferences",   # where-used
+    "/sap/bc/adt/repository/nodestructure",       # 패키지 트리
+)
 
 
 class ReadOnlyViolation(RuntimeError):
@@ -61,7 +66,7 @@ def _harden(session):
     orig_post = session.post
 
     def guarded_post(path, **kw):
-        if not str(path).startswith(_ALLOWED_POST):
+        if not str(path).startswith(tuple(_ALLOWED_POST)):
             raise ReadOnlyViolation(f"운영 읽기 전용 — POST 차단: {path}")
         return orig_post(path, **kw)
 
@@ -224,7 +229,117 @@ def tool_run_select(args):
     return f"[쿼리] {len(rows)}행\n{sql}\n\n" + _fmt_table(cols, rows)
 
 
+_ADT_ROOT = "/sap/bc/adt/"
+
+
+def _check_adt_path(path):
+    path = str(path or "").strip()
+    if not path.startswith(_ADT_ROOT):
+        raise ReadOnlyViolation(f"ADT 경로만 허용합니다({_ADT_ROOT}...): {path}")
+    return path
+
+
+def tool_adt_get(args):
+    """ADT 의 아무 GET 엔드포인트나 직접 호출한다.
+
+    편의 도구로 덮이지 않는 조회(where-used, objectstructure, 클래스 소스 등)를
+    에이전트가 스스로 할 수 있게 열어둔 범용 창구다. GET 이라 쓰기는 애초에 불가능하다.
+    """
+    path = _check_adt_path(args.get("path"))
+    params = args.get("params") or {}
+    if isinstance(params, str):
+        try: params = json.loads(params)
+        except Exception: params = {}
+    srv = prod()
+    params.setdefault("sap-client", srv.client)
+    resp = srv.get(path, params=params, headers={"Accept": args.get("accept") or "*/*"})
+    body = resp.text
+    if not resp.ok:
+        return f"HTTP {resp.status_code}" + chr(10) + body[:800]
+    if len(body) > 60000:
+        body = body[:60000] + chr(10) + "... (이하 생략 — 범위를 좁혀 다시 요청하세요)"
+    return f"[GET {path}] HTTP {resp.status_code} · {len(resp.text):,}자" + chr(10)*2 + body
+
+
+def tool_adt_post(args):
+    """조회 성격의 ADT POST 엔드포인트를 호출한다(where-used 등).
+
+    허용 목록 밖의 경로는 세션 가드가 거부한다 — 운영에 쓰기가 나갈 수 없다.
+    """
+    path = _check_adt_path(args.get("path"))
+    body = args.get("body") or ""
+    ctype = args.get("content_type") or "application/xml"
+    params = args.get("params") or {}
+    if isinstance(params, str):
+        try: params = json.loads(params)
+        except Exception: params = {}
+    srv = prod()
+    params.setdefault("sap-client", srv.client)
+    try:
+        resp = srv.post(path, params=params,
+                        headers={"Content-Type": ctype, "Accept": "*/*"},
+                        data=body.encode("utf-8"))
+    except ReadOnlyViolation as e:
+        return str(e)
+    text = resp.text
+    if len(text) > 60000:
+        text = text[:60000] + chr(10) + "... (이하 생략)"
+    return f"[POST {path}] HTTP {resp.status_code} · {len(resp.text):,}자" + chr(10)*2 + text
+
+
+ADT_REFERENCE = """SAP ADT REST API 참고 (운영 · 읽기 전용)
+
+adt_get / adt_post 로 아래 경로를 직접 부를 수 있다. 편의 도구(search_object,
+read_source, query_table, count_rows, aggregate, run_select)로 안 되는 조회는
+이 참고를 보고 직접 호출한다.
+
+[소스]
+  GET /sap/bc/adt/programs/programs/{이름}/source/main      프로그램
+  GET /sap/bc/adt/programs/includes/{이름}/source/main      인클루드
+  GET /sap/bc/adt/oo/classes/{이름}/source/main             클래스
+  GET /sap/bc/adt/functions/groups/{그룹}/fmodules/{FM}/source/main   함수모듈
+  GET /sap/bc/adt/ddic/tables/{테이블}/source/main          테이블 DDL
+
+[구조]
+  GET /sap/bc/adt/programs/programs/{이름}/objectstructure?version=active
+      함수그룹·프로그램의 하위 구성(인클루드, FORM, FM)을 본다.
+      함수모듈이 어느 인클루드에 있는지 모를 때 먼저 이걸 본다.
+
+[검색]
+  GET /sap/bc/adt/repository/informationsystem/search
+      ?operation=quickSearch&query={이름}*&maxResults=20
+      adtcore:type(PROG/P, TABL/DT, CLAS/OC, FUGR/FF ...), packageName, description
+
+[어디서 쓰이나 — where-used]
+  POST /sap/bc/adt/repository/informationsystem/usageReferences?uri={오브젝트 URI}
+       Content-Type: application/vnd.sap.adt.repository.usagereferences.request.v1+xml
+       Body: <usagereferences:usageReferenceRequest xmlns:usagereferences=
+              "http://www.sap.com/adt/ris/usageReferences"/>
+       uri 예: /sap/bc/adt/ddic/tables/zsdnt0110
+
+[데이터]
+  run_select 로 자유 SELECT 를 쓴다. UP TO n ROWS 는 쓰지 않는다(rows 인자로 제어).
+  TADIR 로 패키지 내 오브젝트 목록을 볼 수 있다:
+    SELECT pgmid, object, obj_name FROM tadir
+     WHERE devclass = 'ZSDN01' AND object IN ('PROG','FUGR','CLAS','TABL')
+
+[주의]
+  · 경로의 오브젝트 이름은 소문자로 넣는다.
+  · Accept 에 application/json 을 쓰면 406 이 난다 — */* 를 쓴다.
+  · 모르는 엔드포인트는 GET /sap/bc/adt/discovery 로 목록을 확인할 수 있다.
+  · 운영이라 쓰기(PUT/DELETE/PATCH, 허용목록 밖 POST)는 전부 차단된다.
+"""
+
+
+def tool_adt_reference(args):
+    """ADT 엔드포인트 참고표. 편의 도구로 안 되는 조회를 직접 짤 때 먼저 읽는다."""
+    return ADT_REFERENCE
+
+
 TOOLS = {
+    "adt_reference": tool_adt_reference,
+    "adt_get": tool_adt_get,
+    "adt_post": tool_adt_post,
     "count_rows": tool_count_rows,
     "aggregate": tool_aggregate,
     "run_select": tool_run_select,
@@ -235,6 +350,54 @@ TOOLS = {
 
 # 브라우저가 AI 에게 넘길 도구 정의(OpenAI 형식). 워커가 스스로 알려준다.
 TOOL_SPECS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "adt_reference",
+            "description": ("ADT REST API 엔드포인트 참고표를 돌려준다. 아래 편의 도구로 안 되는 조회"
+                            "(where-used, 클래스 소스, 함수모듈, objectstructure, 패키지 목록 등)가 "
+                            "필요하면 **먼저 이것을 읽고** adt_get / adt_post 로 직접 호출한다. "
+                            "인자는 없다."),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "adt_get",
+            "description": ("ADT 의 아무 GET 엔드포인트나 직접 호출한다. 편의 도구가 없는 조회는 "
+                            "adt_reference 를 본 뒤 이것으로 처리한다. 경로의 오브젝트 이름은 소문자. "
+                            "모르는 엔드포인트는 /sap/bc/adt/discovery 로 목록을 볼 수 있다."),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string",
+                             "description": "/sap/bc/adt/ 로 시작하는 경로 (예: /sap/bc/adt/oo/classes/zcl_x/source/main)"},
+                    "params": {"type": "object", "description": "쿼리 파라미터 (선택)"},
+                    "accept": {"type": "string", "description": "Accept 헤더 (기본 */*)"},
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "adt_post",
+            "description": ("조회 성격의 ADT POST 엔드포인트를 호출한다(where-used 등). 허용 목록 밖 "
+                            "경로는 거부된다. 본문 형식은 adt_reference 를 참고한다."),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "/sap/bc/adt/ 로 시작하는 경로"},
+                    "body": {"type": "string", "description": "요청 본문 (보통 XML)"},
+                    "content_type": {"type": "string", "description": "Content-Type (기본 application/xml)"},
+                    "params": {"type": "object", "description": "쿼리 파라미터 (선택)"},
+                },
+                "required": ["path"],
+            },
+        },
+    },
     {
         "type": "function",
         "function": {
