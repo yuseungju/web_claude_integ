@@ -73,9 +73,29 @@ const client = new Client({
   statement_timeout: 120000,
 });
 
+/**
+ * 접속 자체가 안 되는 것과 스키마가 잘못된 것은 다르게 다뤄야 한다.
+ *
+ * DB 를 해지했는데 Amplify 에 DB_* 환경변수가 남아 있으면 여기서 접속이 실패하는데,
+ * 그 때문에 프론트엔드 배포까지 막히면 곤란하다. DB 가 없는 상태는 이 프로젝트에서
+ * 정상으로 보기로 했으므로(db/README.md) 접속 실패는 건너뛴다.
+ * 반대로 접속이 된 뒤의 SQL 오류는 진짜 버그이므로 그대로 빌드를 세운다.
+ */
+const UNREACHABLE = new Set([
+  'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EHOSTUNREACH',
+]);
+
 (async () => {
   const started = Date.now();
-  await client.connect();
+  try {
+    await client.connect();
+  } catch (e) {
+    if (UNREACHABLE.has(e.code) || /timeout|getaddrinfo|ENOTFOUND/i.test(e.message || '')) {
+      skip('DB 에 접속할 수 없습니다 (' + (e.code || e.message) + '). '
+        + 'DB 를 쓰지 않는 상태라면 정상입니다 — 프론트엔드 배포는 계속합니다.');
+    }
+    throw e;   // 인증 실패 등은 설정 실수일 수 있으니 드러낸다
+  }
   console.log('[migrate] 접속: ' + cfg.host.split('.')[0] + ' / db=' + cfg.database);
 
   const before = await client.query(
