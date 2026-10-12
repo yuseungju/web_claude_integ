@@ -56,13 +56,18 @@ const SYSTEM = [
 ].join(' ');
 
 /* ── AI 호출 (OpenAI 호환 /chat/completions) ─────────── */
-function callAI(messages, model) {
-  const payload = JSON.stringify({
+function callAI(messages, model, tools) {
+  const req = {
     model: model || MODEL,       // hermes proxy 는 model 을 자동 주입하지 않는다
     messages,
     max_tokens: MAX_TOKENS,
     temperature: 0.3,
-  });
+  };
+  if (Array.isArray(tools) && tools.length) {
+    req.tools = tools;           // 도구를 주면 모델이 tool_calls 로 조회를 요청한다
+    req.tool_choice = 'auto';
+  }
+  const payload = JSON.stringify(req);
 
   const u = new URL(HERMES_URL + '/v1/chat/completions');
   const mod = u.protocol === 'https:' ? https : http;
@@ -94,7 +99,9 @@ function callAI(messages, model) {
         const ch = d.choices && d.choices[0];
         if (!ch) return reject(new Error('choices 가 비어 있습니다: ' + raw.slice(0, 300)));
         resolve({
-          text: (ch.message && ch.message.content) || '(빈 응답)',
+          text: (ch.message && ch.message.content) || '',
+          toolCalls: (ch.message && ch.message.tool_calls) || null,
+          finishReason: ch.finish_reason || null,
           model: d.model || model || MODEL,
           usage: d.usage || {},
           latencyMs: Date.now() - started,
@@ -200,7 +207,7 @@ async function route(ctx, event, method, path) {
       console.log('[sap] conv=' + conv.convId + ' ' + out.model + ' ' + out.latencyMs + 'ms '
         + 'in=' + u.prompt_tokens + ' out=' + u.completion_tokens + ' cost=' + u.cost);
       return resp(200, {
-        convId: conv.convId, text: out.text, model: out.model,
+        convId: conv.convId, text: out.text || '(빈 응답)', model: out.model,
         latencyMs: out.latencyMs, usage: u,
         turns: history.length + 2,
         continued: history.length > 0,
@@ -237,6 +244,35 @@ async function route(ctx, event, method, path) {
       Limit: 200,
     }));
     return resp(200, { convId, messages: r.Items || [] });
+  }
+
+  /* 도구 루프용 저수준 호출 — 브라우저가 루프를 돌린다.
+     SAP 은 사내망이라 Lambda 에서 조회할 수 없다. 반면 브라우저는 사용자 PC 에서
+     돌아 127.0.0.1 의 로컬 워커에 닿는다. 그래서 모델 호출만 여기서 중계하고
+     도구 실행과 반복은 브라우저가 맡는다. 덕분에 29초 제한도 피한다.
+     사내망이 열리면 이 루프를 서버로 옮긴다. */
+  if (path === '/sap/raw' && method === 'POST') {
+    const messages = Array.isArray(body.messages) ? body.messages : null;
+    if (!messages || !messages.length) {
+      return resp(400, { error: 'messages 배열이 필요합니다.' });
+    }
+    if (messages.length > 60) {
+      return resp(400, { error: '메시지가 너무 많습니다(60개 제한).' });
+    }
+    try {
+      const out = await callAI(messages, body.model, body.tools);
+      const u = out.usage || {};
+      console.log('[sap/raw] ' + out.model + ' ' + out.latencyMs + 'ms '
+        + 'in=' + u.prompt_tokens + ' out=' + u.completion_tokens
+        + ' tools=' + ((out.toolCalls || []).length) + ' cost=' + u.cost);
+      return resp(200, {
+        text: out.text, toolCalls: out.toolCalls, finishReason: out.finishReason,
+        model: out.model, usage: u, latencyMs: out.latencyMs,
+      });
+    } catch (e) {
+      console.error('[sap/raw] 실패:', e.message);
+      return resp(502, { error: e.message });
+    }
   }
 
   /* 프록시 상태 */

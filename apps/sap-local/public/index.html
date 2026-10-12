@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAP 분석 (로컬 연결)</title>
+<style>
+:root {
+  --bg:#f6f7f6; --surface:#fff; --sunken:#eceeed; --line:#d6dad8;
+  --fg:#16211f; --muted:#5c6a67; --accent:#15605b; --warn:#8a5a12; --ok:#1b7a4b;
+  --b:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+  --m:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#111816; --surface:#18211f; --sunken:#141c1a; --line:#2b3835;
+          --fg:#e6ece9; --muted:#94a49f; --accent:#57b3aa; --warn:#d6a95f; --ok:#4fb97e;
+          color-scheme: dark; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--b);line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding:22px 16px 40px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-size:19px;margin:0;font-weight:600}
+h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;font-family:var(--m);margin-top:2px}
+.tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+select,button,input{font-family:var(--b);font-size:13px;color:var(--fg);background:var(--sunken);
+  border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+button{cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+input#worker{font-family:var(--m);font-size:12px;width:190px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px}
+.bar .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.bar .dot.on{background:var(--ok)} .bar .dot.off{background:var(--warn)}
+.bar span.k{color:var(--muted);font-family:var(--m);font-size:11.5px}
+#log{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;min-height:110px}
+.msg{border:1px solid var(--line);border-radius:10px;padding:12px 15px;background:var(--surface)}
+.msg.me{background:var(--sunken)}
+.who{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
+.body{white-space:pre-wrap;word-break:break-word}
+.meta{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-family:var(--m);
+  font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:12px}
+.msg.err{border-color:var(--warn)} .msg.err .who{color:var(--warn)}
+.msg.err .body{font-family:var(--m);font-size:12px}
+.msg.tool{border-style:dashed;background:transparent}
+.msg.tool .who{color:var(--accent)}
+.msg.tool .body{font-family:var(--m);font-size:11.5px;max-height:260px;overflow:auto}
+.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:30px 0}
+form{display:flex;gap:9px;align-items:flex-end}
+textarea{flex:1;min-width:0;font-family:var(--b);font-size:14.5px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--line);border-radius:8px;padding:11px 13px;resize:vertical;min-height:62px;line-height:1.5}
+textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:11.5px;color:var(--muted);margin-top:8px;font-family:var(--m)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>SAP 분석 (로컬 연결)<small>AI 는 클라우드 · SAP 조회는 이 PC 의 워커</small></h1>
+    <div class="tools">
+      <select id="model" title="모델">
+        <option value="openai/gpt-6-luna">gpt-6-luna · 저가</option>
+        <option value="openai/gpt-6-sol">gpt-6-sol · 중간</option>
+        <option value="openai/gpt-6-astra">gpt-6-astra · 고가</option>
+        <option value="anthropic/claude-sonnet-5.5">claude-sonnet-5.5</option>
+        <option value="anthropic/claude-opus-5">claude-opus-5</option>
+      </select>
+      <button id="reset" type="button">새 분석</button>
+    </div>
+  </header>
+
+  <div class="bar">
+    <span class="dot" id="dot"></span>
+    <span id="wstat">워커 확인 중…</span>
+    <input id="worker" value="http://127.0.0.1:8777" spellcheck="false">
+    <button id="recheck" type="button">다시 확인</button>
+    <span class="k" id="totals"></span>
+  </div>
+
+  <div id="log"><p class="empty">워커를 켠 뒤 질문하면, AI 가 SAP 을 조회해가며 분석합니다.</p></div>
+
+  <form id="f">
+    <textarea id="q" placeholder="예) ZSDNR0012 에서 거래처 필터가 안 먹는 이유를 찾아줘&#10;예) ZSDNT0110 에 8월 데이터가 없는지 확인하고 원인을 추정해줘"></textarea>
+    <button class="primary" id="send" type="submit">분석</button>
+  </form>
+  <p class="hint">Ctrl+Enter 전송 · 도구: search_object · read_source · query_table · 최대 10회 반복</p>
+
+</div>
+
+<script>
+var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+var MAX_STEPS = 10;
+
+var SYSTEM = [
+  '당신은 SAP ERP 운영 문의를 분석하는 어시스턴트입니다.',
+  '도구로 개발서버의 ABAP 소스와 운영서버의 테이블 데이터를 직접 조회할 수 있습니다.',
+  '이름만 알고 무엇인지 모르면 search_object 로 먼저 타입·패키지를 확인하세요.',
+  '추측하지 말고 필요한 것을 조회해서 근거를 확보한 뒤 답하세요.',
+  '조회 결과는 요약본이라 원문 전체가 아닙니다. 더 좁은 조건이 필요하면 다시 조회하세요.',
+  '최종 답변에는 판단 근거(테이블·필드·프로그램 위치)를 반드시 적으세요.',
+  '한국어로 간결하게 답하세요.'
+].join(' ');
+
+var log = document.getElementById('log');
+var q = document.getElementById('q');
+var send = document.getElementById('send');
+var modelSel = document.getElementById('model');
+var workerInput = document.getElementById('worker');
+var dot = document.getElementById('dot');
+var wstat = document.getElementById('wstat');
+var totalsEl = document.getElementById('totals');
+
+try {
+  var saved = localStorage.getItem('sapWorkerUrl');
+  if (saved) workerInput.value = saved;
+} catch (e) {}
+
+var messages = [{ role: 'system', content: SYSTEM }];
+var toolSpecs = [];
+var totals = { calls: 0, inTok: 0, outTok: 0, cost: 0, ms: 0, tools: 0 };
+
+function workerUrl() { return workerInput.value.trim().replace(/\/+$/, ''); }
+
+function add(who, text, cls, meta) {
+  var e = log.querySelector('.empty');
+  if (e) e.remove();
+  var d = document.createElement('div');
+  d.className = 'msg ' + (cls || '');
+  d.innerHTML = '<div class="who"></div><div class="body"></div>';
+  d.querySelector('.who').textContent = who;
+  d.querySelector('.body').textContent = text;
+  if (meta) {
+    var m = document.createElement('div');
+    m.className = 'meta';
+    meta.filter(Boolean).forEach(function (t) {
+      var s = document.createElement('span'); s.textContent = t; m.appendChild(s);
+    });
+    d.appendChild(m);
+  }
+  log.appendChild(d);
+  d.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  return d;
+}
+
+function showTotals() {
+  totalsEl.textContent = '누적 ' + totals.calls + '회 호출 · 도구 ' + totals.tools + '회 · 입력 '
+    + totals.inTok.toLocaleString() + ' · 출력 ' + totals.outTok.toLocaleString()
+    + ' · ' + (totals.ms / 1000).toFixed(1) + '초 · 약 ' + Math.round(totals.cost * 1450) + '원';
+}
+
+/* ── 워커 연결 확인 ─────────────────────────────── */
+function checkWorker() {
+  dot.className = 'dot';
+  wstat.textContent = '워커 확인 중…';
+  try { localStorage.setItem('sapWorkerUrl', workerInput.value.trim()); } catch (e) {}
+  return fetch(workerUrl() + '/tools')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      toolSpecs = d.tools || [];
+      dot.className = 'dot on';
+      wstat.textContent = '워커 연결됨 · 도구 ' + toolSpecs.length + '개';
+    })
+    .catch(function () {
+      toolSpecs = [];
+      dot.className = 'dot off';
+      wstat.textContent = '워커 없음 — PC 에서 python sap_worker.py 를 실행하세요';
+    });
+}
+checkWorker();
+document.getElementById('recheck').addEventListener('click', checkWorker);
+
+/* ── 도구 실행 (로컬 워커) ──────────────────────── */
+function runTool(name, argsJson) {
+  var args;
+  try { args = JSON.parse(argsJson || '{}'); } catch (e) { args = {}; }
+  var started = Date.now();
+  var box = add('도구 · ' + name, JSON.stringify(args, null, 0) + '\n\n조회 중…', 'tool');
+  return fetch(workerUrl() + '/tool', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, arguments: args }),
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    var out = d.result || d.error || '(빈 결과)';
+    box.querySelector('.body').textContent = JSON.stringify(args) + '\n\n' + out;
+    var m = document.createElement('div');
+    m.className = 'meta';
+    [((Date.now() - started) / 1000).toFixed(1) + '초', out.length.toLocaleString() + '자']
+      .forEach(function (t) { var s = document.createElement('span'); s.textContent = t; m.appendChild(s); });
+    box.appendChild(m);
+    totals.tools += 1;
+    return out;
+  })
+  .catch(function (e) {
+    var msg = '워커 호출 실패: ' + e.message;
+    box.querySelector('.body').textContent = msg;
+    box.className = 'msg err';
+    return msg;
+  });
+}
+
+/* ── 한 스텝: 모델 호출 ─────────────────────────── */
+function step() {
+  return fetch(API + '/sap/raw', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userKey: 'local-test', messages: messages,
+      tools: toolSpecs.length ? toolSpecs : undefined,
+      model: modelSel.value,
+    }),
+  }).then(function (r) { return r.json(); });
+}
+
+/* ── 분석 루프 ──────────────────────────────────── */
+async function analyze(text) {
+  messages.push({ role: 'user', content: text });
+
+  for (var i = 0; i < MAX_STEPS; i++) {
+    var pending = add('AI', i === 0 ? '분석 중…' : '이어서 분석 중…');
+    var d;
+    try { d = await step(); }
+    catch (e) { pending.remove(); add('오류', e.message, 'err'); return; }
+    pending.remove();
+
+    if (d.error) { add('오류', d.error, 'err'); return; }
+
+    var u = d.usage || {};
+    totals.calls += 1;
+    totals.inTok += u.prompt_tokens || 0;
+    totals.outTok += u.completion_tokens || 0;
+    totals.cost += u.cost || 0;
+    totals.ms += d.latencyMs || 0;
+    showTotals();
+
+    var calls = d.toolCalls || [];
+
+    // 모델의 이번 턴을 대화에 그대로 되돌려 넣어야 다음 턴이 이어진다
+    messages.push({
+      role: 'assistant',
+      content: d.text || '',
+      tool_calls: calls.length ? calls : undefined,
+    });
+
+    if (!calls.length) {
+      add('AI', d.text || '(빈 응답)', '', [
+        d.model, (d.latencyMs / 1000).toFixed(1) + '초',
+        '입력 ' + (u.prompt_tokens || 0).toLocaleString() + ' 토큰',
+        '출력 ' + (u.completion_tokens || 0).toLocaleString() + ' 토큰',
+        (i + 1) + '단계 만에 완료',
+      ]);
+      return;
+    }
+
+    if (d.text) add('AI', d.text, '', [d.model, '도구 ' + calls.length + '개 요청']);
+
+    for (var k = 0; k < calls.length; k++) {
+      var c = calls[k];
+      var fn = (c.function || {});
+      var result = await runTool(fn.name, fn.arguments);
+      messages.push({ role: 'tool', tool_call_id: c.id, content: String(result).slice(0, 60000) });
+    }
+  }
+
+  add('오류', MAX_STEPS + '단계를 넘어 중단했습니다. 질문을 좁혀서 다시 시도해 보세요.', 'err');
+}
+
+document.getElementById('f').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  var text = q.value.trim();
+  if (!text) return;
+  add('나', text, 'me');
+  q.value = '';
+  send.disabled = true;
+  analyze(text).then(function () { send.disabled = false; q.focus(); });
+});
+
+q.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('f').requestSubmit();
+});
+
+document.getElementById('reset').addEventListener('click', function () {
+  messages = [{ role: 'system', content: SYSTEM }];
+  totals = { calls: 0, inTok: 0, outTok: 0, cost: 0, ms: 0, tools: 0 };
+  totalsEl.textContent = '';
+  log.innerHTML = '<p class="empty">새 분석을 시작합니다.</p>';
+  q.focus();
+});
+</script>
+</body>
+</html>
