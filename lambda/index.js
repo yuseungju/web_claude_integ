@@ -23,6 +23,7 @@ const crypto = require('crypto');
 const https = require('https');
 const pgo = require('./pgo');
 const tennis = require('./tennis');
+const sap = require('./sap');
 
 const DB_CONFIG = {
   host:     process.env.DB_HOST,
@@ -3192,6 +3193,12 @@ exports.handler = async (event) => {
   if (path.startsWith('/pgo/')) {
     const pgoRes = await pgo.route({ pool, resp, getBody: getBodyAr }, event, method, path);
     if (pgoRes) return pgoRes;
+  }
+
+  // [SAP 운영문의 AI] sap_ 테이블만 다루는 독립 모듈
+  if (path.startsWith('/sap/')) {
+    const sapRes = await sap.route({ pool, resp, getBody: getBodyAr }, event, method, path);
+    if (sapRes) return sapRes;
   }
 
   try {

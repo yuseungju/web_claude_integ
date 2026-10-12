@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAP 운영 문의 AI</title>
+<style>
+:root {
+  --bg:#f6f7f6; --surface:#fff; --sunken:#eceeed; --line:#d6dad8;
+  --fg:#16211f; --muted:#5c6a67; --accent:#15605b; --warn:#8a5a12;
+  --b:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+  --m:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#111816; --surface:#18211f; --sunken:#141c1a; --line:#2b3835;
+          --fg:#e6ece9; --muted:#94a49f; --accent:#57b3aa; --warn:#d6a95f;
+          color-scheme: dark; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--b);line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding:22px 16px 40px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+h1{font-size:19px;margin:0;font-weight:600}
+h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;font-family:var(--m);margin-top:2px}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+select,button,input{font-family:var(--b);font-size:13px;color:var(--fg);background:var(--sunken);
+  border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+button{cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+#log{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;min-height:110px}
+.msg{border:1px solid var(--line);border-radius:10px;padding:12px 15px;background:var(--surface)}
+.msg.me{background:var(--sunken)}
+.who{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
+.body{white-space:pre-wrap;word-break:break-word}
+.meta{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-family:var(--m);
+  font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:12px}
+.msg.err{border-color:var(--warn)}
+.msg.err .who{color:var(--warn)}
+.msg.err .body{font-family:var(--m);font-size:12px}
+.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:30px 0}
+form{display:flex;gap:9px;align-items:flex-end}
+textarea{flex:1;min-width:0;font-family:var(--b);font-size:14.5px;color:var(--fg);background:var(--surface);
+  border:1px solid var(--line);border-radius:8px;padding:11px 13px;resize:vertical;min-height:56px;line-height:1.5}
+textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:11.5px;color:var(--muted);margin-top:8px;font-family:var(--m)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>SAP 운영 문의 AI<small id="info">준비 중…</small></h1>
+    <div class="tools">
+      <select id="model" title="모델">
+        <option value="openai/gpt-6-luna">gpt-6-luna · 15원/건</option>
+        <option value="openai/gpt-6-sol">gpt-6-sol · 290원/건</option>
+        <option value="openai/gpt-6-astra">gpt-6-astra · 1,450원/건</option>
+        <option value="anthropic/claude-haiku-5.5">claude-haiku-5.5 · 15원/건</option>
+        <option value="anthropic/claude-sonnet-5.5">claude-sonnet-5.5 · 290원/건</option>
+        <option value="anthropic/claude-opus-5">claude-opus-5 · 725원/건</option>
+      </select>
+      <button id="reset" type="button">새 대화</button>
+    </div>
+  </header>
+
+  <div id="log"><p class="empty">ABAP 소스를 붙여넣고 질문하면 분석 결과가 여기 표시됩니다.</p></div>
+
+  <form id="f">
+    <textarea id="q" placeholder="예) 아래 소스에서 거래처 필터가 안 먹는 이유는?&#10;[ABAP 소스 붙여넣기]"></textarea>
+    <button class="primary" id="send" type="submit">보내기</button>
+  </form>
+  <p class="hint">Ctrl+Enter 전송 · 대화는 이어집니다(앞 질문을 기억) · 모델을 바꿔가며 같은 질문으로 비교해 보세요</p>
+
+</div>
+
+<script>
+var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+
+var userKey = (function () {
+  try {
+    var v = localStorage.getItem('sapUserKey');
+    if (!v) { v = 'web-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('sapUserKey', v); }
+    return v;
+  } catch (e) { return 'web-anon'; }
+})();
+var convId = null;
+
+var log = document.getElementById('log');
+var q = document.getElementById('q');
+var send = document.getElementById('send');
+var modelSel = document.getElementById('model');
+var info = document.getElementById('info');
+info.textContent = userKey;
+
+function add(who, text, cls, meta) {
+  var e = log.querySelector('.empty');
+  if (e) e.remove();
+  var d = document.createElement('div');
+  d.className = 'msg ' + (cls || '');
+  d.innerHTML = '<div class="who"></div><div class="body"></div>';
+  d.querySelector('.who').textContent = who;
+  d.querySelector('.body').textContent = text;
+  if (meta) {
+    var m = document.createElement('div');
+    m.className = 'meta';
+    meta.forEach(function (t) { var s = document.createElement('span'); s.textContent = t; m.appendChild(s); });
+    d.appendChild(m);
+  }
+  log.appendChild(d);
+  d.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  return d;
+}
+
+document.getElementById('f').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  var text = q.value.trim();
+  if (!text) return;
+  add('나', text, 'me');
+  q.value = '';
+  send.disabled = true;
+  var pending = add('AI', '분석 중…');
+
+  fetch(API + '/sap/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userKey: userKey, convId: convId, text: text, model: modelSel.value }),
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    pending.remove();
+    if (d.error) { add('오류', d.error, 'err'); return; }
+    convId = d.convId;
+    var u = d.usage || {};
+    add('AI', d.text, '', [
+      d.model,
+      (d.latencyMs / 1000).toFixed(1) + '초',
+      '입력 ' + (u.input_tokens != null ? u.input_tokens : (u.prompt_tokens != null ? u.prompt_tokens : '?')) + ' 토큰',
+      '출력 ' + (u.output_tokens != null ? u.output_tokens : (u.completion_tokens != null ? u.completion_tokens : '?')) + ' 토큰',
+      u.cost != null ? '약 ' + Math.round(u.cost * 1450) + '원' : '',
+      d.continued ? '이어진 대화' : '새 대화',
+      '대화 #' + d.convId,
+    ]);
+  })
+  .catch(function (err) { pending.remove(); add('오류', err.message, 'err'); })
+  .then(function () { send.disabled = false; q.focus(); });
+});
+
+q.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('f').requestSubmit();
+});
+
+document.getElementById('reset').addEventListener('click', function () {
+  convId = null;
+  log.innerHTML = '<p class="empty">새 대화를 시작합니다.</p>';
+  q.focus();
+});
+</script>
+</body>
+</html>

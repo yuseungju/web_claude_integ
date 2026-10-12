@@ -1,0 +1,17 @@
+[Unit]
+Description=Hermes proxy (OpenAI-compatible -> Nous Portal, OAuth credentials attached)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+# 127.0.0.1 로만 듣는다. 외부 노출은 authproxy 가 담당한다.
+ExecStart=/home/ubuntu/.local/bin/hermes proxy start --provider nous --host 127.0.0.1 --port 8645
+Restart=always
+RestartSec=5
+Environment=HOME=/home/ubuntu
+
+[Install]
+WantedBy=multi-user.target

@@ -25,6 +25,8 @@ const APPS = [
     desc: '코트·시간 설정을 크롬 확장에 넘겨 예약을 자동화' },
   { dir: 'test', url: 'test', title: 'AI 대화 (Hermes)',
     desc: '로컬 Hermes 에 붙는 대화형 AI — 대화가 메모리로 남는다' },
+  { dir: 'sap', url: 'sap', title: 'SAP 운영 문의 AI',
+    desc: 'ABAP·운영 문의를 분석해 답한다 — 서버의 Hermes 프록시에 붙는다' },
 ];
 
 function rmrf(p) {

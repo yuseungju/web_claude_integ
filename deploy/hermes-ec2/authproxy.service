@@ -1,0 +1,16 @@
+[Unit]
+Description=Auth shim in front of hermes proxy
+After=hermes-proxy.service
+Requires=hermes-proxy.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/hermes-ec2
+ExecStart=/usr/bin/node /home/ubuntu/hermes-ec2/authproxy.js
+Restart=always
+RestartSec=5
+EnvironmentFile=/home/ubuntu/hermes-ec2/.env
+
+[Install]
+WantedBy=multi-user.target
