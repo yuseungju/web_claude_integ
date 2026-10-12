@@ -27,6 +27,7 @@ os.chdir(os.environ.get("SAP_ENV_DIR") or _HERE)
 
 import io
 import json
+import re
 import sys
 import threading
 import traceback
@@ -144,7 +145,89 @@ def tool_search_object(args):
     return f"[검색: {query}] {len(lines)}건\n  {'이름':<30} {'타입':<10} {'패키지':<12} 설명\n" + "\n".join(lines)
 
 
+def _freestyle(sql, rows=200):
+    """datapreview 로 자유 SELECT 를 돌린다. 쓰기는 가드가 막는다."""
+    srv = prod()
+    resp = srv.post(
+        "/sap/bc/adt/datapreview/freestyle",
+        params={"rowNumber": rows, "sap-client": srv.client},
+        headers={"Content-Type": "text/plain; charset=utf-8", "Accept": "*/*"},
+        data=sql.encode("utf-8"),
+    )
+    if not resp.ok:
+        raise RuntimeError(f"쿼리 실패 ({resp.status_code}): {resp.text[:400]}")
+    return eo.parse_datapreview(resp.text)
+
+
+def _fmt_table(columns, rows, limit=60):
+    if not rows:
+        return "(결과 없음)"
+    w = [max(len(c), *(len(str(r[i])) for r in rows[:limit])) for i, c in enumerate(columns)]
+    w = [min(x, 28) for x in w]
+    out = ["  " + " | ".join(c[:w[i]].ljust(w[i]) for i, c in enumerate(columns))]
+    out.append("  " + "-+-".join("-" * x for x in w))
+    for r in rows[:limit]:
+        out.append("  " + " | ".join(str(r[i])[:w[i]].ljust(w[i]) for i in range(len(columns))))
+    if len(rows) > limit:
+        out.append(f"  … {len(rows) - limit}행 더 있음")
+    return "\n".join(out)
+
+
+def tool_count_rows(args):
+    """전체 건수. 행을 가져오지 않으므로 2,000행 상한과 무관하다."""
+    table = str(args.get("table", "")).strip().upper()
+    if not table:
+        return "table 인자가 필요합니다."
+    where = (args.get("where") or "").strip()
+    sql = f"SELECT COUNT(*) AS CNT FROM {table}"
+    if where:
+        sql += f" WHERE {where}"
+    cols, rows = _freestyle(sql, rows=1)
+    cnt = rows[0][0] if rows else "0"
+    cond = f" (조건: {where})" if where else ""
+    return f"[{table}] 총 {int(str(cnt).strip() or 0):,}건{cond}"
+
+
+def tool_aggregate(args):
+    """컬럼별 건수 집계. '상태값 분포', '월별 건수' 같은 질문에 쓴다."""
+    table = str(args.get("table", "")).strip().upper()
+    group_by = str(args.get("group_by", "")).strip()
+    if not table or not group_by:
+        return "table 과 group_by 인자가 필요합니다."
+    where = (args.get("where") or "").strip()
+    sql = f"SELECT {group_by}, COUNT(*) AS CNT FROM {table}"
+    if where:
+        sql += f" WHERE {where}"
+    sql += f" GROUP BY {group_by} ORDER BY COUNT(*) DESCENDING"
+    cols, rows = _freestyle(sql, rows=200)
+    total = sum(int(str(r[-1]).strip() or 0) for r in rows)
+    cond = f" (조건: {where})" if where else ""
+    head = f"[{table}] {group_by} 별 건수 — {len(rows)}개 그룹 · 합계 {total:,}건{cond}"
+    return head + "\n" + _fmt_table(cols, rows)
+
+
+_FORBIDDEN = re.compile(
+    r"(INSERT|UPDATE|DELETE|MODIFY|DROP|CREATE|ALTER|TRUNCATE|COMMIT|ROLLBACK|CALL)", re.I)
+
+
+def tool_run_select(args):
+    """집계·조인이 필요한 질문용 자유 SELECT. SELECT 외에는 거부한다."""
+    sql = str(args.get("sql", "")).strip().rstrip(";")
+    if not sql:
+        return "sql 인자가 필요합니다."
+    if not sql.upper().lstrip().startswith("SELECT"):
+        return "SELECT 문만 실행할 수 있습니다."
+    if _FORBIDDEN.search(sql) or ";" in sql:
+        return "읽기 전용입니다 — 변경 구문이나 여러 문장은 실행할 수 없습니다."
+    rows_cap = min(int(args.get("rows", 200) or 200), 500)
+    cols, rows = _freestyle(sql, rows=rows_cap)
+    return f"[쿼리] {len(rows)}행\n{sql}\n\n" + _fmt_table(cols, rows)
+
+
 TOOLS = {
+    "count_rows": tool_count_rows,
+    "aggregate": tool_aggregate,
+    "run_select": tool_run_select,
     "query_table": tool_query_table,
     "read_source": tool_read_source,
     "search_object": tool_search_object,
@@ -155,9 +238,62 @@ TOOL_SPECS = [
     {
         "type": "function",
         "function": {
+            "name": "count_rows",
+            "description": ("테이블의 전체 건수를 센다. 행을 가져오지 않아 2,000행 상한과 무관하다. "
+                            "'몇 건인지' 묻는 질문에는 query_table 대신 반드시 이것을 쓴다."),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "table": {"type": "string", "description": "테이블명"},
+                    "where": {"type": "string", "description": "SQL WHERE 조건 (선택)"},
+                },
+                "required": ["table"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "aggregate",
+            "description": ("컬럼별 건수를 집계한다. '상태값 분포', '월별 건수', '거래처별 건수' 같은 "
+                            "질문에 쓴다. 전체를 대상으로 하므로 2,000행 상한과 무관하다."),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "table": {"type": "string", "description": "테이블명"},
+                    "group_by": {"type": "string",
+                                 "description": "묶을 컬럼. 쉼표로 여러 개 가능 (예: ZBP_STATUS 또는 VKORG, ZBP_STATUS)"},
+                    "where": {"type": "string", "description": "SQL WHERE 조건 (선택)"},
+                },
+                "required": ["table", "group_by"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_select",
+            "description": ("자유 SELECT 를 실행한다. 조인이나 복잡한 집계가 필요할 때 쓴다. "
+                            "SELECT 만 허용되고 변경 구문은 거부된다. 결과는 최대 500행."),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sql": {"type": "string",
+                            "description": "ABAP SQL SELECT 문. UP TO n ROWS 는 쓰지 않는다(rows 인자로 제어)"},
+                    "rows": {"type": "integer", "description": "최대 행 수 (기본 200, 최대 500)"},
+                },
+                "required": ["sql"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "query_table",
             "description": ("SAP 운영서버에서 테이블 데이터를 조회한다. 결과는 행 수·컬럼별 분포·"
-                            "샘플 10행으로 요약되어 돌아온다. 개인정보 컬럼은 마스킹된다."),
+                            "샘플 10행으로 요약되어 돌아온다. 개인정보 컬럼은 마스킹된다. "
+                            "최대 2,000행만 읽으므로 전체 건수나 분포가 필요하면 "
+                            "count_rows / aggregate 를 쓴다."),
             "parameters": {
                 "type": "object",
                 "properties": {
