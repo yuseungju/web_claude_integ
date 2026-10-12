@@ -86,13 +86,13 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
     <textarea id="q" placeholder="예) ZSDNR0012 에서 거래처 필터가 안 먹는 이유를 찾아줘&#10;예) ZSDNT0110 에 8월 데이터가 없는지 확인하고 원인을 추정해줘"></textarea>
     <button class="primary" id="send" type="submit">분석</button>
   </form>
-  <p class="hint">Ctrl+Enter 전송 · 도구: search_object · read_source · query_table · 최대 10회 반복</p>
+  <p class="hint">Ctrl+Enter 전송 · 도구는 워커가 알려주는 대로 전부 사용 · 최대 60회 반복</p>
 
 </div>
 
 <script>
 var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
-var MAX_STEPS = 10;
+var MAX_STEPS = 60;
 
 var SYSTEM = [
   '당신은 SAP ERP 운영 문의를 분석하는 어시스턴트입니다.',
@@ -262,7 +262,7 @@ async function analyze(text) {
       var c = calls[k];
       var fn = (c.function || {});
       var result = await runTool(fn.name, fn.arguments);
-      messages.push({ role: 'tool', tool_call_id: c.id, content: String(result).slice(0, 60000) });
+      messages.push({ role: 'tool', tool_call_id: c.id, content: String(result).slice(0, 200000) });
     }
   }
 
