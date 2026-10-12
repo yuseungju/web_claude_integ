@@ -20,14 +20,22 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--b);line-height:1.6}
 .wrap{max-width:900px;margin:0 auto;padding:22px 16px 40px}
-header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
 h1{font-size:19px;margin:0;font-weight:600}
 h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;font-family:var(--m);margin-top:2px}
-.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-select,button{font-family:var(--b);font-size:13px;color:var(--fg);background:var(--sunken);
+.tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+select,button,input{font-family:var(--b);font-size:13px;color:var(--fg);background:var(--sunken);
   border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 button:disabled{opacity:.5;cursor:default}
+#convs{display:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:8px;margin-bottom:14px;max-height:230px;overflow:auto}
+#convs .row{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;
+  justify-content:space-between;gap:10px}
+#convs .row:hover{background:var(--sunken)}
+#convs .row b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#convs .row span{color:var(--muted);font-family:var(--m);font-size:11px;flex:none}
+#convs .none{color:var(--muted);font-size:13px;padding:12px;text-align:center}
 #log{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;min-height:110px}
 .msg{border:1px solid var(--line);border-radius:10px;padding:12px 15px;background:var(--surface)}
 .msg.me{background:var(--sunken)}
@@ -42,7 +50,7 @@ button:disabled{opacity:.5;cursor:default}
 form{display:flex;gap:9px;align-items:flex-end}
 textarea{flex:1;min-width:0;font-family:var(--b);font-size:14.5px;color:var(--fg);background:var(--surface);
   border:1px solid var(--line);border-radius:8px;padding:11px 13px;resize:vertical;min-height:56px;line-height:1.5}
-textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .hint{font-size:11.5px;color:var(--muted);margin-top:8px;font-family:var(--m)}
 </style>
 </head>
@@ -50,7 +58,7 @@ textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px sol
 <div class="wrap">
 
   <header>
-    <h1>SAP 운영 문의 AI<small id="info">대화는 이 브라우저에만 저장됩니다</small></h1>
+    <h1>SAP 운영 문의 AI<small id="info">준비 중…</small></h1>
     <div class="tools">
       <select id="model" title="모델">
         <option value="openai/gpt-6-luna">gpt-6-luna · 15원/건</option>
@@ -60,9 +68,13 @@ textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px sol
         <option value="anthropic/claude-sonnet-5.5">claude-sonnet-5.5 · 290원/건</option>
         <option value="anthropic/claude-opus-5">claude-opus-5 · 725원/건</option>
       </select>
+      <button id="listBtn" type="button">대화 목록</button>
+      <button id="shareBtn" type="button" title="이 대화 링크 복사">공유</button>
       <button id="reset" type="button">새 대화</button>
     </div>
   </header>
+
+  <div id="convs"></div>
 
   <div id="log"><p class="empty">ABAP 소스를 붙여넣고 질문하면 분석 결과가 여기 표시됩니다.</p></div>
 
@@ -70,28 +82,34 @@ textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px sol
     <textarea id="q" placeholder="예) 아래 소스에서 거래처 필터가 안 먹는 이유는?"></textarea>
     <button class="primary" id="send" type="submit">보내기</button>
   </form>
-  <p class="hint">Ctrl+Enter 전송 · 앞선 대화를 기억합니다 · 모델을 바꿔가며 같은 질문으로 비교해 보세요</p>
+  <p class="hint">Ctrl+Enter 전송 · 대화는 서버에 저장되어 다른 사람과 공유할 수 있습니다</p>
 
 </div>
 
 <script>
 var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
-var STORE = 'sapChat';
 
-/* 서버에 DB 가 없어서(RDS 해지) 대화는 브라우저가 들고 있다가 매 요청에 함께 보낸다.
-   저장이 막힌 환경(시크릿 창 등)에서도 메모리로 동작하면 되므로 try/catch 로 감싼다. */
-var history = (function () {
-  try { return JSON.parse(localStorage.getItem(STORE) || '[]'); } catch (e) { return []; }
+/* 로그인 연동 전까지는 브라우저가 만든 키로 "내 대화"를 구분한다.
+   convId 를 아는 사람은 누구나 그 대화를 볼 수 있다(공유). */
+var userKey = (function () {
+  try {
+    var v = localStorage.getItem('sapUserKey');
+    if (!v) { v = 'web-' + Math.random().toString(36).slice(2, 10); localStorage.setItem('sapUserKey', v); }
+    return v;
+  } catch (e) { return 'web-anon'; }
 })();
 
-function save() {
-  try { localStorage.setItem(STORE, JSON.stringify(history.slice(-40))); } catch (e) {}
-}
+var convId = new URLSearchParams(location.search).get('conv') || null;
 
 var log = document.getElementById('log');
 var q = document.getElementById('q');
 var send = document.getElementById('send');
 var modelSel = document.getElementById('model');
+var convs = document.getElementById('convs');
+var info = document.getElementById('info');
+
+function setInfo(t) { info.textContent = t; }
+setInfo(userKey);
 
 function add(who, text, cls, meta) {
   var e = log.querySelector('.empty');
@@ -114,10 +132,25 @@ function add(who, text, cls, meta) {
   return d;
 }
 
-/* 새로고침해도 이어서 보이도록 지난 대화를 먼저 그린다 */
-history.forEach(function (m) {
-  add(m.role === 'user' ? '나' : 'AI', m.content, m.role === 'user' ? 'me' : '');
-});
+function openConversation(id) {
+  convId = id;
+  convs.style.display = 'none';
+  log.innerHTML = '<p class="empty">불러오는 중…</p>';
+  fetch(API + '/sap/messages?convId=' + encodeURIComponent(id) + '&userKey=' + encodeURIComponent(userKey))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      log.innerHTML = '';
+      if (d.error) { add('오류', d.error, 'err'); return; }
+      (d.messages || []).forEach(function (m) {
+        add(m.role === 'user' ? '나' : 'AI', m.content, m.role === 'user' ? 'me' : '');
+      });
+      if (!(d.messages || []).length) log.innerHTML = '<p class="empty">빈 대화입니다.</p>';
+      setInfo('대화 ' + id);
+    })
+    .catch(function (e) { log.innerHTML = ''; add('오류', e.message, 'err'); });
+}
+
+if (convId) openConversation(convId);
 
 document.getElementById('f').addEventListener('submit', function (ev) {
   ev.preventDefault();
@@ -132,17 +165,14 @@ document.getElementById('f').addEventListener('submit', function (ev) {
   fetch(API + '/sap/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text, history: history, model: modelSel.value }),
+    body: JSON.stringify({ userKey: userKey, convId: convId, text: text, model: modelSel.value }),
   })
   .then(function (r) { return r.json(); })
   .then(function (d) {
     pending.remove();
     if (d.error) { add('오류', d.error, 'err'); return; }
-
-    history.push({ role: 'user', content: text });
-    history.push({ role: 'assistant', content: d.text });
-    save();
-
+    convId = d.convId;
+    setInfo('대화 ' + convId);
     var u = d.usage || {};
     add('AI', d.text, '', [
       d.model,
@@ -161,10 +191,49 @@ q.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) document.getElementById('f').requestSubmit();
 });
 
+document.getElementById('listBtn').addEventListener('click', function () {
+  if (convs.style.display === 'block') { convs.style.display = 'none'; return; }
+  convs.innerHTML = '<p class="none">불러오는 중…</p>';
+  convs.style.display = 'block';
+  fetch(API + '/sap/conversations?userKey=' + encodeURIComponent(userKey))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var list = d.conversations || [];
+      if (!list.length) { convs.innerHTML = '<p class="none">아직 대화가 없습니다.</p>'; return; }
+      convs.innerHTML = '';
+      list.forEach(function (c) {
+        var row = document.createElement('div');
+        row.className = 'row';
+        var b = document.createElement('b');
+        b.textContent = c.title || '(제목 없음)';
+        var s = document.createElement('span');
+        s.textContent = String(c.lastAt || '').slice(0, 16).replace('T', ' ') + ' · ' + (c.msgCount || 0) + '개';
+        row.appendChild(b); row.appendChild(s);
+        row.addEventListener('click', function () { openConversation(c.convId); });
+        convs.appendChild(row);
+      });
+    })
+    .catch(function (e) { convs.innerHTML = '<p class="none">' + e.message + '</p>'; });
+});
+
+document.getElementById('shareBtn').addEventListener('click', function () {
+  if (!convId) { alert('먼저 질문을 보내면 공유 링크가 생깁니다.'); return; }
+  var url = location.origin + location.pathname + '?conv=' + encodeURIComponent(convId);
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url)
+      .then(function () { setInfo('링크 복사됨'); })
+      .catch(function () { prompt('이 링크를 복사하세요', url); });
+  } else {
+    prompt('이 링크를 복사하세요', url);
+  }
+});
+
 document.getElementById('reset').addEventListener('click', function () {
-  history = [];
-  save();
+  convId = null;
+  history.replaceState(null, '', location.pathname);
+  convs.style.display = 'none';
   log.innerHTML = '<p class="empty">새 대화를 시작합니다.</p>';
+  setInfo(userKey);
   q.focus();
 });
 </script>
