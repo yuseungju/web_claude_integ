@@ -29,6 +29,11 @@ DB 를 쓰는 기능은 고치지 않고 그대로 둔다 — 연결이 안 되�
 
 테이블 32개가 각각 어느 파일에 정의돼 있는지는 `db/README.md` 의 **「테이블 목록」** 표에 있다.
 
+**AWS 에 RDS 를 새로 만들어야 하면** `db/README.md` 의 **「AWS 에 RDS 를 새로 만들 때」** 절에
+지웠던 인스턴스의 설정값이 그대로 있다(PostgreSQL / db.t4g.micro / ap-southeast-2 /
+사용자 `article_admin` / DB명 `postgres`). **퍼블릭 액세스를 "예" 로 해야 한다** —
+이 Lambda 는 VPC 밖이라 사설 RDS 에 닿지 못한다. 대신 보안 그룹 5432 로 좁힌다.
+
 ### DB 없이도 되는 것 / 안 되는 것
 
 | | 상태 |
