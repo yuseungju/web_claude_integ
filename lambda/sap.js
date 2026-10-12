@@ -29,6 +29,7 @@ const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const {
   DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateCommand,
 } = require('@aws-sdk/lib-dynamodb');
+const { factRoute, loadFactsText } = require('./sap_facts');
 
 const HERMES_URL  = (process.env.HERMES_URL || '').replace(/\/$/, '');
 const PROXY_TOKEN = process.env.PROXY_TOKEN || '';
@@ -183,6 +184,10 @@ async function route(ctx, event, method, path) {
     return resp(400, { error: '사용자 키가 올바르지 않습니다.' });
   }
 
+  /* 지식 저장소(/sap/facts*) — 대화가 아니라 요약된 사실을 쌓고 함께 고친다 */
+  const facts = await factRoute({ ddb, callAI, resp, userKey, body, qs, method, path });
+  if (facts) return facts;
+
   /* 질문 → 답변 */
   if (path === '/sap/ask' && method === 'POST') {
     const text = String(body.text || '').trim();
@@ -195,7 +200,9 @@ async function route(ctx, event, method, path) {
     if (!conv) conv = await createConversation(userKey, text);
 
     const history = await loadHistory(conv.convId);
-    const messages = [{ role: 'system', content: SYSTEM }]
+    // 쌓아둔 사실을 함께 싣는다 — 안 그러면 매번 처음부터 다시 알아내야 한다
+    const known = await loadFactsText(ddb);
+    const messages = [{ role: 'system', content: known ? SYSTEM + '\n\n' + known : SYSTEM }]
       .concat(history)
       .concat([{ role: 'user', content: text }]);
 

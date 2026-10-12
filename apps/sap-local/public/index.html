@@ -29,7 +29,13 @@ select,button,input{font-family:var(--b);font-size:13px;color:var(--fg);backgrou
 button{cursor:pointer}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 button:disabled{opacity:.5;cursor:default}
+a.btn{display:inline-block;font-size:13px;text-decoration:none;color:var(--fg);background:var(--sunken);
+  border:1px solid var(--line);border-radius:6px;padding:7px 10px}
 input#worker{font-family:var(--m);font-size:12px;width:190px}
+input#who{font-family:var(--m);font-size:12px;width:160px}
+.msg.fact{border-color:var(--accent);background:transparent}
+.msg.fact .who{color:var(--accent)}
+.msg.fact .body{font-size:13px}
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--surface);
   border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px}
 .bar .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
@@ -69,6 +75,7 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
         <option value="anthropic/claude-opus-5">claude-opus-5</option>
       </select>
       <button id="reset" type="button">새 분석</button>
+      <a class="btn" href="../sap-facts/" target="_blank" rel="noopener">지식 정리</a>
     </div>
   </header>
 
@@ -77,6 +84,8 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
     <span id="wstat">워커 확인 중…</span>
     <input id="worker" value="http://127.0.0.1:8777" spellcheck="false">
     <button id="recheck" type="button">다시 확인</button>
+    <input id="who" placeholder="내 이름/이메일" spellcheck="false" title="정리된 지식에 작성자로 남습니다">
+    <span class="k" id="fstat"></span>
     <span class="k" id="totals"></span>
   </div>
 
@@ -86,7 +95,7 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
     <textarea id="q" placeholder="예) ZSDNR0012 에서 거래처 필터가 안 먹는 이유를 찾아줘&#10;예) ZSDNT0110 에 8월 데이터가 없는지 확인하고 원인을 추정해줘"></textarea>
     <button class="primary" id="send" type="submit">분석</button>
   </form>
-  <p class="hint">Ctrl+Enter 전송 · 도구는 워커가 알려주는 대로 전부 사용 · 최대 60회 반복</p>
+  <p class="hint">Ctrl+Enter 전송 · 도구는 워커가 알려주는 대로 전부 사용 · 최대 60회 반복 · 끝나면 알게 된 사실만 서버에 쌓임</p>
 
 </div>
 
@@ -112,17 +121,33 @@ var workerInput = document.getElementById('worker');
 var dot = document.getElementById('dot');
 var wstat = document.getElementById('wstat');
 var totalsEl = document.getElementById('totals');
+var whoInput = document.getElementById('who');
+var fstat = document.getElementById('fstat');
 
 try {
   var saved = localStorage.getItem('sapWorkerUrl');
   if (saved) workerInput.value = saved;
+  var savedWho = localStorage.getItem('sapUserKey');
+  if (savedWho) whoInput.value = savedWho;
 } catch (e) {}
 
 var messages = [{ role: 'system', content: SYSTEM }];
 var toolSpecs = [];
+var knownFacts = '';     // 서버에 쌓인 사실 — 시스템 프롬프트에 실어 보낸다
 var totals = { calls: 0, inTok: 0, outTok: 0, cost: 0, ms: 0, tools: 0 };
 
 function workerUrl() { return workerInput.value.trim().replace(/\/+$/, ''); }
+
+/** 서버가 받는 형식(영숫자·._@-, 3~64자)으로 맞춘다. 비었으면 익명으로 남긴다. */
+function userKey() {
+  var v = whoInput.value.trim().replace(/\s+/g, '-');
+  try { localStorage.setItem('sapUserKey', whoInput.value.trim()); } catch (e) {}
+  return /^[A-Za-z0-9._@-]{3,64}$/.test(v) ? v : 'local-test';
+}
+
+function systemPrompt() {
+  return knownFacts ? SYSTEM + '\n\n' + knownFacts : SYSTEM;
+}
 
 function add(who, text, cls, meta) {
   var e = log.querySelector('.empty');
@@ -172,6 +197,65 @@ function checkWorker() {
 checkWorker();
 document.getElementById('recheck').addEventListener('click', checkWorker);
 
+/* ── 지식 저장소 (AWS DynamoDB) ─────────────────
+   분석할 때마다 처음부터 다시 알아내지 않도록, 지금까지 정리된 사실을
+   프롬프트에 싣고 끝나면 새로 알게 된 것만 뽑아 되돌려 보낸다.
+   SAP 조회만 이 PC 에서 돌고, 지식은 모두가 보는 서버에 쌓인다. */
+function loadFacts() {
+  return fetch(API + '/sap/facts?userKey=' + encodeURIComponent(userKey()))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var usable = (d.facts || []).filter(function (f) { return f.status !== 'rejected'; });
+      if (!usable.length) {
+        knownFacts = '';
+        fstat.textContent = '지식 없음';
+      } else {
+        knownFacts = [
+          '다음은 지금까지 이 시스템을 분석해 정리해 둔 사실입니다.',
+          '(검수중) 은 아직 사람이 확인하지 않았으니 그대로 믿지 말고 조회로 확인하세요.',
+          '',
+        ].concat(usable.map(function (f) {
+          return '- [' + f.subject + '] ' + f.body + (f.status === 'confirmed' ? '' : ' (검수중)');
+        })).join('\n');
+        fstat.textContent = '지식 ' + usable.length + '건 적용';
+      }
+      messages[0] = { role: 'system', content: systemPrompt() };
+    })
+    .catch(function () { knownFacts = ''; fstat.textContent = '지식 불러오기 실패'; });
+}
+loadFacts();
+
+function extractFacts() {
+  if (messages.length < 3) return Promise.resolve();
+  var box = add('지식 정리', '이번 분석에서 알게 된 사실을 정리하는 중…', 'fact');
+  return fetch(API + '/sap/facts/extract', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userKey: userKey(), messages: messages }),
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (d) {
+    if (d.error) {
+      box.className = 'msg err';
+      box.querySelector('.body').textContent = '지식 정리 실패: ' + d.error;
+      return;
+    }
+    var fs = d.facts || [];
+    if (!fs.length) {
+      box.querySelector('.body').textContent = d.note || d.skipped || '새로 쌓을 사실이 없습니다.';
+      return;
+    }
+    box.querySelector('.body').textContent =
+      fs.map(function (f) { return '• [' + f.subject + '] ' + f.body; }).join('\n')
+      + '\n\n검수중으로 저장했습니다 — "지식 정리" 에서 고치거나 확인 처리하세요.';
+    return loadFacts();
+  })
+  .catch(function (e) {
+    box.className = 'msg err';
+    box.querySelector('.body').textContent = '지식 정리 실패: ' + e.message;
+  });
+}
+
 /* ── 도구 실행 (로컬 워커) ──────────────────────── */
 function runTool(name, argsJson) {
   var args;
@@ -209,7 +293,7 @@ function step() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      userKey: 'local-test', messages: messages,
+      userKey: userKey(), messages: messages,
       tools: toolSpecs.length ? toolSpecs : undefined,
       model: modelSel.value,
     }),
@@ -253,6 +337,7 @@ async function analyze(text) {
         '출력 ' + (u.completion_tokens || 0).toLocaleString() + ' 토큰',
         (i + 1) + '단계 만에 완료',
       ]);
+      await extractFacts();          // 분석 한 건이 끝났으니 사실만 뽑아 쌓는다
       return;
     }
 
@@ -267,6 +352,7 @@ async function analyze(text) {
   }
 
   add('오류', MAX_STEPS + '단계를 넘어 중단했습니다. 질문을 좁혀서 다시 시도해 보세요.', 'err');
+  await extractFacts();              // 중간에 끊겼어도 알아낸 것은 남긴다
 }
 
 document.getElementById('f').addEventListener('submit', function (ev) {
@@ -284,10 +370,11 @@ q.addEventListener('keydown', function (e) {
 });
 
 document.getElementById('reset').addEventListener('click', function () {
-  messages = [{ role: 'system', content: SYSTEM }];
+  messages = [{ role: 'system', content: systemPrompt() }];
   totals = { calls: 0, inTok: 0, outTok: 0, cost: 0, ms: 0, tools: 0 };
   totalsEl.textContent = '';
   log.innerHTML = '<p class="empty">새 분석을 시작합니다.</p>';
+  loadFacts();                       // 그 사이 누가 고쳤을 수 있다
   q.focus();
 });
 </script>

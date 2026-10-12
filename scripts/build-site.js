@@ -29,6 +29,8 @@ const APPS = [
     desc: 'ABAP·운영 문의를 분석해 답한다 — 서버의 Hermes 프록시에 붙는다' },
   { dir: 'sap-local', url: 'sap-local', title: 'SAP 분석 (로컬 연결)',
     desc: 'AI 는 클라우드, SAP 조회는 내 PC 의 워커 — 도구를 써가며 분석한다' },
+  { dir: 'sap-facts', url: 'sap-facts', title: 'SAP 지식 정리',
+    desc: '분석에서 알게 된 사실만 모아둔 곳 — 여러 사람이 함께 고친다' },
 ];
 
 function rmrf(p) {

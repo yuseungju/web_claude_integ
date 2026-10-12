@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAP 지식 정리</title>
+<style>
+:root {
+  --bg:#f6f7f6; --surface:#fff; --sunken:#eceeed; --line:#d6dad8;
+  --fg:#16211f; --muted:#5c6a67; --accent:#15605b; --warn:#8a5a12; --ok:#1b7a4b;
+  --b:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+  --m:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#111816; --surface:#18211f; --sunken:#141c1a; --line:#2b3835;
+          --fg:#e6ece9; --muted:#94a49f; --accent:#57b3aa; --warn:#d6a95f; --ok:#4fb97e;
+          color-scheme: dark; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--b);line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding:22px 16px 60px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-size:19px;margin:0;font-weight:600}
+h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;font-family:var(--m);margin-top:2px}
+.tools{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+select,button,input,textarea{font-family:var(--b);font-size:13px;color:var(--fg);
+  background:var(--sunken);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+button{cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+button.sm{font-size:12px;padding:4px 9px}
+a.btn{display:inline-block;font-size:13px;text-decoration:none;color:var(--fg);background:var(--sunken);
+  border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+input#who{font-family:var(--m);font-size:12px;width:170px}
+input#qq{flex:1;min-width:140px}
+
+.bar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px}
+.bar .k{color:var(--muted);font-family:var(--m);font-size:11.5px}
+
+.note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;color:var(--muted)}
+
+.subj{margin:22px 0 8px;display:flex;align-items:baseline;gap:9px}
+.subj h2{font-size:14px;margin:0;font-family:var(--m);font-weight:600}
+.subj .k{font-size:11px;color:var(--muted);font-family:var(--m)}
+
+.fact{border:1px solid var(--line);border-radius:10px;background:var(--surface);
+  padding:11px 14px;margin-bottom:9px}
+.fact.confirmed{border-left:3px solid var(--ok)}
+.fact.draft{border-left:3px solid var(--warn)}
+.fact.rejected{border-left:3px solid var(--line);opacity:.55}
+.fact textarea{width:100%;resize:vertical;min-height:52px;background:transparent;
+  border:1px solid transparent;padding:5px 7px;font-size:13.5px;line-height:1.55}
+.fact textarea:hover{border-color:var(--line)}
+.fact textarea:focus{background:var(--sunken);border-color:var(--accent);outline:none}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:7px}
+.row .k{font-family:var(--m);font-size:11px;color:var(--muted)}
+.row .grow{flex:1}
+.tag{font-family:var(--m);font-size:10.5px;letter-spacing:.04em;padding:2px 7px;border-radius:99px;
+  border:1px solid var(--line);color:var(--muted)}
+.tag.confirmed{color:var(--ok);border-color:var(--ok)}
+.tag.draft{color:var(--warn);border-color:var(--warn)}
+.conflict{margin-top:8px;border:1px solid var(--warn);border-radius:8px;padding:9px 12px;
+  background:var(--sunken);font-size:12.5px}
+.conflict .cur{font-family:var(--m);font-size:12px;margin:6px 0;white-space:pre-wrap}
+.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:40px 0}
+.saved{color:var(--ok);font-size:11.5px;font-family:var(--m)}
+.failed{color:var(--warn);font-size:11.5px;font-family:var(--m)}
+textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>SAP 지식 정리<small>분석에서 알게 된 사실만 모아 함께 고친다</small></h1>
+    <div class="tools">
+      <button id="reload" type="button">새로고침</button>
+      <a class="btn" href="../sap-local/">분석하러 가기</a>
+    </div>
+  </header>
+
+  <div class="bar">
+    <input id="who" placeholder="내 이름/이메일" spellcheck="false" title="수정자로 기록됩니다">
+    <select id="filter">
+      <option value="active">검수중 + 확인됨</option>
+      <option value="draft">검수중만</option>
+      <option value="confirmed">확인됨만</option>
+      <option value="rejected">틀림으로 표시한 것</option>
+      <option value="all">전부</option>
+    </select>
+    <input id="qq" placeholder="검색 — 오브젝트명이나 내용" spellcheck="false">
+    <span class="k" id="stat"></span>
+  </div>
+
+  <p class="note">
+    AI 가 분석을 끝낼 때마다 알게 된 사실을 <b>검수중</b>으로 쌓습니다.
+    읽어보고 맞으면 <b>확인</b>, 틀리면 고쳐서 저장하거나 <b>틀림</b>으로 표시하세요.
+    확인된 사실은 다음 분석의 전제로 쓰이고, 틀림으로 표시한 것은 쓰이지 않습니다.
+  </p>
+
+  <div id="list"><p class="empty">불러오는 중…</p></div>
+
+</div>
+
+<script>
+var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+
+var listEl   = document.getElementById('list');
+var whoInput = document.getElementById('who');
+var filterEl = document.getElementById('filter');
+var qqEl     = document.getElementById('qq');
+var statEl   = document.getElementById('stat');
+
+try {
+  var savedWho = localStorage.getItem('sapUserKey');
+  if (savedWho) whoInput.value = savedWho;
+} catch (e) {}
+
+var facts = [];
+
+/** 서버가 받는 형식(영숫자·._@-, 3~64자)으로 맞춘다. */
+function userKey() {
+  var v = whoInput.value.trim().replace(/\s+/g, '-');
+  try { localStorage.setItem('sapUserKey', whoInput.value.trim()); } catch (e) {}
+  return /^[A-Za-z0-9._@-]{3,64}$/.test(v) ? v : 'local-test';
+}
+
+var LABEL = { draft: '검수중', confirmed: '확인됨', rejected: '틀림' };
+
+function visible() {
+  var mode = filterEl.value;
+  var term = qqEl.value.trim().toLowerCase();
+  return facts.filter(function (f) {
+    if (mode === 'active' && f.status === 'rejected') return false;
+    if (mode !== 'active' && mode !== 'all' && f.status !== mode) return false;
+    if (!term) return true;
+    return (f.subject + ' ' + f.body).toLowerCase().indexOf(term) >= 0;
+  });
+}
+
+function load() {
+  return fetch(API + '/sap/facts?userKey=' + encodeURIComponent(userKey()))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d.error) throw new Error(d.error);
+      facts = d.facts || [];
+      render();
+    })
+    .catch(function (e) {
+      listEl.innerHTML = '';
+      var p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = '불러오지 못했습니다: ' + e.message;
+      listEl.appendChild(p);
+    });
+}
+
+function render() {
+  var items = visible();
+  var counts = { draft: 0, confirmed: 0, rejected: 0 };
+  facts.forEach(function (f) { if (counts[f.status] !== undefined) counts[f.status] += 1; });
+  statEl.textContent = '검수중 ' + counts.draft + ' · 확인됨 ' + counts.confirmed
+    + ' · 틀림 ' + counts.rejected + ' · 보이는 것 ' + items.length;
+
+  listEl.innerHTML = '';
+  if (!items.length) {
+    var p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = facts.length
+      ? '조건에 맞는 사실이 없습니다.'
+      : '아직 쌓인 사실이 없습니다. 분석을 한 건 돌리면 여기 쌓입니다.';
+    listEl.appendChild(p);
+    return;
+  }
+
+  var bySubject = {};
+  items.forEach(function (f) { (bySubject[f.subject] = bySubject[f.subject] || []).push(f); });
+
+  Object.keys(bySubject).sort().forEach(function (subject) {
+    var head = document.createElement('div');
+    head.className = 'subj';
+    var h = document.createElement('h2');
+    h.textContent = subject;
+    var k = document.createElement('span');
+    k.className = 'k';
+    k.textContent = bySubject[subject].length + '건';
+    head.appendChild(h); head.appendChild(k);
+    listEl.appendChild(head);
+    bySubject[subject].forEach(function (f) { listEl.appendChild(card(f)); });
+  });
+}
+
+function card(f) {
+  var box = document.createElement('div');
+  box.className = 'fact ' + f.status;
+
+  var ta = document.createElement('textarea');
+  ta.value = f.body;
+  ta.rows = 2;
+  box.appendChild(ta);
+
+  var row = document.createElement('div');
+  row.className = 'row';
+
+  var tag = document.createElement('span');
+  tag.className = 'tag ' + f.status;
+  tag.textContent = LABEL[f.status] || f.status;
+  row.appendChild(tag);
+
+  var meta = document.createElement('span');
+  meta.className = 'k';
+  meta.textContent = 'rev ' + f.rev + ' · ' + (f.updatedBy === 'ai' ? 'AI' : f.updatedBy)
+    + ' · ' + String(f.updatedAt || '').slice(0, 16).replace('T', ' ');
+  row.appendChild(meta);
+
+  var grow = document.createElement('span');
+  grow.className = 'grow';
+  row.appendChild(grow);
+
+  var msg = document.createElement('span');
+
+  function send(patch, label) {
+    row.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    msg.className = 'k';
+    msg.textContent = '저장 중…';
+    var payload = Object.assign({ userKey: userKey(), subject: f.subject, factId: f.factId, rev: f.rev }, patch);
+    return fetch(API + '/sap/facts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { code: r.status, d: d }; }); })
+    .then(function (x) {
+      if (x.code === 409) { showConflict(box, f, ta, x.d.fact, x.d.error); return; }
+      if (x.d.error) throw new Error(x.d.error);
+      // 서버가 돌려준 최신본으로 교체해야 rev 가 어긋나지 않는다
+      var i = facts.findIndex(function (g) { return g.factId === f.factId; });
+      if (i >= 0) facts[i] = x.d.fact;
+      render();
+    })
+    .catch(function (e) {
+      msg.className = 'failed';
+      msg.textContent = (label || '저장') + ' 실패: ' + e.message;
+      row.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
+    });
+  }
+
+  var save = document.createElement('button');
+  save.className = 'sm primary';
+  save.textContent = '저장';
+  save.addEventListener('click', function () {
+    var text = ta.value.trim();
+    if (!text) { msg.className = 'failed'; msg.textContent = '내용이 비었습니다'; return; }
+    if (text === f.body) { msg.className = 'k'; msg.textContent = '바뀐 내용이 없습니다'; return; }
+    send({ body: text }, '저장');
+  });
+  row.appendChild(save);
+
+  if (f.status !== 'confirmed') {
+    var ok = document.createElement('button');
+    ok.className = 'sm';
+    ok.textContent = '확인';
+    ok.title = '맞는 사실로 확정합니다. 이후 AI 가 함부로 덮어쓰지 않습니다.';
+    ok.addEventListener('click', function () {
+      var text = ta.value.trim();
+      send(text && text !== f.body ? { body: text, status: 'confirmed' } : { status: 'confirmed' }, '확인');
+    });
+    row.appendChild(ok);
+  }
+
+  if (f.status !== 'rejected') {
+    var no = document.createElement('button');
+    no.className = 'sm';
+    no.textContent = '틀림';
+    no.title = '틀린 사실로 표시합니다. 지우지 않고 남겨둡니다.';
+    no.addEventListener('click', function () { send({ status: 'rejected' }, '표시'); });
+    row.appendChild(no);
+  } else {
+    var back = document.createElement('button');
+    back.className = 'sm';
+    back.textContent = '되돌리기';
+    back.addEventListener('click', function () { send({ status: 'draft' }, '되돌리기'); });
+    row.appendChild(back);
+  }
+
+  row.appendChild(msg);
+  box.appendChild(row);
+  return box;
+}
+
+/** 다른 사람이 먼저 저장한 경우 — 덮어쓰지 않고 양쪽을 보여준 뒤 고르게 한다. */
+function showConflict(box, f, ta, current, message) {
+  var old = box.querySelector('.conflict');
+  if (old) old.remove();
+
+  var c = document.createElement('div');
+  c.className = 'conflict';
+
+  var p = document.createElement('div');
+  p.textContent = message || '다른 사람이 먼저 수정했습니다.';
+  c.appendChild(p);
+
+  var cur = document.createElement('div');
+  cur.className = 'cur';
+  cur.textContent = current
+    ? '서버의 최신 내용 (rev ' + current.rev + ', ' + (current.updatedBy || '?') + '):\n' + current.body
+    : '서버에서 이 항목을 찾지 못했습니다.';
+  c.appendChild(cur);
+
+  var row = document.createElement('div');
+  row.className = 'row';
+
+  if (current) {
+    var take = document.createElement('button');
+    take.className = 'sm';
+    take.textContent = '최신 내용 가져오기';
+    take.title = '내가 쓰던 내용을 버리고 서버 것으로 바꿉니다.';
+    take.addEventListener('click', function () {
+      var i = facts.findIndex(function (g) { return g.factId === f.factId; });
+      if (i >= 0) facts[i] = current;
+      render();
+    });
+    row.appendChild(take);
+
+    var keep = document.createElement('button');
+    keep.className = 'sm primary';
+    keep.textContent = '내 내용으로 덮어쓰기';
+    keep.title = '서버의 최신 rev 위에 내가 쓴 내용을 올립니다.';
+    keep.addEventListener('click', function () {
+      var text = ta.value.trim();
+      if (!text) return;
+      fetch(API + '/sap/facts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userKey: userKey(), subject: f.subject, factId: f.factId,
+          rev: current.rev, body: text,
+        }),
+      })
+      .then(function (r) { return r.json(); })
+      .then(function () { return load(); });
+    });
+    row.appendChild(keep);
+  }
+
+  c.appendChild(row);
+  box.appendChild(c);
+}
+
+document.getElementById('reload').addEventListener('click', load);
+filterEl.addEventListener('change', render);
+qqEl.addEventListener('input', render);
+whoInput.addEventListener('change', function () { userKey(); });
+
+load();
+</script>
+</body>
+</html>
