@@ -37,7 +37,7 @@ import explore_objects as eo
 import sap_summary as ss
 
 PORT = 8777
-MAX_ROWS = 2000
+MAX_ROWS = 100000      # 결과는 요약본이라 행이 늘어도 토큰은 거의 안 는다
 
 # 동시 요청이 와도 ADT 세션은 하나만 쓰도록 묶는다. 세션에 CSRF 토큰이 매여 있어
 # 여러 스레드가 동시에 건드리면 토큰이 엉킨다.
@@ -93,7 +93,7 @@ def tool_query_table(args):
     table = str(args.get("table", "")).strip().upper()
     if not table:
         return "table 인자가 필요합니다."
-    rows = min(int(args.get("rows", 2000) or 2000), MAX_ROWS)
+    rows = min(int(args.get("rows", 20000) or 20000), MAX_ROWS)
     where = args.get("where") or None
     return ss.query_summary(table, rows, where=where)   # 항상 운영
 
@@ -116,8 +116,8 @@ def tool_read_source(args):
         if resp.ok and resp.text.strip():
             text = resp.text
             # 프롬프트에 통째로 싣지 않도록 상한을 둔다(비용·컨텍스트 보호)
-            if len(text) > 60000:
-                text = text[:60000] + "\n... (이하 생략 — 더 필요하면 범위를 좁혀 다시 요청하세요)"
+            if len(text) > 200000:
+                text = text[:200000] + "\n... (이하 생략 — 더 필요하면 범위를 좁혀 다시 요청하세요)"
             kind = path.split("/")[-4]          # programs | includes | tables
             return f"[{name}] {kind}\n\n{text}"
     return f"{name} 소스를 찾지 못했습니다 (프로그램·인클루드·테이블 DDL 모두 없음)."
@@ -164,7 +164,7 @@ def _freestyle(sql, rows=200):
     return eo.parse_datapreview(resp.text)
 
 
-def _fmt_table(columns, rows, limit=60):
+def _fmt_table(columns, rows, limit=300):
     if not rows:
         return "(결과 없음)"
     w = [max(len(c), *(len(str(r[i])) for r in rows[:limit])) for i, c in enumerate(columns)]
@@ -224,7 +224,7 @@ def tool_run_select(args):
         return "SELECT 문만 실행할 수 있습니다."
     if _FORBIDDEN.search(sql) or ";" in sql:
         return "읽기 전용입니다 — 변경 구문이나 여러 문장은 실행할 수 없습니다."
-    rows_cap = min(int(args.get("rows", 200) or 200), 500)
+    rows_cap = min(int(args.get("rows", 1000) or 1000), 10000)
     cols, rows = _freestyle(sql, rows=rows_cap)
     return f"[쿼리] {len(rows)}행\n{sql}\n\n" + _fmt_table(cols, rows)
 
@@ -256,8 +256,8 @@ def tool_adt_get(args):
     body = resp.text
     if not resp.ok:
         return f"HTTP {resp.status_code}" + chr(10) + body[:800]
-    if len(body) > 60000:
-        body = body[:60000] + chr(10) + "... (이하 생략 — 범위를 좁혀 다시 요청하세요)"
+    if len(body) > 200000:
+        body = body[:200000] + chr(10) + "... (이하 생략 — 범위를 좁혀 다시 요청하세요)"
     return f"[GET {path}] HTTP {resp.status_code} · {len(resp.text):,}자" + chr(10)*2 + body
 
 
@@ -282,8 +282,8 @@ def tool_adt_post(args):
     except ReadOnlyViolation as e:
         return str(e)
     text = resp.text
-    if len(text) > 60000:
-        text = text[:60000] + chr(10) + "... (이하 생략)"
+    if len(text) > 200000:
+        text = text[:200000] + chr(10) + "... (이하 생략)"
     return f"[POST {path}] HTTP {resp.status_code} · {len(resp.text):,}자" + chr(10)*2 + text
 
 
@@ -437,13 +437,13 @@ TOOL_SPECS = [
         "function": {
             "name": "run_select",
             "description": ("자유 SELECT 를 실행한다. 조인이나 복잡한 집계가 필요할 때 쓴다. "
-                            "SELECT 만 허용되고 변경 구문은 거부된다. 결과는 최대 500행."),
+                            "SELECT 만 허용되고 변경 구문은 거부된다. 결과는 최대 10,000행."),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "sql": {"type": "string",
                             "description": "ABAP SQL SELECT 문. UP TO n ROWS 는 쓰지 않는다(rows 인자로 제어)"},
-                    "rows": {"type": "integer", "description": "최대 행 수 (기본 200, 최대 500)"},
+                    "rows": {"type": "integer", "description": "최대 행 수 (기본 1000, 최대 10000)"},
                 },
                 "required": ["sql"],
             },
@@ -455,14 +455,14 @@ TOOL_SPECS = [
             "name": "query_table",
             "description": ("SAP 운영서버에서 테이블 데이터를 조회한다. 결과는 행 수·컬럼별 분포·"
                             "샘플 10행으로 요약되어 돌아온다. 개인정보 컬럼은 마스킹된다. "
-                            "최대 2,000행만 읽으므로 전체 건수나 분포가 필요하면 "
+                            "기본 2만 행을 읽는다. 전체 건수나 분포가 필요하면 "
                             "count_rows / aggregate 를 쓴다."),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "table": {"type": "string", "description": "테이블명 (예: ZSDNT0110)"},
                     "where": {"type": "string", "description": "SQL WHERE 조건 (선택). 예: ERDAT >= '20260801'"},
-                    "rows": {"type": "integer", "description": "최대 행 수 (기본 2000)"},
+                    "rows": {"type": "integer", "description": "최대 행 수 (기본 20000)"},
                 },
                 "required": ["table"],
             },
