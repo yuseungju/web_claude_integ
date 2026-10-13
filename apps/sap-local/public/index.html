@@ -85,6 +85,10 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
     <input id="worker" value="http://127.0.0.1:8777" spellcheck="false">
     <button id="recheck" type="button">다시 확인</button>
     <input id="who" placeholder="내 이름/이메일" spellcheck="false" title="정리된 지식에 작성자로 남습니다">
+    <select id="api" title="어느 서버를 부를지">
+      <option value="aws">서버: AWS</option>
+      <option value="local">서버: 로컬</option>
+    </select>
     <span class="k" id="fstat"></span>
     <span class="k" id="totals"></span>
   </div>
@@ -101,7 +105,12 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
 </div>
 
 <script>
-var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+/* 서버 두 곳. 같은 코드(lambda/sap.js)가 양쪽에서 돌고 같은 DynamoDB 를 본다.
+   AWS  — 배포본. 모델 호출이 되므로 분석은 여기여야 한다.
+   로컬 — 이 PC 의 node server.js. 고친 코드를 배포 없이 바로 확인할 때 쓴다.
+          HERMES_URL/PROXY_TOKEN 을 로컬에 넣어두면 분석까지 전부 로컬에서 돈다. */
+var AWS_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+var API = AWS_API;
 /* 반복 횟수로 분석을 끊지 않는다. 몇 번에 끝날지는 질문이 정하는 것이지
    우리가 정할 일이 아니다. 대신 사람이 언제든 "중단" 을 누를 수 있게 했다.
    아래 숫자는 제한이 아니라 무한루프 안전장치다(버그로 같은 호출을 반복할 때). */
@@ -129,13 +138,23 @@ var wstat = document.getElementById('wstat');
 var totalsEl = document.getElementById('totals');
 var whoInput = document.getElementById('who');
 var fstat = document.getElementById('fstat');
+var apiSel = document.getElementById('api');
 
 try {
   var saved = localStorage.getItem('sapWorkerUrl');
   if (saved) workerInput.value = saved;
   var savedWho = localStorage.getItem('sapUserKey');
   if (savedWho) whoInput.value = savedWho;
+  var savedApi = localStorage.getItem('sapApi');
+  if (savedApi) apiSel.value = savedApi;
 } catch (e) {}
+
+function applyApi() {
+  API = apiSel.value === 'local' ? location.origin : AWS_API;
+  try { localStorage.setItem('sapApi', apiSel.value); } catch (e) {}
+}
+applyApi();
+apiSel.addEventListener('change', function () { applyApi(); loadFacts(); });
 
 var messages = [{ role: 'system', content: SYSTEM }];
 var toolSpecs = [];

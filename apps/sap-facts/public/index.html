@@ -85,6 +85,10 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
 
   <div class="bar">
     <input id="who" placeholder="내 이름/이메일" spellcheck="false" title="수정자로 기록됩니다">
+    <select id="api" title="어느 서버를 부를지">
+      <option value="aws">서버: AWS</option>
+      <option value="local">서버: 로컬</option>
+    </select>
     <select id="filter">
       <option value="active">검수중 + 확인됨</option>
       <option value="draft">검수중만</option>
@@ -107,7 +111,10 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
 </div>
 
 <script>
-var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+/* 서버 두 곳. 같은 코드가 양쪽에서 돌고 같은 DynamoDB 를 본다.
+   로컬은 이 PC 의 node server.js — 배포 없이 바로 확인할 때 쓴다. */
+var AWS_API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
+var API = AWS_API;
 
 var listEl   = document.getElementById('list');
 var whoInput = document.getElementById('who');
@@ -115,10 +122,21 @@ var filterEl = document.getElementById('filter');
 var qqEl     = document.getElementById('qq');
 var statEl   = document.getElementById('stat');
 
+var apiSel = document.getElementById('api');
+
 try {
   var savedWho = localStorage.getItem('sapUserKey');
   if (savedWho) whoInput.value = savedWho;
+  var savedApi = localStorage.getItem('sapApi');
+  if (savedApi) apiSel.value = savedApi;
 } catch (e) {}
+
+function applyApi() {
+  API = apiSel.value === 'local' ? location.origin : AWS_API;
+  try { localStorage.setItem('sapApi', apiSel.value); } catch (e) {}
+}
+applyApi();
+apiSel.addEventListener('change', function () { applyApi(); load(); });
 
 var facts = [];
 
