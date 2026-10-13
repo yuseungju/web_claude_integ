@@ -48,9 +48,12 @@ const MAX_HISTORY = 200;              // DynamoDB 에서 되살리는 과거 메
 const MAX_TOKENS  = 16000;            // 답변 길이. 모델이 지원하는 만큼 쓴다
 const TIMEOUT_MS  = 28000;            // API Gateway 29초 직전
 
-const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
-  marshallOptions: { removeUndefinedValues: true },
-});
+// 리전은 Lambda 에선 환경변수로 들어오지만 로컬에선 없다. 같은 코드를 이 PC 에서도
+// 돌리려고 기본값을 둔다 — Lambda 에선 AWS_REGION 이 있으므로 그대로 쓴다.
+const ddb = DynamoDBDocumentClient.from(
+  new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-southeast-2' }),
+  { marshallOptions: { removeUndefinedValues: true } },
+);
 
 const SYSTEM = [
   '당신은 SAP ERP 운영 문의를 돕는 어시스턴트입니다.',
@@ -178,10 +181,6 @@ async function route(ctx, event, method, path) {
   const getBody = ctx.getBody;           // pool 은 쓰지 않는다 (RDS 해지)
   if (!path.startsWith('/sap/')) return null;
 
-  if (!HERMES_URL || !PROXY_TOKEN) {
-    return resp(500, { error: 'HERMES_URL / PROXY_TOKEN 환경변수가 설정되지 않았습니다.' });
-  }
-
   const body = getBody(event) || {};
   const qs = event.queryStringParameters || {};
   const userKey = String(body.userKey || qs.userKey || '').trim();
@@ -189,9 +188,20 @@ async function route(ctx, event, method, path) {
     return resp(400, { error: '사용자 키가 올바르지 않습니다.' });
   }
 
-  /* 지식 저장소(/sap/facts*) — 대화가 아니라 요약된 사실을 쌓고 함께 고친다 */
-  const facts = await factRoute({ ddb, callAI, resp, userKey, body, qs, method, path });
+  /* 지식 저장소(/sap/facts*) — 대화가 아니라 요약된 사실을 쌓고 함께 고친다.
+     모델 프록시가 없어도 DynamoDB 만으로 읽고 고칠 수 있다. 그래야 로컬에서
+     자격증명만 있으면 조회·수정을 그대로 시험해볼 수 있다. */
+  const aiReady = Boolean(HERMES_URL && PROXY_TOKEN);
+  const facts = await factRoute({
+    ddb, resp, userKey, body, qs, method, path,
+    callAI: aiReady ? callAI : null,
+  });
   if (facts) return facts;
+
+  /* 여기서부터는 모델을 부른다 */
+  if (!aiReady) {
+    return resp(500, { error: 'HERMES_URL / PROXY_TOKEN 환경변수가 설정되지 않았습니다.' });
+  }
 
   /* 질문 → 답변 */
   if (path === '/sap/ask' && method === 'POST') {

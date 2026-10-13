@@ -162,6 +162,13 @@ async function factRoute(deps) {
     const messages = Array.isArray(body.messages) ? body.messages : [];
     if (!messages.length) return resp(400, { error: 'messages 배열이 필요합니다.' });
 
+    if (!callAI) {
+      return resp(503, {
+        error: '요약 추출은 모델이 필요합니다. HERMES_URL / PROXY_TOKEN 이 설정된 서버에서만 됩니다. '
+             + '(지식 조회·수정은 이 서버에서도 됩니다)',
+      });
+    }
+
     const convo = flatten(messages);
     if (convo.length < 50) return resp(200, { facts: [], skipped: '대화가 너무 짧습니다.' });
 
