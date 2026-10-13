@@ -65,11 +65,12 @@ const SYSTEM = [
 ].join(' ');
 
 /* ── AI 호출 (OpenAI 호환 /chat/completions) ─────────── */
-function callAI(messages, model, tools) {
+function callAI(messages, model, tools, maxTokens) {
   const req = {
     model: model || MODEL,       // hermes proxy 는 model 을 자동 주입하지 않는다
     messages,
-    max_tokens: MAX_TOKENS,
+    // 답변은 길어도 되지만 요약 추출은 짧아야 한다 — 길면 29초를 넘긴다
+    max_tokens: maxTokens || MAX_TOKENS,
     temperature: 0.3,
   };
   if (Array.isArray(tools) && tools.length) {

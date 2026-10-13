@@ -250,19 +250,51 @@ function loadFacts() {
 }
 loadFacts();
 
+/* 추출에는 대화 전부를 보내지 않는다.
+   도구 결과를 안 자르기로 한 뒤로 messages 가 수 MB 가 된다. 그대로 올리면
+   API Gateway 가 Lambda 에 닿기 전에 끊고(10MB·29초), 그 응답에는 CORS 헤더가
+   없어서 브라우저엔 "Failed to fetch" 로만 보인다 — 원인을 알 수 없는 실패다.
+   사실은 조회 원문이 아니라 결론에 있으므로, 조회 결과는 앞부분만 보낸다. */
+var EXTRACT_LIMIT = 300000;   // 보낼 전체 길이(자)
+var TOOL_KEEP     = 1200;     // 조회 결과 하나당 보낼 길이(자)
+
+function compactForExtract() {
+  var out = [];
+  for (var i = 0; i < messages.length; i++) {
+    var m = messages[i];
+    if (!m || m.role === 'system') continue;
+    var c = typeof m.content === 'string' ? m.content : '';
+    if (m.role === 'tool') {
+      out.push({ role: 'tool', content: c.slice(0, TOOL_KEEP) + (c.length > TOOL_KEEP ? ' …' : '') });
+    } else if (c.trim()) {
+      out.push({ role: m.role, content: c });   // tool_calls 는 뺀다 — 결론만 필요하다
+    }
+  }
+  // 그래도 크면 오래된 조회결과부터 버린다. 최근 것이 결론에 가깝다.
+  for (var k = 0; k < out.length && JSON.stringify(out).length > EXTRACT_LIMIT; k++) {
+    if (out[k].role === 'tool') out[k].content = '(생략)';
+  }
+  return out;
+}
+
 function extractFacts() {
   if (messages.length < 3) return Promise.resolve();
   var box = add('지식 정리', '이번 분석에서 알게 된 사실을 정리하는 중…', 'fact');
+  var sent = compactForExtract();
   return fetch(API + '/sap/facts/extract', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userKey: userKey(), messages: messages }),
+    body: JSON.stringify({ userKey: userKey(), messages: sent }),
   })
-  .then(function (r) { return r.json(); })
+  .then(function (r) {
+    // 본문이 JSON 이 아닐 수도 있다(게이트웨이가 만든 오류). 상태코드라도 남긴다.
+    return r.json().catch(function () { return { error: 'HTTP ' + r.status }; });
+  })
   .then(function (d) {
     if (d.error) {
       box.className = 'msg err';
       box.querySelector('.body').textContent = '지식 정리 실패: ' + d.error;
+      retryButton(box);
       return;
     }
     var fs = d.facts || [];
@@ -277,8 +309,26 @@ function extractFacts() {
   })
   .catch(function (e) {
     box.className = 'msg err';
-    box.querySelector('.body').textContent = '지식 정리 실패: ' + e.message;
+    // "Failed to fetch" 는 서버가 답을 못 준 것이다. 보통 대화가 너무 크거나
+    // 추출이 29초를 넘긴 경우라, 그대로 보여주면 원인을 알 수 없다.
+    var kb = Math.round(JSON.stringify(sent).length / 1024);
+    box.querySelector('.body').textContent =
+      '지식 정리 실패: ' + e.message + '\n'
+      + '보낸 크기 ' + kb.toLocaleString() + 'KB · 서버가 응답하기 전에 끊겼습니다'
+      + ' (대화가 너무 크거나 29초를 넘긴 경우).';
+    retryButton(box);
   });
+}
+
+/** 실패한 정리를 분석 다시 안 하고 되돌릴 수 있게 한다. */
+function retryButton(box) {
+  if (box.querySelector('button')) return;
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = '지식 정리 다시 시도';
+  b.style.marginTop = '8px';
+  b.addEventListener('click', function () { box.remove(); extractFacts(); });
+  box.appendChild(b);
 }
 
 /* ── 도구 실행 (로컬 워커) ──────────────────────── */

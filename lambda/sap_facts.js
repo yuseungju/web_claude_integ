@@ -28,7 +28,9 @@ const MAX_SUBJECT   = 60;
 const MAX_NEW       = 20;     // 한 번 추출에서 받을 사실 수 상한
 const MAX_PROMPT    = 40;     // 다음 질문의 프롬프트에 실어줄 사실 수
 const MAX_LIST      = 300;    // 편집 화면에 내려줄 전체 목록 상한
-const EXTRACT_CHARS = 60000;  // 추출에 넣을 대화 길이 상한
+const EXTRACT_CHARS = 40000;  // 추출에 넣을 대화 길이 상한
+const EXTRACT_TOKENS = 2500;  // 추출 답변 길이. 한 줄짜리 사실 20개면 충분하고,
+                              // 넉넉히 주면 응답이 느려져 29초 한도에 걸린다.
 
 const STATUSES = ['draft', 'confirmed', 'rejected'];
 
@@ -186,7 +188,7 @@ async function factRoute(deps) {
       out = await callAI([
         { role: 'system', content: EXTRACT_SYSTEM },
         { role: 'user', content: knownText + '아래 분석에서 사실을 뽑으세요.\n\n' + convo },
-      ]);
+      ], null, null, EXTRACT_TOKENS);
     } catch (e) {
       console.error('[sap/facts] 추출 호출 실패:', e.message);
       return resp(502, { error: '요약 추출에 실패했습니다: ' + e.message });
