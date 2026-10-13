@@ -177,7 +177,7 @@ def _fmt_table(columns, rows, limit=300):
 
 
 def tool_count_rows(args):
-    """전체 건수. 행을 가져오지 않으므로 2,000행 상한과 무관하다."""
+    """전체 건수. 행을 가져오지 않으므로 결과가 아무리 커도 토큰이 늘지 않는다."""
     table = str(args.get("table", "")).strip().upper()
     if not table:
         return "table 인자가 필요합니다."
@@ -222,7 +222,7 @@ def tool_run_select(args):
         return "SELECT 문만 실행할 수 있습니다."
     if _FORBIDDEN.search(sql) or ";" in sql:
         return "읽기 전용입니다 — 변경 구문이나 여러 문장은 실행할 수 없습니다."
-    rows_cap = min(int(args.get("rows", 1000) or 1000), 10000)
+    rows_cap = min(int(args.get("rows", 20000) or 20000), MAX_ROWS)
     cols, rows = _freestyle(sql, rows=rows_cap)
     return f"[쿼리] {len(rows)}행\n{sql}\n\n" + _fmt_table(cols, rows)
 
@@ -396,7 +396,7 @@ TOOL_SPECS = [
         "type": "function",
         "function": {
             "name": "count_rows",
-            "description": ("테이블의 전체 건수를 센다. 행을 가져오지 않아 2,000행 상한과 무관하다. "
+            "description": ("테이블의 전체 건수를 센다. 행을 가져오지 않으므로 아무리 큰 테이블이어도 싸다. "
                             "'몇 건인지' 묻는 질문에는 query_table 대신 반드시 이것을 쓴다."),
             "parameters": {
                 "type": "object",
@@ -413,7 +413,7 @@ TOOL_SPECS = [
         "function": {
             "name": "aggregate",
             "description": ("컬럼별 건수를 집계한다. '상태값 분포', '월별 건수', '거래처별 건수' 같은 "
-                            "질문에 쓴다. 전체를 대상으로 하므로 2,000행 상한과 무관하다."),
+                            "질문에 쓴다. 전체를 대상으로 집계하므로 행을 가져오는 것보다 훨씬 싸다."),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -431,13 +431,13 @@ TOOL_SPECS = [
         "function": {
             "name": "run_select",
             "description": ("자유 SELECT 를 실행한다. 조인이나 복잡한 집계가 필요할 때 쓴다. "
-                            "SELECT 만 허용되고 변경 구문은 거부된다. 결과는 최대 10,000행."),
+                            "SELECT 만 허용되고 변경 구문은 거부된다. 결과는 요약본으로 돌아온다."),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "sql": {"type": "string",
                             "description": "ABAP SQL SELECT 문. UP TO n ROWS 는 쓰지 않는다(rows 인자로 제어)"},
-                    "rows": {"type": "integer", "description": "최대 행 수 (기본 1000, 최대 10000)"},
+                    "rows": {"type": "integer", "description": "최대 행 수 (기본 20000)"},
                 },
                 "required": ["sql"],
             },
