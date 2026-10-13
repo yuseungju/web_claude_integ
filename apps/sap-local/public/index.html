@@ -94,14 +94,19 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
   <form id="f">
     <textarea id="q" placeholder="예) ZSDNR0012 에서 거래처 필터가 안 먹는 이유를 찾아줘&#10;예) ZSDNT0110 에 8월 데이터가 없는지 확인하고 원인을 추정해줘"></textarea>
     <button class="primary" id="send" type="submit">분석</button>
+    <button id="stop" type="button" hidden>중단</button>
   </form>
-  <p class="hint">Ctrl+Enter 전송 · 도구는 워커가 알려주는 대로 전부 사용 · 최대 60회 반복 · 끝나면 알게 된 사실만 서버에 쌓임</p>
+  <p class="hint">Ctrl+Enter 전송 · 도구는 워커가 알려주는 대로 전부 사용 · 반복 제한 없음(멈추려면 중단) · 끝나면 알게 된 사실만 서버에 쌓임</p>
 
 </div>
 
 <script>
 var API = 'https://erilyjnp21.execute-api.ap-southeast-2.amazonaws.com';
-var MAX_STEPS = 60;
+/* 반복 횟수로 분석을 끊지 않는다. 몇 번에 끝날지는 질문이 정하는 것이지
+   우리가 정할 일이 아니다. 대신 사람이 언제든 "중단" 을 누를 수 있게 했다.
+   아래 숫자는 제한이 아니라 무한루프 안전장치다(버그로 같은 호출을 반복할 때). */
+var SAFETY_STEPS = 1000;
+var stopped = false;
 
 var SYSTEM = [
   '당신은 SAP ERP 운영 문의를 분석하는 어시스턴트입니다.',
@@ -116,6 +121,7 @@ var SYSTEM = [
 var log = document.getElementById('log');
 var q = document.getElementById('q');
 var send = document.getElementById('send');
+var stopBtn = document.getElementById('stop');
 var modelSel = document.getElementById('model');
 var workerInput = document.getElementById('worker');
 var dot = document.getElementById('dot');
@@ -304,8 +310,10 @@ function step() {
 async function analyze(text) {
   messages.push({ role: 'user', content: text });
 
-  for (var i = 0; i < MAX_STEPS; i++) {
-    var pending = add('AI', i === 0 ? '분석 중…' : '이어서 분석 중…');
+  for (var i = 0; i < SAFETY_STEPS; i++) {
+    if (stopped) { add('중단', '사용자가 중단했습니다.', 'err'); await extractFacts(); return; }
+
+    var pending = add('AI', i === 0 ? '분석 중…' : '이어서 분석 중 (' + (i + 1) + '단계)…');
     var d;
     try { d = await step(); }
     catch (e) { pending.remove(); add('오류', e.message, 'err'); return; }
@@ -347,11 +355,11 @@ async function analyze(text) {
       var c = calls[k];
       var fn = (c.function || {});
       var result = await runTool(fn.name, fn.arguments);
-      messages.push({ role: 'tool', tool_call_id: c.id, content: String(result).slice(0, 200000) });
+      messages.push({ role: 'tool', tool_call_id: c.id, content: String(result) });
     }
   }
 
-  add('오류', MAX_STEPS + '단계를 넘어 중단했습니다. 질문을 좁혀서 다시 시도해 보세요.', 'err');
+  add('오류', SAFETY_STEPS + '단계를 넘었습니다 — 같은 호출을 반복하고 있을 수 있습니다.', 'err');
   await extractFacts();              // 중간에 끊겼어도 알아낸 것은 남긴다
 }
 
@@ -361,8 +369,22 @@ document.getElementById('f').addEventListener('submit', function (ev) {
   if (!text) return;
   add('나', text, 'me');
   q.value = '';
+  stopped = false;
   send.disabled = true;
-  analyze(text).then(function () { send.disabled = false; q.focus(); });
+  stopBtn.hidden = false;
+  stopBtn.disabled = false;
+  stopBtn.textContent = '중단';
+  analyze(text).then(function () {
+    send.disabled = false;
+    stopBtn.hidden = true;
+    q.focus();
+  });
+});
+
+stopBtn.addEventListener('click', function () {
+  stopped = true;                    // 지금 돌고 있는 호출은 끝나고 멈춘다
+  stopBtn.disabled = true;
+  stopBtn.textContent = '중단하는 중…';
 });
 
 q.addEventListener('keydown', function (e) {

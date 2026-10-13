@@ -115,9 +115,7 @@ def tool_read_source(args):
         resp = srv.get(path, headers={"Accept": "*/*"})
         if resp.ok and resp.text.strip():
             text = resp.text
-            # 프롬프트에 통째로 싣지 않도록 상한을 둔다(비용·컨텍스트 보호)
-            if len(text) > 200000:
-                text = text[:200000] + "\n... (이하 생략 — 더 필요하면 범위를 좁혀 다시 요청하세요)"
+            # 자르지 않는다 — 소스는 통째로 봐야 판단이 선다
             kind = path.split("/")[-4]          # programs | includes | tables
             return f"[{name}] {kind}\n\n{text}"
     return f"{name} 소스를 찾지 못했습니다 (프로그램·인클루드·테이블 DDL 모두 없음)."
@@ -256,8 +254,6 @@ def tool_adt_get(args):
     body = resp.text
     if not resp.ok:
         return f"HTTP {resp.status_code}" + chr(10) + body[:800]
-    if len(body) > 200000:
-        body = body[:200000] + chr(10) + "... (이하 생략 — 범위를 좁혀 다시 요청하세요)"
     return f"[GET {path}] HTTP {resp.status_code} · {len(resp.text):,}자" + chr(10)*2 + body
 
 
@@ -282,8 +278,6 @@ def tool_adt_post(args):
     except ReadOnlyViolation as e:
         return str(e)
     text = resp.text
-    if len(text) > 200000:
-        text = text[:200000] + chr(10) + "... (이하 생략)"
     return f"[POST {path}] HTTP {resp.status_code} · {len(resp.text):,}자" + chr(10)*2 + text
 
 

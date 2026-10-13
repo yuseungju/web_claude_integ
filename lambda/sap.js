@@ -38,10 +38,15 @@ const MODEL       = process.env.AI_MODEL || 'openai/gpt-6-luna';
 const T_CONV = 'sap_conversations';
 const T_MSG  = 'sap_messages';
 
-const MAX_INPUT   = 20000;   // 질문 한 건의 길이 상한(자)
-const MAX_HISTORY = 24;      // 컨텍스트에 싣는 최근 메시지 수
-const MAX_TOKENS  = 1500;
-const TIMEOUT_MS  = 25000;   // API Gateway 29초보다 짧게
+/* 상한은 우리가 정하지 않는다. 아래 둘만 남긴 건 우리가 못 없애는 것들이기 때문이다.
+   - API Gateway: 요청 본문 10MB, 응답 29초. 넘기면 우리 코드에 닿기도 전에 끊긴다.
+   - 모델 컨텍스트: 넘치면 모델이 400 을 준다. 그 메시지를 그대로 보여주는 편이
+     우리가 임의로 자르는 것보다 낫다 — 무엇이 넘쳤는지 알 수 있다.
+   예전에 두었던 질문 길이·메시지 개수 제한은 걷어냈다. */
+const MAX_BYTES   = 9 * 1024 * 1024;  // API Gateway 10MB 직전 — 넘으면 어차피 안 간다
+const MAX_HISTORY = 200;              // DynamoDB 에서 되살리는 과거 메시지 수
+const MAX_TOKENS  = 16000;            // 답변 길이. 모델이 지원하는 만큼 쓴다
+const TIMEOUT_MS  = 28000;            // API Gateway 29초 직전
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
@@ -192,9 +197,6 @@ async function route(ctx, event, method, path) {
   if (path === '/sap/ask' && method === 'POST') {
     const text = String(body.text || '').trim();
     if (!text) return resp(400, { error: '메시지가 비어 있습니다.' });
-    if (text.length > MAX_INPUT) {
-      return resp(400, { error: '메시지가 너무 깁니다(' + MAX_INPUT + '자 제한).' });
-    }
 
     let conv = await getConversation(userKey, body.convId);
     if (!conv) conv = await createConversation(userKey, text);
@@ -263,8 +265,14 @@ async function route(ctx, event, method, path) {
     if (!messages || !messages.length) {
       return resp(400, { error: 'messages 배열이 필요합니다.' });
     }
-    if (messages.length > 60) {
-      return resp(400, { error: '메시지가 너무 많습니다(60개 제한).' });
+    // 개수는 세지 않는다. 막히는 건 API Gateway 의 10MB 뿐이고, 그건 우리 코드에
+    // 닿기 전에 끊기므로 여기선 왜 끊겼는지만 알려준다.
+    const bytes = Buffer.byteLength(JSON.stringify(messages));
+    if (bytes > MAX_BYTES) {
+      return resp(413, {
+        error: '대화가 ' + Math.round(bytes / 1048576) + 'MB 라 API Gateway 한도(10MB)를 넘었습니다. '
+             + '"새 분석" 으로 시작하면 지금까지 정리된 사실은 그대로 이어집니다.',
+      });
     }
     try {
       const out = await callAI(messages, body.model, body.tools);
