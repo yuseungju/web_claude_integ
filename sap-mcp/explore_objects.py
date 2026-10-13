@@ -98,7 +98,24 @@ class AdtSession:
     def post(self, path, **kwargs):
         headers = kwargs.pop("headers", {})
         headers.setdefault("X-CSRF-Token", self.csrf_token)
-        return self.session.post(f"{self.base_url}{path}", headers=headers, timeout=60, **kwargs)
+        url = f"{self.base_url}{path}"
+        resp = self.session.post(url, headers=headers, timeout=60, **kwargs)
+
+        # CSRF 토큰은 세션과 함께 만료된다. 세션을 오래 들고 쓰면 조회가 전부
+        # 403 "CSRF token validation failed" 로 막히는데, 토큰만 다시 받으면 된다.
+        # 여기서 처리해야 freestyle·where-used 등 POST 를 쓰는 모든 조회가 함께 산다.
+        if resp.status_code == 403 and self._csrf_expired(resp):
+            self._negotiate()
+            headers["X-CSRF-Token"] = self.csrf_token
+            resp = self.session.post(url, headers=headers, timeout=60, **kwargs)
+        return resp
+
+    @staticmethod
+    def _csrf_expired(resp):
+        """토큰 만료인지 권한 부족인지 가린다. 권한 문제면 다시 받아도 소용없다."""
+        if str(resp.headers.get("x-csrf-token", "")).lower() == "required":
+            return True
+        return "csrf" in (resp.text or "")[:300].lower()
 
 
 def find_package(dev, table):

@@ -19,7 +19,7 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--b);line-height:1.6}
-.wrap{max-width:960px;margin:0 auto;padding:22px 16px 60px}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 90px}
 header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
 h1{font-size:19px;margin:0;font-weight:600}
 h1 small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;font-family:var(--m);margin-top:2px}
@@ -32,42 +32,65 @@ button:disabled{opacity:.45;cursor:default}
 button.sm{font-size:12px;padding:4px 9px}
 a.btn{display:inline-block;font-size:13px;text-decoration:none;color:var(--fg);background:var(--sunken);
   border:1px solid var(--line);border-radius:6px;padding:7px 10px}
-input#who{font-family:var(--m);font-size:12px;width:170px}
-input#qq{flex:1;min-width:140px}
+input#who{font-family:var(--m);font-size:12px;width:160px}
+input#qq{flex:1;min-width:150px}
 
 .bar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;background:var(--surface);
-  border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12.5px}
+  border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px}
 .bar .k{color:var(--muted);font-family:var(--m);font-size:11.5px}
 
 .note{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--accent);
-  border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12.5px;color:var(--muted)}
+  border-radius:8px;padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:var(--muted)}
 
-.subj{margin:22px 0 8px;display:flex;align-items:baseline;gap:9px}
-.subj h2{font-size:14px;margin:0;font-family:var(--m);font-weight:600}
-.subj .k{font-size:11px;color:var(--muted);font-family:var(--m)}
+/* ── 트리 ── */
+.tree{display:flex;flex-direction:column;gap:2px}
+details.mod > summary{font-size:13.5px;font-weight:600;padding:7px 10px;border-radius:7px;
+  background:var(--sunken);cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center}
+details.pkg > summary{font-size:12.5px;padding:5px 10px 5px 26px;border-radius:7px;cursor:pointer;
+  list-style:none;display:flex;gap:8px;align-items:center;font-family:var(--m);color:var(--muted)}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸";font-size:10px;color:var(--muted);flex:none}
+details[open] > summary::before{content:"▾"}
+summary .cnt{font-family:var(--m);font-size:10.5px;color:var(--muted);font-weight:400}
+summary:hover{background:var(--line)}
+.pkgbody{padding-left:26px;display:flex;flex-direction:column;gap:8px;margin:6px 0 12px}
 
-.fact{border:1px solid var(--line);border-radius:10px;background:var(--surface);
-  padding:11px 14px;margin-bottom:9px}
+/* ── 지식 카드 ── */
+.fact{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 13px}
 .fact.confirmed{border-left:3px solid var(--ok)}
 .fact.draft{border-left:3px solid var(--warn)}
-.fact.rejected{border-left:3px solid var(--line);opacity:.55}
-.fact textarea{width:100%;resize:vertical;min-height:52px;background:transparent;
-  border:1px solid transparent;padding:5px 7px;font-size:13.5px;line-height:1.55}
+.fact.rejected{border-left:3px solid var(--line);opacity:.5}
+.fact.dirty{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:5px}
+.head .subj{font-family:var(--m);font-size:12.5px;font-weight:600}
+.head input.title{flex:1;min-width:140px;font-size:12.5px;padding:3px 7px;background:transparent;
+  border:1px solid transparent}
+.head input.title:hover{border-color:var(--line)}
+.head input.title:focus{background:var(--sunken);border-color:var(--accent);outline:none}
+.fact textarea{width:100%;resize:vertical;min-height:84px;background:transparent;
+  border:1px solid transparent;padding:6px 7px;font-size:13.5px;line-height:1.6}
 .fact textarea:hover{border-color:var(--line)}
 .fact textarea:focus{background:var(--sunken);border-color:var(--accent);outline:none}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:7px}
+.row{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-top:6px}
 .row .k{font-family:var(--m);font-size:11px;color:var(--muted)}
 .row .grow{flex:1}
+.row input.cls{font-family:var(--m);font-size:11px;width:92px;padding:3px 6px}
 .tag{font-family:var(--m);font-size:10.5px;letter-spacing:.04em;padding:2px 7px;border-radius:99px;
   border:1px solid var(--line);color:var(--muted)}
 .tag.confirmed{color:var(--ok);border-color:var(--ok)}
 .tag.draft{color:var(--warn);border-color:var(--warn)}
 .conflict{margin-top:8px;border:1px solid var(--warn);border-radius:8px;padding:9px 12px;
   background:var(--sunken);font-size:12.5px}
-.conflict .cur{font-family:var(--m);font-size:12px;margin:6px 0;white-space:pre-wrap}
+.conflict .cur{font-family:var(--m);font-size:12px;margin:6px 0;white-space:pre-wrap;
+  max-height:170px;overflow:auto}
 .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:40px 0}
-.saved{color:var(--ok);font-size:11.5px;font-family:var(--m)}
-.failed{color:var(--warn);font-size:11.5px;font-family:var(--m)}
+
+/* ── 저장 바 ── */
+#savebar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);
+  border-top:1px solid var(--line);padding:10px 16px;display:none;
+  justify-content:center;gap:12px;align-items:center;font-size:13px}
+#savebar.on{display:flex}
+#savebar .k{font-family:var(--m);font-size:11.5px;color:var(--muted)}
 textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-visible{
   outline:2px solid var(--accent);outline-offset:1px}
 </style>
@@ -76,8 +99,9 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
 <div class="wrap">
 
   <header>
-    <h1>SAP 지식 정리<small>분석에서 알게 된 사실만 모아 함께 고친다</small></h1>
+    <h1>SAP 지식 정리<small>분석에서 알게 된 것을 모아 함께 고친다</small></h1>
     <div class="tools">
+      <button id="expand" type="button">모두 펼치기</button>
       <button id="reload" type="button">새로고침</button>
       <a class="btn" href="../sap-local/">분석하러 가기</a>
     </div>
@@ -101,13 +125,20 @@ textarea:focus-visible,select:focus-visible,button:focus-visible,input:focus-vis
   </div>
 
   <p class="note">
-    AI 가 분석을 끝낼 때마다 알게 된 사실을 <b>검수중</b>으로 쌓습니다.
-    읽어보고 맞으면 <b>확인</b>, 틀리면 고쳐서 저장하거나 <b>틀림</b>으로 표시하세요.
-    확인된 사실은 다음 분석의 전제로 쓰이고, 틀림으로 표시한 것은 쓰이지 않습니다.
+    AI 가 분석을 끝낼 때마다 알게 된 것을 <b>검수중</b>으로 쌓습니다.
+    맞으면 <b>확인</b>, 틀리면 고쳐서 저장하거나 <b>틀림</b>으로 표시하세요.
+    확인된 것은 다음 분석의 전제로 쓰이고, 틀림은 쓰이지 않습니다.
+    여러 건을 고친 뒤 아래 <b>모두 저장</b>으로 한 번에 보낼 수 있습니다.
   </p>
 
-  <div id="list"><p class="empty">불러오는 중…</p></div>
+  <div id="list" class="tree"><p class="empty">불러오는 중…</p></div>
 
+</div>
+
+<div id="savebar">
+  <span class="k" id="dirtycnt"></span>
+  <button class="primary" id="saveall" type="button">모두 저장</button>
+  <button id="discard" type="button">되돌리기</button>
 </div>
 
 <script>
@@ -121,8 +152,9 @@ var whoInput = document.getElementById('who');
 var filterEl = document.getElementById('filter');
 var qqEl     = document.getElementById('qq');
 var statEl   = document.getElementById('stat');
-
-var apiSel = document.getElementById('api');
+var apiSel   = document.getElementById('api');
+var saveBar  = document.getElementById('savebar');
+var dirtyCnt = document.getElementById('dirtycnt');
 
 try {
   var savedWho = localStorage.getItem('sapUserKey');
@@ -136,9 +168,10 @@ function applyApi() {
   try { localStorage.setItem('sapApi', apiSel.value); } catch (e) {}
 }
 applyApi();
-apiSel.addEventListener('change', function () { applyApi(); load(); });
 
 var facts = [];
+var edits = {};          // factId → 고친 값. 저장 전까지 여기 모였다가 한 번에 나간다.
+var openKeys = {};       // 펼쳐둔 트리 노드. 다시 그려도 접히지 않게 기억한다.
 
 /** 서버가 받는 형식(영숫자·._@-, 3~64자)으로 맞춘다. */
 function userKey() {
@@ -156,7 +189,7 @@ function visible() {
     if (mode === 'active' && f.status === 'rejected') return false;
     if (mode !== 'active' && mode !== 'all' && f.status !== mode) return false;
     if (!term) return true;
-    return (f.subject + ' ' + f.body).toLowerCase().indexOf(term) >= 0;
+    return (f.subject + ' ' + (f.title || '') + ' ' + f.body).toLowerCase().indexOf(term) >= 0;
   });
 }
 
@@ -166,6 +199,7 @@ function load() {
     .then(function (d) {
       if (d.error) throw new Error(d.error);
       facts = d.facts || [];
+      edits = {};
       render();
     })
     .catch(function (e) {
@@ -177,50 +211,193 @@ function load() {
     });
 }
 
+/* ── 고친 내용 모으기 ───────────────────────────── */
+
+function markEdit(f, key, value) {
+  var e = edits[f.factId] || (edits[f.factId] = { subject: f.subject, factId: f.factId, rev: f.rev });
+  if (String(f[key] || '') === String(value)) delete e[key];
+  else e[key] = value;
+  // 바뀐 칸이 하나도 안 남으면 수정 자체를 지운다
+  var keys = Object.keys(e).filter(function (k) {
+    return k !== 'subject' && k !== 'factId' && k !== 'rev';
+  });
+  if (!keys.length) delete edits[f.factId];
+  showSaveBar();
+  return keys.length > 0;
+}
+
+function dirtyList() { return Object.keys(edits); }
+
+function showSaveBar() {
+  var n = dirtyList().length;
+  dirtyCnt.textContent = n ? '고친 지식 ' + n + '건' : '';
+  saveBar.className = n ? 'on' : '';
+}
+
+function saveAll() {
+  var ids = dirtyList();
+  if (!ids.length) return;
+  var items = ids.map(function (id) { return edits[id]; });
+  var btn = document.getElementById('saveall');
+  btn.disabled = true;
+  btn.textContent = '저장 중…';
+
+  fetch(API + '/sap/facts/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userKey: userKey(), items: items }),
+  })
+  .then(function (r) {
+    return r.json().catch(function () { return { error: 'HTTP ' + r.status }; });
+  })
+  .then(function (d) {
+    btn.disabled = false;
+    btn.textContent = '모두 저장';
+    if (d.error) { alert('저장 실패: ' + d.error); return; }
+
+    // 성공한 건은 서버가 돌려준 최신본으로 갈아끼우고, 실패한 건만 남긴다
+    var failed = [];
+    (d.results || []).forEach(function (r) {
+      if (r.ok && r.fact) {
+        var i = facts.findIndex(function (g) { return g.factId === r.factId; });
+        if (i >= 0) facts[i] = r.fact;
+        delete edits[r.factId];
+      } else {
+        if (r.fact) {
+          var j = facts.findIndex(function (g) { return g.factId === r.factId; });
+          if (j >= 0) facts[j] = r.fact;      // 충돌이면 최신 내용을 보여준다
+        }
+        failed.push(r);
+      }
+    });
+    render();
+    if (failed.length) {
+      alert(d.saved + '건 저장했습니다.\n' + failed.length + '건은 저장하지 못했습니다:\n\n'
+        + failed.map(function (r) { return '· ' + r.subject + ' — ' + (r.error || r.code); }).join('\n')
+        + '\n\n못 저장한 건은 화면에 그대로 남아 있습니다.');
+    }
+  })
+  .catch(function (e) {
+    btn.disabled = false;
+    btn.textContent = '모두 저장';
+    alert('저장 실패: ' + e.message);
+  });
+}
+
+/* ── 그리기 ─────────────────────────────────────── */
+
 function render() {
   var items = visible();
   var counts = { draft: 0, confirmed: 0, rejected: 0 };
   facts.forEach(function (f) { if (counts[f.status] !== undefined) counts[f.status] += 1; });
   statEl.textContent = '검수중 ' + counts.draft + ' · 확인됨 ' + counts.confirmed
     + ' · 틀림 ' + counts.rejected + ' · 보이는 것 ' + items.length;
+  showSaveBar();
 
   listEl.innerHTML = '';
   if (!items.length) {
     var p = document.createElement('p');
     p.className = 'empty';
     p.textContent = facts.length
-      ? '조건에 맞는 사실이 없습니다.'
-      : '아직 쌓인 사실이 없습니다. 분석을 한 건 돌리면 여기 쌓입니다.';
+      ? '조건에 맞는 것이 없습니다.'
+      : '아직 쌓인 지식이 없습니다. 분석을 한 건 돌리면 여기 쌓입니다.';
     listEl.appendChild(p);
     return;
   }
 
-  var bySubject = {};
-  items.forEach(function (f) { (bySubject[f.subject] = bySubject[f.subject] || []).push(f); });
+  // 업무모듈 > 패키지 2단계로 묶는다
+  var tree = {};
+  items.forEach(function (f) {
+    var mod = f.module || '미분류';
+    var pkg = f.pkg || '패키지 미상';
+    (tree[mod] = tree[mod] || {});
+    (tree[mod][pkg] = tree[mod][pkg] || []).push(f);
+  });
 
-  Object.keys(bySubject).sort().forEach(function (subject) {
-    var head = document.createElement('div');
-    head.className = 'subj';
-    var h = document.createElement('h2');
-    h.textContent = subject;
-    var k = document.createElement('span');
-    k.className = 'k';
-    k.textContent = bySubject[subject].length + '건';
-    head.appendChild(h); head.appendChild(k);
-    listEl.appendChild(head);
-    bySubject[subject].forEach(function (f) { listEl.appendChild(card(f)); });
+  var searching = qqEl.value.trim().length > 0;
+
+  Object.keys(tree).sort().forEach(function (mod) {
+    var modEl = document.createElement('details');
+    modEl.className = 'mod';
+    modEl.open = searching || openKeys['m:' + mod] !== false;
+    modEl.addEventListener('toggle', function () { openKeys['m:' + mod] = modEl.open; });
+
+    var total = 0;
+    Object.keys(tree[mod]).forEach(function (p) { total += tree[mod][p].length; });
+
+    var s = document.createElement('summary');
+    s.appendChild(document.createTextNode(mod));
+    var c = document.createElement('span');
+    c.className = 'cnt';
+    c.textContent = total + '건';
+    s.appendChild(c);
+    modEl.appendChild(s);
+
+    Object.keys(tree[mod]).sort().forEach(function (pkg) {
+      var pkgEl = document.createElement('details');
+      pkgEl.className = 'pkg';
+      var pkey = 'p:' + mod + '/' + pkg;
+      pkgEl.open = searching || openKeys[pkey] !== false;
+      pkgEl.addEventListener('toggle', function () { openKeys[pkey] = pkgEl.open; });
+
+      var ps = document.createElement('summary');
+      ps.appendChild(document.createTextNode(pkg));
+      var pc = document.createElement('span');
+      pc.className = 'cnt';
+      pc.textContent = tree[mod][pkg].length + '건';
+      ps.appendChild(pc);
+      pkgEl.appendChild(ps);
+
+      var holder = document.createElement('div');
+      holder.className = 'pkgbody';
+      tree[mod][pkg]
+        .sort(function (a, b) { return String(a.subject).localeCompare(String(b.subject)); })
+        .forEach(function (f) { holder.appendChild(card(f)); });
+      pkgEl.appendChild(holder);
+      modEl.appendChild(pkgEl);
+    });
+
+    listEl.appendChild(modEl);
   });
 }
 
 function card(f) {
+  var e = edits[f.factId] || {};
   var box = document.createElement('div');
-  box.className = 'fact ' + f.status;
+  function paint() {
+    box.className = 'fact ' + f.status + (edits[f.factId] ? ' dirty' : '');
+  }
+  paint();
 
+  /* 머리글 — 오브젝트명 + 한 줄 제목 */
+  var head = document.createElement('div');
+  head.className = 'head';
+  var subj = document.createElement('span');
+  subj.className = 'subj';
+  subj.textContent = f.subject;
+  head.appendChild(subj);
+
+  var title = document.createElement('input');
+  title.className = 'title';
+  title.placeholder = '한 줄 제목 (목록에서 이것만 보고 알 수 있게)';
+  title.value = e.title !== undefined ? e.title : (f.title || '');
+  title.addEventListener('input', function () { markEdit(f, 'title', title.value); paint(); });
+  head.appendChild(title);
+  box.appendChild(head);
+
+  /* 본문 — 여러 문단을 그대로 고친다 */
   var ta = document.createElement('textarea');
-  ta.value = f.body;
-  ta.rows = 2;
+  ta.value = e.body !== undefined ? e.body : f.body;
+  ta.rows = Math.min(16, Math.max(3, String(ta.value).split('\n').length + 1));
+  ta.addEventListener('input', function () {
+    markEdit(f, 'body', ta.value);
+    paint();
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(420, ta.scrollHeight + 4) + 'px';
+  });
   box.appendChild(ta);
 
+  /* 아래줄 — 상태·분류·버튼 */
   var row = document.createElement('div');
   row.className = 'row';
 
@@ -228,6 +405,22 @@ function card(f) {
   tag.className = 'tag ' + f.status;
   tag.textContent = LABEL[f.status] || f.status;
   row.appendChild(tag);
+
+  var pkg = document.createElement('input');
+  pkg.className = 'cls';
+  pkg.placeholder = '패키지';
+  pkg.title = '패키지(개발클래스). 트리 2단계에 쓰입니다.';
+  pkg.value = e.pkg !== undefined ? e.pkg : (f.pkg || '');
+  pkg.addEventListener('input', function () { markEdit(f, 'pkg', pkg.value); paint(); });
+  row.appendChild(pkg);
+
+  var mod = document.createElement('input');
+  mod.className = 'cls';
+  mod.placeholder = '모듈';
+  mod.title = '업무모듈. 트리 1단계에 쓰입니다. 추정이 틀렸으면 고치세요.';
+  mod.value = e.module !== undefined ? e.module : (f.module || '');
+  mod.addEventListener('input', function () { markEdit(f, 'module', mod.value); paint(); });
+  row.appendChild(mod);
 
   var meta = document.createElement('span');
   meta.className = 'k';
@@ -239,14 +432,13 @@ function card(f) {
   grow.className = 'grow';
   row.appendChild(grow);
 
-  var msg = document.createElement('span');
-
-  function send(patch, label) {
+  /* 상태 버튼은 즉시 반영한다 — 확인/틀림은 "고치는 중" 이 아니라 판정이다 */
+  function setStatus(status, label) {
+    var payload = Object.assign({}, edits[f.factId] || {}, {
+      userKey: userKey(), subject: f.subject, factId: f.factId, rev: f.rev, status: status,
+    });
     row.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
-    msg.className = 'k';
-    msg.textContent = '저장 중…';
-    var payload = Object.assign({ userKey: userKey(), subject: f.subject, factId: f.factId, rev: f.rev }, patch);
-    return fetch(API + '/sap/facts', {
+    fetch(API + '/sap/facts', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -255,38 +447,23 @@ function card(f) {
     .then(function (x) {
       if (x.code === 409) { showConflict(box, f, ta, x.d.fact, x.d.error); return; }
       if (x.d.error) throw new Error(x.d.error);
-      // 서버가 돌려준 최신본으로 교체해야 rev 가 어긋나지 않는다
       var i = facts.findIndex(function (g) { return g.factId === f.factId; });
       if (i >= 0) facts[i] = x.d.fact;
+      delete edits[f.factId];
       render();
     })
-    .catch(function (e) {
-      msg.className = 'failed';
-      msg.textContent = (label || '저장') + ' 실패: ' + e.message;
+    .catch(function (err) {
       row.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
+      alert((label || '저장') + ' 실패: ' + err.message);
     });
   }
-
-  var save = document.createElement('button');
-  save.className = 'sm primary';
-  save.textContent = '저장';
-  save.addEventListener('click', function () {
-    var text = ta.value.trim();
-    if (!text) { msg.className = 'failed'; msg.textContent = '내용이 비었습니다'; return; }
-    if (text === f.body) { msg.className = 'k'; msg.textContent = '바뀐 내용이 없습니다'; return; }
-    send({ body: text }, '저장');
-  });
-  row.appendChild(save);
 
   if (f.status !== 'confirmed') {
     var ok = document.createElement('button');
     ok.className = 'sm';
     ok.textContent = '확인';
-    ok.title = '맞는 사실로 확정합니다. 이후 AI 가 함부로 덮어쓰지 않습니다.';
-    ok.addEventListener('click', function () {
-      var text = ta.value.trim();
-      send(text && text !== f.body ? { body: text, status: 'confirmed' } : { status: 'confirmed' }, '확인');
-    });
+    ok.title = '맞는 것으로 확정합니다. 이후 AI 가 덮어쓰지 않습니다. 고치던 내용도 함께 저장됩니다.';
+    ok.addEventListener('click', function () { setStatus('confirmed', '확인'); });
     row.appendChild(ok);
   }
 
@@ -294,18 +471,17 @@ function card(f) {
     var no = document.createElement('button');
     no.className = 'sm';
     no.textContent = '틀림';
-    no.title = '틀린 사실로 표시합니다. 지우지 않고 남겨둡니다.';
-    no.addEventListener('click', function () { send({ status: 'rejected' }, '표시'); });
+    no.title = '틀린 것으로 표시합니다. 지우지 않고 남겨둡니다.';
+    no.addEventListener('click', function () { setStatus('rejected', '표시'); });
     row.appendChild(no);
   } else {
     var back = document.createElement('button');
     back.className = 'sm';
     back.textContent = '되돌리기';
-    back.addEventListener('click', function () { send({ status: 'draft' }, '되돌리기'); });
+    back.addEventListener('click', function () { setStatus('draft', '되돌리기'); });
     row.appendChild(back);
   }
 
-  row.appendChild(msg);
   box.appendChild(row);
   return box;
 }
@@ -340,6 +516,7 @@ function showConflict(box, f, ta, current, message) {
     take.addEventListener('click', function () {
       var i = facts.findIndex(function (g) { return g.factId === f.factId; });
       if (i >= 0) facts[i] = current;
+      delete edits[f.factId];
       render();
     });
     row.appendChild(take);
@@ -360,7 +537,7 @@ function showConflict(box, f, ta, current, message) {
         }),
       })
       .then(function (r) { return r.json(); })
-      .then(function () { return load(); });
+      .then(function () { delete edits[f.factId]; return load(); });
     });
     row.appendChild(keep);
   }
@@ -369,10 +546,33 @@ function showConflict(box, f, ta, current, message) {
   box.appendChild(c);
 }
 
-document.getElementById('reload').addEventListener('click', load);
+/* ── 조작 ───────────────────────────────────────── */
+
+document.getElementById('reload').addEventListener('click', function () {
+  if (dirtyList().length && !confirm('고치던 내용이 사라집니다. 새로 불러올까요?')) return;
+  load();
+});
+document.getElementById('saveall').addEventListener('click', saveAll);
+document.getElementById('discard').addEventListener('click', function () {
+  if (!confirm('고친 내용을 전부 되돌릴까요?')) return;
+  edits = {};
+  render();
+});
+document.getElementById('expand').addEventListener('click', function () {
+  var all = listEl.querySelectorAll('details');
+  var anyClosed = Array.prototype.some.call(all, function (d) { return !d.open; });
+  Array.prototype.forEach.call(all, function (d) { d.open = anyClosed; });
+  this.textContent = anyClosed ? '모두 접기' : '모두 펼치기';
+});
 filterEl.addEventListener('change', render);
 qqEl.addEventListener('input', render);
 whoInput.addEventListener('change', function () { userKey(); });
+apiSel.addEventListener('change', function () { applyApi(); load(); });
+
+// 저장 안 한 수정이 있는데 창을 닫으면 알린다
+window.addEventListener('beforeunload', function (ev) {
+  if (dirtyList().length) { ev.preventDefault(); ev.returnValue = ''; }
+});
 
 load();
 </script>

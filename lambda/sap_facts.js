@@ -23,9 +23,11 @@ const {
 
 const T_FACT = 'sap_facts';
 
-const MAX_BODY      = 500;    // 사실 한 줄의 길이 상한(자)
+const MAX_BODY      = 4000;   // 지식 한 건의 길이 상한(자). 덩어리로 쓰므로 넉넉히.
+const MIN_BODY      = 60;     // 이보다 짧으면 "한 줄짜리 단편" 으로 보고 버린다
 const MAX_SUBJECT   = 60;
-const MAX_NEW       = 20;     // 한 번 추출에서 받을 사실 수 상한
+const MAX_TITLE     = 80;
+const MAX_NEW       = 5;      // 한 번 추출에서 받을 지식 수 상한
 const MAX_PROMPT    = 40;     // 다음 질문의 프롬프트에 실어줄 사실 수
 const MAX_LIST      = 300;    // 편집 화면에 내려줄 전체 목록 상한
 const EXTRACT_CHARS = 40000;  // 추출에 넣을 대화 길이 상한
@@ -37,19 +39,56 @@ const STATUSES = ['draft', 'confirmed', 'rejected'];
 /* ── 추출 ────────────────────────────────────────────── */
 
 const EXTRACT_SYSTEM = [
-  '당신은 SAP 분석 대화에서 "나중에 다시 쓸 사실"만 골라내는 정리 담당입니다.',
+  '당신은 SAP 분석 대화에서 "나중에 다시 쓸 지식"을 정리하는 담당입니다.',
   '',
-  '1. 사실만 남깁니다. 조회 과정, 시행착오, 실패한 시도, 인사말은 버립니다.',
-  '2. 한 항목은 한 문장입니다. 근거(테이블·필드·프로그램명)를 문장 안에 넣습니다.',
-  '3. subject 는 그 사실이 귀속되는 SAP 오브젝트명(대문자) 또는 업무 주제 한 단어입니다.',
-  '4. 개인식별정보(이름·연락처·이메일·계좌·주소)와 실제 고객 데이터 값은 절대 쓰지 않습니다.',
-  '   구조와 규칙만 씁니다. "고객 홍길동의 주문" 대신 "VBAK-KUNNR 로 주문자를 찾는다".',
-  '5. 기존 사실을 줬다면 같은 내용을 다시 만들지 말고, 그 factId 를 적어 갱신하세요.',
-  '6. 새로 알게 된 것이 없으면 빈 배열을 돌려줍니다. 억지로 채우지 않습니다.',
+  '# 가장 중요한 규칙 — 잘게 쪼개지 마세요',
+  '한 오브젝트에 대해 알게 된 것은 **한 건으로 합쳐서** 씁니다.',
+  '"A는 B를 포함한다", "B에 C 필드가 있다", "C는 표시되지 않는다" 를 세 건으로',
+  '나누지 말고, 하나의 설명으로 이어 쓰세요. 쪼개면 읽는 사람이 다시 꿰맞춰야 합니다.',
+  '',
+  '- 한 건은 2~6문장입니다. 한 문장짜리 단편은 만들지 않습니다.',
+  '- 전체 건수는 많아야 다섯입니다. 보통 한두 건이면 충분합니다.',
+  '- 한 subject 에 대해 한 건만 만듭니다. 같은 subject 가 두 번 나오면 안 됩니다.',
+  '- 여러 오브젝트에 걸친 내용이면, 중심이 되는 오브젝트 하나를 subject 로 삼고',
+  '  나머지는 본문 안에서 이름으로 언급합니다.',
+  '',
+  '# 무엇을 쓰나',
+  '- 구조·규칙·인과를 씁니다. "왜 그런지"가 들어가야 지식입니다.',
+  '- 근거(테이블·필드·프로그램·FORM 이름)를 본문 안에 넣습니다.',
+  '- 확인하지 못한 것은 "확인되지 않았다"고 적습니다. 지어내지 않습니다.',
+  '- 조회 과정, 시행착오, 실패한 시도, 인사말은 버립니다.',
+  '- 개인식별정보(이름·연락처·이메일·계좌·주소)와 실제 고객 데이터 값은 절대 쓰지 않습니다.',
+  '  구조와 규칙만 씁니다. "고객 홍길동의 주문" 대신 "VBAK-KUNNR 로 주문자를 찾는다".',
+  '',
+  '# 분류',
+  '- subject : 중심 오브젝트명(대문자) 또는 업무 주제.',
+  '- package : 대화에서 그 오브젝트의 패키지(개발클래스)가 나왔으면 적습니다. 모르면 생략.',
+  '- title   : 한 줄 제목. 목록에서 이것만 보고도 무슨 내용인지 알 수 있게.',
+  '',
+  '# 갱신',
+  '기존 지식을 줬다면, 같은 주제는 새로 만들지 말고 그 factId 를 적어 갱신하세요.',
+  '갱신할 때는 기존 내용에 새로 안 것을 합쳐 전체를 다시 씁니다(덧붙이는 게 아니라 다시 쓰기).',
+  '새로 알게 된 것이 없으면 빈 배열을 돌려줍니다. 억지로 채우지 않습니다.',
   '',
   'JSON 만 출력합니다. 설명도 코드펜스도 붙이지 않습니다.',
-  '{"facts":[{"subject":"ZSDNR0010","body":"...","factId":"(기존 갱신일 때만)"}]}',
+  '{"facts":[{"subject":"ZSDR0665","title":"투숙일 표시 구조","package":"ZSDN01",',
+  '"body":"여러 문장으로 이어 쓴 설명","factId":"(기존 갱신일 때만)"}]}',
 ].join('\n');
+
+/* 패키지 앞글자로 업무모듈을 추정한다. 트리 1단계로만 쓰므로 틀려도 화면에서 고치면 된다.
+   Z/Y 로 시작하는 커스텀 패키지는 두세 번째 글자가 모듈인 관례를 따른다. */
+const MODULES = {
+  SD: 'SD 영업', MM: 'MM 구매', FI: 'FI 재무', CO: 'CO 관리회계', PP: 'PP 생산',
+  HR: 'HR 인사', PS: 'PS 프로젝트', QM: 'QM 품질', PM: 'PM 설비', WM: 'WM 창고',
+  LE: 'LE 물류', TR: 'TR 자금', AA: 'AA 자산', CM: '공통', BC: 'BC 기술',
+};
+
+function guessModule(pkg, subject) {
+  const s = String(pkg || subject || '').toUpperCase();
+  const m = s.match(/^[ZY]([A-Z]{2})/);
+  if (m && MODULES[m[1]]) return MODULES[m[1]];
+  return '미분류';
+}
 
 /** 모델 응답에서 JSON 을 꺼낸다 — 코드펜스나 앞뒤 설명이 붙어 와도 건진다. */
 function parseFacts(text) {
@@ -64,16 +103,28 @@ function parseFacts(text) {
   let d;
   try { d = JSON.parse(s); } catch (e) { return []; }
   const arr = Array.isArray(d) ? d : (Array.isArray(d.facts) ? d.facts : []);
-  return arr
+  const cleaned = arr
     .map(function (f) {
+      const pkg = String((f && f.package) || '').trim().toUpperCase().slice(0, MAX_SUBJECT);
+      const subject = String((f && f.subject) || '').trim().slice(0, MAX_SUBJECT);
       return {
-        subject: String((f && f.subject) || '').trim().slice(0, MAX_SUBJECT),
+        subject, pkg,
+        module: guessModule(pkg, subject),
+        title: String((f && f.title) || '').trim().slice(0, MAX_TITLE),
         body: String((f && f.body) || '').trim().slice(0, MAX_BODY),
         factId: String((f && f.factId) || '').trim().slice(0, 40) || null,
       };
     })
-    .filter(function (f) { return f.subject && f.body; })
-    .slice(0, MAX_NEW);
+    // 프롬프트로 "쪼개지 말라" 고 해도 모델은 쪼갠다. 길이로 한 번 더 거른다.
+    .filter(function (f) { return f.subject && f.body.length >= MIN_BODY; });
+
+  // 같은 subject 가 여러 건 오면 가장 자세한 것만 남긴다 — 한 주제에 한 건이 원칙이다.
+  const best = new Map();
+  for (const f of cleaned) {
+    const prev = best.get(f.subject);
+    if (!prev || f.body.length > prev.body.length) best.set(f.subject, f);
+  }
+  return Array.from(best.values()).slice(0, MAX_NEW);
 }
 
 /** 대화를 추출용 평문으로 — 도구 호출 원문은 길기만 하므로 자른다. */
@@ -149,6 +200,83 @@ async function loadFactsText(ddb, subjects) {
   })).join('\n');
 }
 
+/* ── 수정 ────────────────────────────────────────────── */
+
+/* 바꿀 수 있는 칸. 분류(module·pkg)도 화면에서 고칠 수 있어야 한다 — 패키지 앞글자로
+   추정하는 것이라 틀릴 때가 있다. subject 는 키라서 못 고친다. */
+const EDITABLE = {
+  body:   { max: MAX_BODY, required: true },
+  title:  { max: MAX_TITLE },
+  pkg:    { max: MAX_SUBJECT, upper: true },
+  module: { max: 40 },
+};
+
+/**
+ * 한 건을 고친다. rev 가 맞아야 저장되고, 어긋나면 409 와 최신 내용을 돌려준다.
+ * 단건 수정과 일괄 저장이 같은 길을 타게 하려고 따로 뺐다.
+ */
+async function applyEdit(ddb, userKey, src) {
+  const subject = String((src && src.subject) || '').trim();
+  const factId  = String((src && src.factId) || '').trim();
+  const rev     = Number(src && src.rev);
+  if (!subject || !factId) return { code: 400, obj: { error: 'subject 와 factId 가 필요합니다.' } };
+  if (!Number.isInteger(rev) || rev < 1) {
+    return { code: 400, obj: { error: 'rev 가 필요합니다. 목록을 다시 불러온 뒤 수정하세요.' } };
+  }
+
+  const sets = ['updatedAt = :t', 'updatedBy = :u', 'rev = rev + :one'];
+  const vals = { ':t': new Date().toISOString(), ':u': userKey, ':one': 1, ':rev': rev };
+  const names = {};
+
+  let n = 0;
+  for (const key of Object.keys(EDITABLE)) {
+    const rule = EDITABLE[key];
+    if (src[key] === undefined) continue;
+    let v = String(src[key]).trim().slice(0, rule.max);
+    if (rule.upper) v = v.toUpperCase();
+    if (rule.required && !v) return { code: 400, obj: { error: '내용이 비어 있습니다.' } };
+    const ph = ':v' + (n++);
+    // module 은 DynamoDB 예약어라 이름을 치환해야 한다
+    names['#' + key] = key;
+    sets.push('#' + key + ' = ' + ph);
+    vals[ph] = v;
+  }
+  if (src.status !== undefined) {
+    if (!STATUSES.includes(src.status)) {
+      return { code: 400, obj: { error: 'status 는 ' + STATUSES.join(' / ') + ' 중 하나여야 합니다.' } };
+    }
+    names['#status'] = 'status';
+    sets.push('#status = :st');
+    vals[':st'] = src.status;
+  }
+  if (sets.length === 3) return { code: 400, obj: { error: '바꿀 내용이 없습니다.' } };
+
+  try {
+    const r = await ddb.send(new UpdateCommand({
+      TableName: T_FACT,
+      Key: { subject, factId },
+      UpdateExpression: 'SET ' + sets.join(', '),
+      ConditionExpression: 'rev = :rev',
+      ExpressionAttributeValues: vals,
+      ExpressionAttributeNames: Object.keys(names).length ? names : undefined,
+      ReturnValues: 'ALL_NEW',
+    }));
+    return { code: 200, obj: { fact: r.Attributes } };
+  } catch (e) {
+    if (e.name === 'ConditionalCheckFailedException') {
+      const cur = await ddb.send(new GetCommand({ TableName: T_FACT, Key: { subject, factId } }));
+      return {
+        code: 409,
+        obj: {
+          error: '다른 사람이 먼저 수정했습니다. 최신 내용을 보고 다시 고쳐주세요.',
+          fact: cur.Item || null,
+        },
+      };
+    }
+    throw e;
+  }
+}
+
 /* ── 라우트 ──────────────────────────────────────────── */
 
 /**
@@ -205,17 +333,30 @@ async function factRoute(deps) {
       if (prev) {
         // 모델이 갱신이라고 본 건 — 사람이 confirmed 로 만든 건 건드리지 않는다
         if (prev.status === 'confirmed') continue;
+        const patch = {
+          body: f.body,
+          title: f.title || prev.title || '',
+          // 분류는 사람이 고쳐둘 수 있으므로 기존 값이 있으면 지키고, 비었을 때만 채운다
+          pkg: prev.pkg || f.pkg || '',
+          module: prev.pkg ? prev.module : (f.pkg ? f.module : (prev.module || f.module)),
+        };
         await ddb.send(new UpdateCommand({
           TableName: T_FACT,
           Key: { subject: prev.subject, factId: prev.factId },
-          UpdateExpression: 'SET body = :b, updatedAt = :t, updatedBy = :u, rev = rev + :one',
-          ExpressionAttributeValues: { ':b': f.body, ':t': now, ':u': 'ai', ':one': 1 },
+          UpdateExpression: 'SET body = :b, title = :ti, pkg = :p, #md = :m, '
+                          + 'updatedAt = :t, updatedBy = :u, rev = rev + :one',
+          ExpressionAttributeNames: { '#md': 'module' },
+          ExpressionAttributeValues: {
+            ':b': patch.body, ':ti': patch.title, ':p': patch.pkg, ':m': patch.module,
+            ':t': now, ':u': 'ai', ':one': 1,
+          },
         }));
-        saved.push(Object.assign({}, prev, { body: f.body, updatedAt: now, updatedBy: 'ai' }));
+        saved.push(Object.assign({}, prev, patch, { updatedAt: now, updatedBy: 'ai' }));
         continue;
       }
       const item = {
         subject: f.subject, factId: newFactId(), body: f.body,
+        title: f.title || '', pkg: f.pkg || '', module: f.module || '미분류',
         status: 'draft', rev: 1, source: String(body.convId || '').slice(0, 64),
         createdAt: now, createdBy: userKey, updatedAt: now, updatedBy: 'ai',
       };
@@ -235,50 +376,37 @@ async function factRoute(deps) {
 
   /* 수정 — rev 를 함께 보내야 받는다(동시 수정 보호) */
   if (path === '/sap/facts' && (method === 'PUT' || method === 'PATCH')) {
-    const subject = String(body.subject || '').trim();
-    const factId  = String(body.factId || '').trim();
-    const rev     = Number(body.rev);
-    if (!subject || !factId) return resp(400, { error: 'subject 와 factId 가 필요합니다.' });
-    if (!Number.isInteger(rev) || rev < 1) {
-      return resp(400, { error: 'rev 가 필요합니다. 목록을 다시 불러온 뒤 수정하세요.' });
-    }
+    const r = await applyEdit(ddb, userKey, body);
+    return resp(r.code, r.obj);
+  }
 
-    const sets = ['updatedAt = :t', 'updatedBy = :u', 'rev = rev + :one'];
-    const vals = { ':t': new Date().toISOString(), ':u': userKey, ':one': 1, ':rev': rev };
-    if (body.body !== undefined) {
-      const text = String(body.body).trim().slice(0, MAX_BODY);
-      if (!text) return resp(400, { error: '내용이 비어 있습니다.' });
-      sets.push('body = :b'); vals[':b'] = text;
+  /* 일괄 저장 — 화면에서 여러 건을 고치고 한 번에 보낸다.
+     한 건이 충돌해도 나머지는 저장한다. 하나 때문에 전부 되돌리면
+     고친 내용을 다시 입력해야 하는데, 그게 더 손해다. */
+  if (path === '/sap/facts/batch' && (method === 'POST' || method === 'PUT')) {
+    const items = Array.isArray(body.items) ? body.items : [];
+    if (!items.length) return resp(400, { error: 'items 배열이 필요합니다.' });
+    if (items.length > MAX_LIST) {
+      return resp(400, { error: '한 번에 ' + MAX_LIST + '건까지만 저장할 수 있습니다.' });
     }
-    if (body.status !== undefined) {
-      if (!STATUSES.includes(body.status)) {
-        return resp(400, { error: 'status 는 ' + STATUSES.join(' / ') + ' 중 하나여야 합니다.' });
-      }
-      sets.push('#st = :s'); vals[':s'] = body.status;
-    }
-    if (sets.length === 3) return resp(400, { error: '바꿀 내용이 없습니다.' });
-
-    try {
-      const r = await ddb.send(new UpdateCommand({
-        TableName: T_FACT,
-        Key: { subject, factId },
-        UpdateExpression: 'SET ' + sets.join(', '),
-        ConditionExpression: 'rev = :rev',
-        ExpressionAttributeValues: vals,
-        ExpressionAttributeNames: vals[':s'] !== undefined ? { '#st': 'status' } : undefined,
-        ReturnValues: 'ALL_NEW',
-      }));
-      return resp(200, { fact: r.Attributes });
-    } catch (e) {
-      if (e.name === 'ConditionalCheckFailedException') {
-        const cur = await ddb.send(new GetCommand({ TableName: T_FACT, Key: { subject, factId } }));
-        return resp(409, {
-          error: '다른 사람이 먼저 수정했습니다. 아래 최신 내용을 보고 다시 고쳐주세요.',
-          fact: cur.Item || null,
+    const results = [];
+    for (const it of items) {
+      try {
+        const r = await applyEdit(ddb, userKey, it);
+        results.push({
+          subject: it && it.subject, factId: it && it.factId,
+          ok: r.code === 200, code: r.code, error: r.obj.error, fact: r.obj.fact || null,
+        });
+      } catch (e) {
+        results.push({
+          subject: it && it.subject, factId: it && it.factId,
+          ok: false, code: 500, error: e.message, fact: null,
         });
       }
-      throw e;
     }
+    const saved = results.filter(function (r) { return r.ok; }).length;
+    console.log('[sap/facts] batch ' + saved + '/' + results.length + '건 저장');
+    return resp(200, { saved, total: results.length, results });
   }
 
   /* 삭제 — 실제로 지우지 않고 rejected 로 둔다(왜 틀렸는지가 남아야 한다) */

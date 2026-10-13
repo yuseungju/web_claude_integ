@@ -375,6 +375,27 @@ function step() {
   }).then(function (r) { return r.json(); });
 }
 
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+/* 속도 제한(429)은 잠시 뒤에 다시 하면 풀리는 일시적인 문제다. 그런데 20단계쯤
+   조사한 뒤에 걸리면 분석 전체가 날아간다 — 다시 돌리면 같은 조회를 처음부터
+   또 하게 되고 돈도 두 배로 든다. 그래서 여기서 기다렸다 다시 묻는다. */
+async function stepWithRetry(onWait) {
+  var waits = [20, 40, 60, 90];        // 초
+  for (var n = 0; ; n++) {
+    var d = await step();
+    var msg = String((d && d.error) || '');
+    var rateLimited = /\b429\b|rate limit|exceeded the rate/i.test(msg);
+    if (!rateLimited || n >= waits.length) return d;
+
+    for (var left = waits[n]; left > 0; left--) {
+      if (stopped) return d;
+      onWait(left, n + 1, waits.length);
+      await sleep(1000);
+    }
+  }
+}
+
 /* ── 분석 루프 ──────────────────────────────────── */
 async function analyze(text) {
   messages.push({ role: 'user', content: text });
@@ -384,11 +405,20 @@ async function analyze(text) {
 
     var pending = add('AI', i === 0 ? '분석 중…' : '이어서 분석 중 (' + (i + 1) + '단계)…');
     var d;
-    try { d = await step(); }
-    catch (e) { pending.remove(); add('오류', e.message, 'err'); return; }
+    try {
+      d = await stepWithRetry(function (left, nth, total) {
+        pending.querySelector('.body').textContent =
+          '속도 제한에 걸렸습니다 — ' + left + '초 뒤 다시 시도 (' + nth + '/' + total + ')'
+          + '\n여기까지 조사한 내용은 그대로 있습니다. 중단을 누르면 멈춥니다.';
+      });
+    } catch (e) { pending.remove(); add('오류', e.message, 'err'); return; }
     pending.remove();
 
-    if (d.error) { add('오류', d.error, 'err'); return; }
+    if (d.error) {
+      add('오류', d.error, 'err');
+      await extractFacts();            // 여기까지 알아낸 것은 남긴다
+      return;
+    }
 
     var u = d.usage || {};
     totals.calls += 1;
