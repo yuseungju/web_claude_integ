@@ -3205,9 +3205,16 @@ exports.handler = async (event) => {
   // [에이전트 관리 웹] agent_ 테이블만 다루는 독립 모듈.
   // 모델 호출은 sap.js 의 callAI 를 빌려 쓴다 — 프록시·토큰 설정이 한 곳에 있어야 한다.
   if (path.startsWith('/agent/')) {
-    const agRes = await agent.route(
-      { ddb: sap.ddb, callAI: sap.callAI, resp, getBody: getBodyAr }, event, method, path);
-    if (agRes) return agRes;
+    try {
+      const agRes = await agent.route(
+        { ddb: sap.ddb, callAI: sap.callAI, resp, getBody: getBodyAr }, event, method, path);
+      if (agRes) return agRes;
+    } catch (e) {
+      // 여기서 안 잡으면 API Gateway 가 "Internal Server Error" 로 덮어버려
+      // 권한 문제인지 코드 문제인지 알 수가 없다. 이름과 메시지를 그대로 넘긴다.
+      console.error('[agent] ' + method + ' ' + path + ' 실패:', e.name, e.message);
+      return resp(500, { error: e.message, name: e.name });
+    }
   }
 
   try {
