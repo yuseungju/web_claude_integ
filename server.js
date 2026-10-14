@@ -24,35 +24,42 @@ if (!fs.existsSync(DIST)) {
   process.exit(1);
 }
 
-/* ── /sap/* — 배포본과 같은 핸들러를 로컬에서 ──────────── */
+/* ── /sap/* · /agent/* — 배포본과 같은 핸들러를 로컬에서 ── */
 let sap = null;
+let agent = null;
 try {
   sap = require('./lambda/sap');
+  agent = require('./lambda/agent');
 } catch (e) {
-  console.warn('[sap] 로컬 API 를 못 올렸습니다: ' + e.message);
-  console.warn('[sap] lambda 폴더에서 `npm install` 을 한 번 돌리세요.');
+  console.warn('[api] 로컬 API 를 못 올렸습니다: ' + e.message);
+  console.warn('[api] lambda 폴더에서 `npm install` 을 한 번 돌리세요.');
 }
 
 if (sap) {
   // 도구 결과까지 실린 대화는 수 MB 가 된다. express 기본값 100kb 로는 막힌다.
-  app.use('/sap', express.json({ limit: '12mb' }));
+  app.use(['/sap', '/agent'], express.json({ limit: '12mb' }));
 
-  app.all('/sap/*', async (req, res) => {
-    // Lambda 가 주는 모양만 흉내 낸다 — 핸들러 자체는 손대지 않는다
-    const ctx = {
-      resp: (code, obj) => ({ code, obj }),
-      getBody: () => req.body || {},
-    };
+  // Lambda 가 주는 모양만 흉내 낸다 — 핸들러 자체는 손대지 않는다
+  const bridge = (run) => async (req, res) => {
+    const resp = (code, obj) => ({ code, obj });
+    const getBody = () => req.body || {};
     const event = { queryStringParameters: req.query || {} };
     try {
-      const out = await sap.route(ctx, event, req.method, req.path);
-      if (!out) return res.status(404).json({ error: '알 수 없는 /sap 경로' });
+      const out = await run({ resp, getBody }, event, req.method, req.path);
+      if (!out) return res.status(404).json({ error: '알 수 없는 경로' });
       res.status(out.code).json(out.obj);
     } catch (e) {
-      console.error('[sap] ' + req.method + ' ' + req.path + ' 실패:', e.message);
+      console.error('[api] ' + req.method + ' ' + req.path + ' 실패:', e.message);
       res.status(500).json({ error: e.message, name: e.name });
     }
-  });
+  };
+
+  app.all('/sap/*', bridge((ctx, ev, m, p) => sap.route(ctx, ev, m, p)));
+
+  if (agent) {
+    app.all('/agent/*', bridge((ctx, ev, m, p) => agent.route(
+      { ddb: sap.ddb, callAI: sap.callAI, resp: ctx.resp, getBody: ctx.getBody }, ev, m, p)));
+  }
 }
 
 app.use(express.static(DIST));

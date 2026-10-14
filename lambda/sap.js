@@ -321,4 +321,6 @@ async function route(ctx, event, method, path) {
   return resp(404, { error: '알 수 없는 /sap 경로' });
 }
 
-module.exports = { route };
+// callAI 는 /agent 도 쓴다. 모델 호출 경로(프록시·토큰·타임아웃)를 한 곳에 두려고
+// 복사하지 않고 내보낸다 — 두 벌이면 한쪽만 고치는 일이 생긴다.
+module.exports = { route, callAI, ddb, MODEL };

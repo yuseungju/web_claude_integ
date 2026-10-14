@@ -24,6 +24,7 @@ const https = require('https');
 const pgo = require('./pgo');
 const tennis = require('./tennis');
 const sap = require('./sap');
+const agent = require('./agent');
 
 const DB_CONFIG = {
   host:     process.env.DB_HOST,
@@ -3199,6 +3200,14 @@ exports.handler = async (event) => {
   if (path.startsWith('/sap/')) {
     const sapRes = await sap.route({ pool, resp, getBody: getBodyAr }, event, method, path);
     if (sapRes) return sapRes;
+  }
+
+  // [에이전트 관리 웹] agent_ 테이블만 다루는 독립 모듈.
+  // 모델 호출은 sap.js 의 callAI 를 빌려 쓴다 — 프록시·토큰 설정이 한 곳에 있어야 한다.
+  if (path.startsWith('/agent/')) {
+    const agRes = await agent.route(
+      { ddb: sap.ddb, callAI: sap.callAI, resp, getBody: getBodyAr }, event, method, path);
+    if (agRes) return agRes;
   }
 
   try {

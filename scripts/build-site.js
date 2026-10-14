@@ -31,6 +31,8 @@ const APPS = [
     desc: 'AI 는 클라우드, SAP 조회는 내 PC 의 워커 — 도구를 써가며 분석한다' },
   { dir: 'sap-facts', url: 'sap-facts', title: 'SAP 지식 정리',
     desc: '분석에서 알게 된 사실만 모아둔 곳 — 여러 사람이 함께 고친다' },
+  { dir: 'agent', url: 'agent', title: 'Agent',
+    desc: 'SAP 분석과 글 정리를 한곳에서 — 메뉴로 나뉜 작업 공간' },
 ];
 
 function rmrf(p) {

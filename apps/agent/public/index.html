@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent</title>
+<link rel="stylesheet" href="assets/theme.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1>Agent<small>SAP 분석과 글 정리를 한곳에서</small></h1>
+    <div class="acts" id="acts"></div>
+  </div>
+
+  <p class="note" id="hint">
+    SAP 조회는 이 PC 의 워커를 거칩니다 — 사내망에 있어 AWS 에서는 닿지 않습니다.
+    글 정리와 저장은 어디서든 됩니다.
+  </p>
+
+  <h2 class="cat">컨텐츠</h2>
+  <div class="grid">
+    <a class="card" href="merge/">
+      <span class="ico">📝</span>
+      <div class="name">글 합치기 · 요약</div>
+      <div class="desc">여러 글을 하나로 이어 붙이고 요약해서 보관합니다.</div>
+      <span class="tag on">사용 가능</span>
+    </a>
+    <div class="card soon">
+      <span class="ico">📂</span>
+      <div class="name">파일 보관함</div>
+      <div class="desc">올린 파일을 이름·분류로 관리합니다.</div>
+      <span class="tag">준비 중</span>
+    </div>
+  </div>
+
+  <h2 class="cat">SAP</h2>
+  <div class="grid">
+    <a class="card" href="../sap-local/">
+      <span class="ico">🔍</span>
+      <div class="name">SAP 분석</div>
+      <div class="desc">AI 가 운영 소스와 데이터를 조회해가며 분석합니다. 워커 필요.</div>
+      <span class="tag on">사용 가능</span>
+    </a>
+    <a class="card" href="../sap-facts/">
+      <span class="ico">📚</span>
+      <div class="name">지식 정리</div>
+      <div class="desc">분석에서 알게 된 것을 모아 함께 고칩니다.</div>
+      <span class="tag on">사용 가능</span>
+    </a>
+    <a class="card" href="../sap/">
+      <span class="ico">💬</span>
+      <div class="name">운영 문의</div>
+      <div class="desc">조회 없이 답할 수 있는 질문. 서버만으로 동작합니다.</div>
+      <span class="tag on">사용 가능</span>
+    </a>
+  </div>
+
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+document.getElementById('acts').innerHTML = Agent.barHtml();
+Agent.init({
+  who: document.getElementById('who'),
+  api: document.getElementById('api'),
+});
+</script>
+</body>
+</html>

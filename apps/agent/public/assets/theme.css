@@ -1,0 +1,75 @@
+/* /agent 공통 테마.
+   화면마다 색표를 복붙하면 한쪽만 고치는 일이 생긴다. 여기 한 곳만 둔다.
+   sap-local · sap-facts 와 같은 색을 쓴다 — 같은 도구라는 인상이 중요하다. */
+:root {
+  --bg:#f6f7f6; --surface:#fff; --sunken:#eceeed; --line:#d6dad8;
+  --fg:#16211f; --muted:#5c6a67; --accent:#15605b; --warn:#8a5a12; --ok:#1b7a4b;
+  --b:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+  --m:ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#111816; --surface:#18211f; --sunken:#141c1a; --line:#2b3835;
+          --fg:#e6ece9; --muted:#94a49f; --accent:#57b3aa; --warn:#d6a95f; --ok:#4fb97e;
+          color-scheme: dark; }
+}
+* { box-sizing: border-box }
+body { margin:0; background:var(--bg); color:var(--fg); font-family:var(--b); line-height:1.6 }
+.wrap { max-width:1000px; margin:0 auto; padding:20px 16px 60px }
+
+/* ── 머리말 ── */
+.top { display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+       justify-content:space-between; margin-bottom:14px }
+.top h1 { font-size:19px; margin:0; font-weight:600 }
+.top h1 small { display:block; font-size:11.5px; color:var(--muted); font-weight:400;
+                font-family:var(--m); margin-top:2px }
+.top h1 a { color:inherit; text-decoration:none }
+.acts { display:flex; gap:7px; align-items:center; flex-wrap:wrap }
+
+/* ── 입력 ── */
+select, button, input, textarea {
+  font-family:var(--b); font-size:13px; color:var(--fg); background:var(--sunken);
+  border:1px solid var(--line); border-radius:6px; padding:7px 10px }
+button { cursor:pointer }
+button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600 }
+button:disabled { opacity:.45; cursor:default }
+button.sm { font-size:12px; padding:4px 9px }
+a.btn { display:inline-block; font-size:13px; text-decoration:none; color:var(--fg);
+        background:var(--sunken); border:1px solid var(--line); border-radius:6px; padding:7px 10px }
+input.who { font-family:var(--m); font-size:12px; width:160px }
+textarea { width:100%; resize:vertical; line-height:1.6 }
+:focus-visible { outline:2px solid var(--accent); outline-offset:1px }
+
+/* ── 띠 ── */
+.bar { display:flex; flex-wrap:wrap; gap:9px; align-items:center; background:var(--surface);
+       border:1px solid var(--line); border-radius:10px; padding:10px 14px;
+       margin-bottom:14px; font-size:12.5px }
+.bar .k { color:var(--muted); font-family:var(--m); font-size:11.5px }
+.grow { flex:1 }
+
+.note { background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent);
+        border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12.5px; color:var(--muted) }
+.note.warn { border-left-color:var(--warn) }
+
+/* ── 메뉴 카드 ── */
+.cat { margin:22px 0 10px; font-size:13px; font-weight:600; color:var(--muted) }
+.grid { display:grid; gap:10px; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)) }
+.card { display:block; text-decoration:none; color:inherit; background:var(--surface);
+        border:1px solid var(--line); border-radius:10px; padding:14px 16px }
+a.card:hover { border-color:var(--accent) }
+.card .ico { font-size:20px; line-height:1 }
+.card .name { font-weight:600; margin:7px 0 3px; font-size:14px }
+.card .desc { font-size:12px; color:var(--muted); line-height:1.5 }
+.card.soon { opacity:.5 }
+.card .tag { display:inline-block; margin-top:8px; font-family:var(--m); font-size:10.5px;
+             padding:2px 7px; border-radius:99px; border:1px solid var(--line); color:var(--muted) }
+.card .tag.on { color:var(--ok); border-color:var(--ok) }
+
+/* ── 공용 ── */
+.panel { background:var(--surface); border:1px solid var(--line); border-radius:10px;
+         padding:13px 15px; margin-bottom:12px }
+.panel h2 { font-size:13.5px; margin:0 0 9px; font-weight:600 }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px }
+.empty { color:var(--muted); font-size:13.5px; text-align:center; padding:34px 0 }
+.msg { font-family:var(--m); font-size:11.5px; color:var(--muted) }
+.msg.ok { color:var(--ok) } .msg.bad { color:var(--warn) }
