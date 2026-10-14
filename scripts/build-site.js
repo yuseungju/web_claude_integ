@@ -33,6 +33,8 @@ const APPS = [
     desc: '분석에서 알게 된 사실만 모아둔 곳 — 여러 사람이 함께 고친다' },
   { dir: 'agent', url: 'agent', title: 'Agent',
     desc: 'SAP 분석과 글 정리를 한곳에서 — 메뉴로 나뉜 작업 공간' },
+  { dir: 'travel', url: 'travel', title: '여행 일정',
+    desc: '초안은 AI 가 짜고 사람이 다듬는 여행 일정표' },
 ];
 
 function rmrf(p) {

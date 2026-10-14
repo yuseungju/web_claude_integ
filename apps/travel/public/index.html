@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>여행 일정</title>
+<link rel="stylesheet" href="../agent/assets/theme.css">
+<style>
+.cols { display:grid; gap:12px; grid-template-columns:250px 1fr; align-items:start }
+@media (max-width: 820px) { .cols { grid-template-columns:1fr } }
+
+.list { display:flex; flex-direction:column; gap:6px; max-height:72vh; overflow:auto }
+.trip { text-align:left; width:100%; background:var(--surface); border:1px solid var(--line);
+        border-radius:8px; padding:8px 11px; cursor:pointer; font-size:12.5px }
+.trip:hover, .trip.on { border-color:var(--accent) }
+.trip.on { background:var(--sunken) }
+.trip .t { font-weight:600; display:block; margin-bottom:2px }
+.trip .m { font-family:var(--m); font-size:10.5px; color:var(--muted) }
+
+/* 하루 */
+.day { border:1px solid var(--line); border-radius:10px; background:var(--surface);
+       padding:11px 13px; margin-bottom:10px }
+.day > .head { display:flex; gap:8px; align-items:center; margin-bottom:8px }
+.day .num { font-family:var(--m); font-size:11px; color:var(--muted); flex:none;
+            background:var(--sunken); border-radius:99px; padding:2px 9px }
+.day .head input { flex:1; font-size:13px; font-weight:600; padding:4px 8px;
+                   background:transparent; border:1px solid transparent }
+.day .head input:hover { border-color:var(--line) }
+.day .head input:focus { background:var(--sunken); border-color:var(--accent); outline:none }
+
+/* 일정 한 줄 */
+.item { display:grid; grid-template-columns:72px 1fr 1.2fr auto; gap:6px; align-items:center;
+        margin-bottom:5px }
+@media (max-width: 620px) { .item { grid-template-columns:62px 1fr auto } .item .memo { grid-column:1/-1 } }
+.item input { font-size:12.5px; padding:4px 7px; background:transparent; border:1px solid transparent }
+.item input:hover { border-color:var(--line) }
+.item input:focus { background:var(--sunken); border-color:var(--accent); outline:none }
+.item input.time { font-family:var(--m); text-align:center }
+.item input.place { font-weight:500 }
+.item input.memo { color:var(--muted) }
+
+.planbox { display:grid; gap:8px; grid-template-columns:1.4fr 80px 1fr auto; align-items:end }
+@media (max-width: 720px) { .planbox { grid-template-columns:1fr } }
+.planbox label { font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px }
+.planbox input { width:100% }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h1><a href="../agent/">Agent</a> › 여행 일정<small>초안은 AI 가, 다듬기는 사람이</small></h1>
+    <div class="acts" id="acts"></div>
+  </div>
+
+  <div class="bar">
+    <button id="new" type="button">새 여행</button>
+    <button class="primary" id="save" type="button">저장</button>
+    <button id="del" type="button">삭제</button>
+    <span class="grow"></span>
+    <span class="k" id="stat"></span>
+  </div>
+
+  <div class="cols">
+
+    <div class="panel">
+      <h2>내 여행</h2>
+      <div class="list" id="list"><p class="empty">불러오는 중…</p></div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>일정 만들기</h2>
+        <div class="planbox">
+          <div>
+            <label for="where">어디로</label>
+            <input id="where" placeholder="예) 도쿄, 다낭, 제주">
+          </div>
+          <div>
+            <label for="days">며칠</label>
+            <input id="days" type="number" min="1" max="30" value="3">
+          </div>
+          <div>
+            <label for="want">원하는 것 (선택)</label>
+            <input id="want" placeholder="예) 아이 동반, 미술관 위주, 많이 안 걷기">
+          </div>
+          <button class="primary" id="plan" type="button">초안 만들기</button>
+        </div>
+        <div class="row">
+          <label class="k" for="startDate" style="margin:0">출발일</label>
+          <input id="startDate" type="date">
+          <span class="grow"></span>
+          <button id="addDay" type="button">하루 추가</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>제목</h2>
+        <input id="title" placeholder="예) 도쿄 3박4일" style="width:100%">
+      </div>
+
+      <div id="days-wrap"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../agent/assets/app.js"></script>
+<script>
+var listEl = document.getElementById('list');
+var daysWrap = document.getElementById('days-wrap');
+var titleEl = document.getElementById('title');
+var statEl = document.getElementById('stat');
+
+/* 지금 편집 중인 여행. docId 가 없으면 아직 저장 안 된 것.
+   rev 는 저장할 때 조건으로 걸어 다른 곳의 저장을 덮어쓰지 않게 한다. */
+var cur = { docId: null, rev: 0 };
+var trips = [];
+
+document.getElementById('acts').innerHTML = Agent.barHtml();
+Agent.init({
+  who: document.getElementById('who'),
+  api: document.getElementById('api'),
+  onApiChange: function () { loadList(); },
+});
+
+function say(text, cls) {
+  statEl.className = 'k ' + (cls || '');
+  statEl.textContent = text;
+}
+
+/* ── 하루 / 일정 줄 ─────────────────────────────── */
+
+function addDay(title, items) {
+  var box = document.createElement('div');
+  box.className = 'day';
+
+  var head = document.createElement('div');
+  head.className = 'head';
+
+  var num = document.createElement('span');
+  num.className = 'num';
+  head.appendChild(num);
+
+  var t = document.createElement('input');
+  t.placeholder = '이 날의 제목 (예: 시내 중심)';
+  t.value = title || '';
+  head.appendChild(t);
+
+  var addItem = document.createElement('button');
+  addItem.className = 'sm'; addItem.type = 'button'; addItem.textContent = '+ 일정';
+  head.appendChild(addItem);
+
+  var up = document.createElement('button');
+  up.className = 'sm'; up.type = 'button'; up.textContent = '↑'; up.title = '앞 날로';
+  up.addEventListener('click', function () {
+    var prev = box.previousElementSibling;
+    if (prev) { daysWrap.insertBefore(box, prev); renumber(); }
+  });
+  head.appendChild(up);
+
+  var rm = document.createElement('button');
+  rm.className = 'sm'; rm.type = 'button'; rm.textContent = '×'; rm.title = '이 날 빼기';
+  rm.addEventListener('click', function () { box.remove(); renumber(); });
+  head.appendChild(rm);
+
+  box.appendChild(head);
+
+  var body = document.createElement('div');
+  body.className = 'items';
+  box.appendChild(body);
+
+  function addItemRow(it) {
+    var row = document.createElement('div');
+    row.className = 'item';
+
+    var time = document.createElement('input');
+    time.className = 'time'; time.placeholder = '09:30';
+    time.value = (it && it.time) || '';
+
+    var place = document.createElement('input');
+    place.className = 'place'; place.placeholder = '장소';
+    place.value = (it && it.place) || '';
+
+    var memo = document.createElement('input');
+    memo.className = 'memo'; memo.placeholder = '메모';
+    memo.value = (it && it.memo) || '';
+
+    var x = document.createElement('button');
+    x.className = 'sm'; x.type = 'button'; x.textContent = '×';
+    x.addEventListener('click', function () { row.remove(); });
+
+    row.appendChild(time); row.appendChild(place); row.appendChild(memo); row.appendChild(x);
+    body.appendChild(row);
+    return row;
+  }
+
+  addItem.addEventListener('click', function () { addItemRow().querySelector('.time').focus(); });
+  (items && items.length ? items : [null]).forEach(addItemRow);
+
+  daysWrap.appendChild(box);
+  renumber();
+  return box;
+}
+
+/** 날짜 번호와, 출발일이 있으면 실제 날짜까지 붙인다. */
+function renumber() {
+  var start = document.getElementById('startDate').value;
+  Array.prototype.forEach.call(daysWrap.querySelectorAll('.day'), function (b, i) {
+    var label = (i + 1) + '일차';
+    if (start) {
+      var d = new Date(start + 'T00:00:00');
+      d.setDate(d.getDate() + i);
+      var w = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+      label += ' · ' + (d.getMonth() + 1) + '/' + d.getDate() + '(' + w + ')';
+    }
+    b.querySelector('.num').textContent = label;
+  });
+}
+document.getElementById('startDate').addEventListener('change', renumber);
+document.getElementById('addDay').addEventListener('click', function () { addDay('', null); });
+
+function readDays() {
+  return Array.prototype.map.call(daysWrap.querySelectorAll('.day'), function (b) {
+    return {
+      title: b.querySelector('.head input').value,
+      items: Array.prototype.map.call(b.querySelectorAll('.item'), function (r) {
+        return {
+          time: r.querySelector('.time').value,
+          place: r.querySelector('.place').value,
+          memo: r.querySelector('.memo').value,
+        };
+      }).filter(function (it) { return it.place.trim() || it.memo.trim(); }),
+    };
+  });
+}
+
+function countItems(days) {
+  return (days || []).reduce(function (n, d) { return n + (d.items || []).length; }, 0);
+}
+
+/* ── 초안 만들기 ────────────────────────────────── */
+
+document.getElementById('plan').addEventListener('click', function () {
+  var where = document.getElementById('where').value.trim();
+  if (!where) { say('어디로 가는지 적어주세요', 'bad'); return; }
+  if (daysWrap.children.length && !confirm('지금 일정을 지우고 새 초안을 만듭니다. 계속할까요?')) return;
+
+  var btn = this;
+  btn.disabled = true;
+  say('초안 만드는 중… (수십 초 걸릴 수 있습니다)');
+
+  Agent.call('/agent/travel/plan', {
+    method: 'POST',
+    body: {
+      where: where,
+      days: Number(document.getElementById('days').value) || 3,
+      want: document.getElementById('want').value,
+      startDate: document.getElementById('startDate').value,
+    },
+  })
+    .then(function (d) {
+      daysWrap.innerHTML = '';
+      (d.days || []).forEach(function (day) { addDay(day.title, day.items); });
+      if (!titleEl.value.trim()) {
+        titleEl.value = where + ' ' + (d.days || []).length + '일';
+      }
+      say('초안 ' + (d.days || []).length + '일 · ' + countItems(d.days) + '곳 — 고쳐서 저장하세요', 'ok');
+    })
+    .catch(function (e) { say('초안 실패: ' + e.message, 'bad'); })
+    .then(function () { btn.disabled = false; });
+});
+
+/* ── 보관함 ─────────────────────────────────────── */
+
+function loadList() {
+  return Agent.call('/agent/docs', { query: { kind: 'travel' } })
+    .then(function (d) { trips = d.docs || []; drawList(); })
+    .catch(function (e) {
+      listEl.innerHTML = '';
+      var p = document.createElement('p');
+      p.className = 'empty';
+      p.textContent = '불러오지 못했습니다: ' + e.message;
+      listEl.appendChild(p);
+    });
+}
+
+function drawList() {
+  listEl.innerHTML = '';
+  if (!trips.length) {
+    var p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = '아직 저장한 여행이 없습니다.';
+    listEl.appendChild(p);
+    return;
+  }
+  trips.forEach(function (d) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'trip' + (d.docId === cur.docId ? ' on' : '');
+    var t = document.createElement('span');
+    t.className = 't';
+    t.textContent = d.title;
+    var m = document.createElement('span');
+    m.className = 'm';
+    m.textContent = Agent.fmtTime(d.updatedAt);
+    b.appendChild(t); b.appendChild(m);
+    b.addEventListener('click', function () { open(d.docId); });
+    listEl.appendChild(b);
+  });
+}
+
+function open(docId) {
+  say('불러오는 중…');
+  Agent.call('/agent/doc', { query: { docId: docId } })
+    .then(function (res) {
+      var doc = res.doc;
+      var data = doc.data || {};
+      cur = { docId: doc.docId, rev: doc.rev };
+      titleEl.value = doc.title || '';
+      document.getElementById('where').value = data.where || '';
+      document.getElementById('startDate').value = data.startDate || '';
+      daysWrap.innerHTML = '';
+      (data.days || []).forEach(function (day) { addDay(day.title, day.items); });
+      if (!daysWrap.children.length) addDay('', null);
+      renumber();
+      drawList();
+      say('rev ' + doc.rev + ' · ' + Agent.fmtTime(doc.updatedAt));
+    })
+    .catch(function (e) { say('불러오기 실패: ' + e.message, 'bad'); });
+}
+
+function reset() {
+  cur = { docId: null, rev: 0 };
+  titleEl.value = '';
+  document.getElementById('where').value = '';
+  document.getElementById('want').value = '';
+  document.getElementById('startDate').value = '';
+  daysWrap.innerHTML = '';
+  addDay('', null);
+  drawList();
+  say('새 여행');
+}
+document.getElementById('new').addEventListener('click', reset);
+
+document.getElementById('save').addEventListener('click', function () {
+  var days = readDays();
+  if (!days.length || !countItems(days)) { say('저장할 일정이 없습니다', 'bad'); return; }
+
+  var payload = {
+    kind: 'travel',
+    title: titleEl.value.trim() || (document.getElementById('where').value.trim() || '여행'),
+    // 일정은 글이 아니라 구조다. data 로 넣어야 다시 열어 고칠 수 있다.
+    data: {
+      where: document.getElementById('where').value.trim(),
+      startDate: document.getElementById('startDate').value,
+      days: days,
+    },
+    // 목록·검색에서 쓰려고 사람이 읽을 수 있는 형태도 같이 남긴다
+    body: days.map(function (d, i) {
+      return '## ' + (i + 1) + '일차 ' + (d.title || '') + '\n'
+        + d.items.map(function (it) {
+            return '- ' + [it.time, it.place, it.memo].filter(Boolean).join(' · ');
+          }).join('\n');
+    }).join('\n\n'),
+  };
+  if (cur.docId) { payload.docId = cur.docId; payload.rev = cur.rev; }
+
+  var btn = this;
+  btn.disabled = true;
+  say('저장 중…');
+  Agent.call('/agent/doc', { method: 'POST', body: payload })
+    .then(function (d) {
+      cur = { docId: d.doc.docId, rev: d.doc.rev };
+      say('저장했습니다 · rev ' + d.doc.rev, 'ok');
+      return loadList();
+    })
+    .catch(function (e) {
+      if (e.status === 409 && e.payload && e.payload.doc) {
+        say('다른 곳에서 먼저 저장했습니다', 'bad');
+        if (confirm('다른 곳에서 먼저 저장했습니다.\n\n확인: 서버의 최신 내용을 불러옵니다(지금 입력은 사라집니다)\n취소: 그대로 두고 직접 비교합니다')) {
+          open(cur.docId);
+        }
+        return;
+      }
+      say('저장 실패: ' + e.message, 'bad');
+    })
+    .then(function () { btn.disabled = false; });
+});
+
+document.getElementById('del').addEventListener('click', function () {
+  if (!cur.docId) { say('저장되지 않은 여행입니다', 'bad'); return; }
+  if (!confirm('이 여행을 지웁니다. 되돌릴 수 없습니다.')) return;
+  Agent.call('/agent/doc', { method: 'DELETE', body: { docId: cur.docId } })
+    .then(function () { reset(); return loadList(); })
+    .then(function () { say('지웠습니다', 'ok'); })
+    .catch(function (e) { say('삭제 실패: ' + e.message, 'bad'); });
+});
+
+window.addEventListener('beforeunload', function (ev) {
+  if (countItems(readDays())) { ev.preventDefault(); ev.returnValue = ''; }
+});
+
+addDay('', null);
+loadList();
+</script>
+</body>
+</html>
