@@ -185,8 +185,10 @@ async function route(ctx, event, method, path) {
   const body = getBody(event) || {};
   const qs = event.queryStringParameters || {};
   const userKey = String(body.userKey || qs.userKey || '').trim();
-  if (!/^[A-Za-z0-9._@-]{3,64}$/.test(userKey)) {
-    return resp(400, { error: '사용자 키가 올바르지 않습니다.' });
+  // 한글 이름을 받는다. 영문만 허용하면 화면이 조용히 local-test 로 바꿔 저장해서,
+  // 누가 쓴 것인지 알 수 없게 된다. DynamoDB 키는 UTF-8 이라 한글이 들어가도 된다.
+  if (!/^[\p{L}\p{N}._@-]{2,64}$/u.test(userKey)) {
+    return resp(400, { error: '사용자 키가 올바르지 않습니다(글자·숫자와 . _ @ - 만, 2~64자).' });
   }
 
   /* 지식 저장소(/sap/facts*) — 대화가 아니라 요약된 사실을 쌓고 함께 고친다.

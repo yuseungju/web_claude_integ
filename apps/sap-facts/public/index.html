@@ -177,7 +177,8 @@ var openKeys = {};       // 펼쳐둔 트리 노드. 다시 그려도 접히지 
 function userKey() {
   var v = whoInput.value.trim().replace(/\s+/g, '-');
   try { localStorage.setItem('sapUserKey', whoInput.value.trim()); } catch (e) {}
-  return /^[A-Za-z0-9._@-]{3,64}$/.test(v) ? v : 'local-test';
+  // 한글 이름도 받는다 — sap-local 과 같은 규칙
+  return /^[\p{L}\p{N}._@-]{2,64}$/u.test(v) ? v : 'local-test';
 }
 
 var LABEL = { draft: '검수중', confirmed: '확인됨', rejected: '틀림' };

@@ -17,6 +17,12 @@
         if (apiSel) { var a = localStorage.getItem('sapApi'); if (a) apiSel.value = a; }
       } catch (e) {}
 
+      // _who 를 먼저 꽂아야 한다. 아래 apply() 가 init 안에서 바로 onApiChange 를
+      // 부르고, 거기서 이미 userKey() 를 쓴다. 뒤에 꽂으면 그 첫 호출만 익명으로 나간다.
+      Agent._who = who;
+      if (who) who.addEventListener('input', function () { Agent.markWho(); });
+      Agent.markWho();
+
       if (apiSel) {
         var apply = function () {
           Agent.api = apiSel.value === 'local' ? location.origin : AWS_API;
@@ -26,19 +32,31 @@
         apply();
         apiSel.addEventListener('change', apply);
       }
-      if (who) {
-        who.addEventListener('change', function () { Agent.userKey(who); });
-      }
-      Agent._who = who;
       return Agent;
     },
 
-    /** 서버가 받는 형식(영숫자·._@-, 3~64자)으로 맞춘다. 비었으면 익명으로 남긴다. */
+    /* 서버가 받는 형식으로 맞춘다. 한글 이름도 된다 — 공백만 하이픈으로 바꾼다.
+       비었거나 쓸 수 없는 글자면 익명(local-test)으로 남는데, 그러면 누가 쓴
+       것인지 알 수 없으므로 화면에 그 사실을 보여준다(아래 markWho). */
     userKey: function (who) {
       who = who || Agent._who;
-      var v = who ? who.value.trim().replace(/\s+/g, '-') : '';
-      try { if (who) localStorage.setItem('sapUserKey', who.value.trim()); } catch (e) {}
-      return /^[A-Za-z0-9._@-]{3,64}$/.test(v) ? v : 'local-test';
+      var raw = who ? who.value.trim() : '';
+      try { if (who) localStorage.setItem('sapUserKey', raw); } catch (e) {}
+      var v = raw.replace(/\s+/g, '-');
+      var ok = /^[\p{L}\p{N}._@-]{2,64}$/u.test(v);
+      Agent.anonymous = !ok;
+      return ok ? v : 'local-test';
+    },
+
+    /** 익명으로 기록되는 중이면 입력칸에 표시한다. 조용히 넘어가면 나중에 못 찾는다. */
+    markWho: function () {
+      var who = Agent._who;
+      if (!who) return;
+      Agent.userKey();
+      who.style.borderColor = Agent.anonymous ? 'var(--warn)' : '';
+      who.title = Agent.anonymous
+        ? '이름이 비었거나 쓸 수 없는 글자입니다 — 익명(local-test)으로 기록됩니다'
+        : '저장한 글의 작성자로 기록됩니다';
     },
 
     /** 서버 호출. 오류를 던지므로 부르는 쪽은 catch 한 곳에서 처리하면 된다. */

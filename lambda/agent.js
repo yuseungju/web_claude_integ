@@ -120,8 +120,9 @@ async function route(deps, event, method, path) {
   const body = getBody(event) || {};
   const qs = event.queryStringParameters || {};
   const userKey = String(body.userKey || qs.userKey || '').trim();
-  if (!/^[A-Za-z0-9._@-]{3,64}$/.test(userKey)) {
-    return resp(400, { error: '사용자 키가 올바르지 않습니다.' });
+  // 한글 이름을 받는다 — sap.js 와 같은 규칙. 자세한 이유는 거기 주석 참고.
+  if (!/^[\p{L}\p{N}._@-]{2,64}$/u.test(userKey)) {
+    return resp(400, { error: '사용자 키가 올바르지 않습니다(글자·숫자와 . _ @ - 만, 2~64자).' });
   }
 
   /* 목록 */
