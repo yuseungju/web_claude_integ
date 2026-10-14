@@ -35,6 +35,15 @@ try {
   console.warn('[api] lambda 폴더에서 `npm install` 을 한 번 돌리세요.');
 }
 
+/* 화면을 먼저 내보낸다.
+   배포에서는 화면(Amplify)과 API(API Gateway)가 다른 주소라 겹칠 일이 없는데,
+   로컬에서는 한 서버가 둘 다 맡는다. /agent/ 와 /sap/ 은 앱의 URL 이면서
+   API 의 접두사이기도 해서, API 를 먼저 걸면 페이지를 열었을 때 화면 대신
+   {"error":...} 가 나온다.
+   express.static 은 해당 파일이 없으면 next() 로 넘기므로, 먼저 두어도
+   /agent/docs 같은 API 는 그대로 아래 핸들러로 내려간다. */
+app.use(express.static(DIST));
+
 if (sap) {
   // 도구 결과까지 실린 대화는 수 MB 가 된다. express 기본값 100kb 로는 막힌다.
   app.use(['/sap', '/agent'], express.json({ limit: '12mb' }));
@@ -61,8 +70,6 @@ if (sap) {
       { ddb: sap.ddb, callAI: sap.callAI, resp: ctx.resp, getBody: ctx.getBody }, ev, m, p)));
   }
 }
-
-app.use(express.static(DIST));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(DIST, 'index.html'));
