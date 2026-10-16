@@ -67,16 +67,6 @@
     </a>
   </div>
 
-  <h2 class="cat">연결현황
-    <button class="re" id="reload" type="button">다시 확인</button></h2>
-  <p class="note">
-    무엇이 붙어 있고 무엇이 비어 있는지. <b>서버(AWS/로컬)마다 다릅니다</b> —
-    위쪽 선택에 따라 그 서버의 상태를 봅니다.
-  </p>
-  <div id="links" class="links"><p class="note">확인 중…</p></div>
-
-  <div id="preview"></div>
-
 </div>
 
 <script src="assets/app.js"></script>
@@ -86,88 +76,6 @@ Agent.init({
   who: document.getElementById('who'),
   api: document.getElementById('api'),
 });
-
-/* ── 연결현황 ──────────────────────────────────────────
-   키가 "있다" 와 "실제로 닿는다" 는 다르다. 만료된 키도 있기는 하다.
-   그래서 외부 호출까지 해보고 걸린 시간을 같이 보여준다. */
-var linksEl = document.getElementById('links');
-
-function esc(v) {
-  return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
-  });
-}
-
-function row(name, ok, note, ms) {
-  return '<div class="link ' + (ok ? 'ok' : 'ng') + '">'
-    + '<span class="dot"></span>'
-    + '<span class="ln">' + esc(name) + '</span>'
-    + '<span class="lv">' + esc(note) + '</span>'
-    + (ms != null ? '<span class="lm">' + ms + 'ms</span>' : '')
-    + '</div>';
-}
-
-function loadLinks() {
-  linksEl.innerHTML = '<p class="note">확인 중…</p>';
-  Agent.call('/status/links')
-    .then(function (d) {
-      var h = '';
-      (d.links || []).forEach(function (l) {
-        h += row(l.name, l.ok, l.ok ? (l.detail || '연결됨') : l.detail, l.ms);
-      });
-      (d.config || []).forEach(function (c) {
-        h += row(c.name, c.set, c.note || (c.set ? '설정됨' : '설정 안 됨'), null);
-      });
-      var k = d.keys || {}, kk = Object.keys(k).filter(function (n) { return k[n]; });
-      if (kk.length) {
-        h += '<p class="note" style="margin-top:8px">키 지문 — '
-          + kk.map(function (n) { return esc(n) + ' ' + esc(k[n]); }).join(' · ') + '</p>';
-      }
-      linksEl.innerHTML = h || '<p class="note">표시할 항목이 없습니다.</p>';
-    })
-    .catch(function (e) {
-      linksEl.innerHTML = '<p class="note">확인 실패 — ' + esc(e.message)
-        + '<br>AWS 에 아직 배포 전이면 위에서 <b>서버: 로컬</b> 로 바꿔보세요.</p>';
-    });
-}
-
-/* 초록불보다 "실제로 뭐가 오는지" 가 확실하다. 사진이 뜨면 키·경로·필드매핑이
-   전부 맞은 것이다. 그래서 연결현황 아래에 실물을 조금 깐다. */
-var prevEl = document.getElementById('preview');
-
-function tile(x) {
-  return '<div class="tile">'
-    + (x.photo ? '<img loading="lazy" src="' + esc(x.photo) + '" alt=""'
-        + ' onerror="this.style.visibility=\'hidden\'">' : '')
-    + '<div class="tn">' + esc(x.name) + '</div>'
-    + (x.sub ? '<div class="ts">' + esc(x.sub) + '</div>' : '')
-    + '</div>';
-}
-
-function block(title, items, err) {
-  if (err) return '<h2 class="cat">' + title + '</h2><p class="note">' + esc(err) + '</p>';
-  if (!items || !items.length) return '';
-  return '<h2 class="cat">' + title + ' <small style="font-weight:400">실제 응답</small></h2>'
-    + '<div class="tiles">' + items.map(tile).join('') + '</div>';
-}
-
-function loadPreview() {
-  Agent.call('/status/preview')
-    .then(function (d) {
-      prevEl.innerHTML =
-          block('숙소 미리보기 (서울)', d.stays, d.stayError)
-        + block('항공사 로고', d.flights, d.flightError);
-    })
-    .catch(function (e) {
-      prevEl.innerHTML = '<p class="note">미리보기 실패 — ' + esc(e.message) + '</p>';
-    });
-}
-
-document.getElementById('reload').addEventListener('click', function () {
-  loadLinks(); loadPreview();
-});
-loadLinks();
-loadPreview();
 </script>
 </body>
 </html>
