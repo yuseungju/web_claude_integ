@@ -51,7 +51,47 @@ async function tourapiCheck() {
   return '정상';
 }
 
+/**
+ * 미리보기 — 연결됐다는 초록불보다 "실제로 뭐가 오는지" 가 확실하다.
+ * 사진이 뜨면 키·경로·필드매핑이 전부 맞은 것이다.
+ */
+async function preview() {
+  const key = process.env.LITEAPI_KEY;
+  if (!key) return { stays: [], flights: [], error: 'LITEAPI_KEY 없음' };
+  const head = { headers: { 'X-API-Key': key, Accept: 'application/json' } };
+  const out = { stays: [], flights: [] };
+
+  // 숙소 — 지역명은 /data/hotels 가 안 받아서 placeId 를 먼저 구한다
+  try {
+    const p = await (await fetch(
+      'https://api.liteapi.travel/v3.0/data/places?textQuery=Seoul', head)).json();
+    const id = ((p.data || [])[0] || {}).placeId;
+    if (id) {
+      const h = await (await fetch('https://api.liteapi.travel/v3.0/data/hotels?placeId='
+        + encodeURIComponent(id) + '&limit=4', head)).json();
+      out.stays = (h.data || []).map(x => ({
+        name: x.name, photo: x.main_photo || x.thumbnail,
+        sub: [x.stars ? x.stars + '성급' : '', x.rating ? '★' + x.rating : '', x.city]
+          .filter(Boolean).join(' · '),
+      }));
+    }
+  } catch (e) { out.stayError = e.message; }
+
+  // 항공 — 예약은 별도 승인이 필요하지만 항공사 로고는 지금도 나온다
+  try {
+    // 끝에 슬래시가 없으면 301 로 떨어진다
+    const f = await (await fetch(
+      'https://api.liteapi.travel/v3.0/data/flights/airlines/?limit=12', head)).json();
+    const list = ((f.data || {}).airlines) || (Array.isArray(f.data) ? f.data : []);
+    out.flights = list.filter(a => a.logo).slice(0, 8)
+      .map(a => ({ name: a.name, photo: a.logo, sub: a.iata }));
+  } catch (e) { out.flightError = e.message; }
+
+  return out;
+}
+
 async function route({ resp }, event, path) {
+  if (path === '/status/preview') return resp(200, await preview());
   if (path !== '/status/links') return null;
 
   // 키가 꽂혀 있는지(설정)와 실제로 닿는지(연결)는 다른 문제다. 둘 다 본다.

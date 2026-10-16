@@ -75,6 +75,8 @@
   </p>
   <div id="links" class="links"><p class="note">확인 중…</p></div>
 
+  <div id="preview"></div>
+
 </div>
 
 <script src="assets/app.js"></script>
@@ -129,8 +131,43 @@ function loadLinks() {
     });
 }
 
-document.getElementById('reload').addEventListener('click', loadLinks);
+/* 초록불보다 "실제로 뭐가 오는지" 가 확실하다. 사진이 뜨면 키·경로·필드매핑이
+   전부 맞은 것이다. 그래서 연결현황 아래에 실물을 조금 깐다. */
+var prevEl = document.getElementById('preview');
+
+function tile(x) {
+  return '<div class="tile">'
+    + (x.photo ? '<img loading="lazy" src="' + esc(x.photo) + '" alt=""'
+        + ' onerror="this.style.visibility=\'hidden\'">' : '')
+    + '<div class="tn">' + esc(x.name) + '</div>'
+    + (x.sub ? '<div class="ts">' + esc(x.sub) + '</div>' : '')
+    + '</div>';
+}
+
+function block(title, items, err) {
+  if (err) return '<h2 class="cat">' + title + '</h2><p class="note">' + esc(err) + '</p>';
+  if (!items || !items.length) return '';
+  return '<h2 class="cat">' + title + ' <small style="font-weight:400">실제 응답</small></h2>'
+    + '<div class="tiles">' + items.map(tile).join('') + '</div>';
+}
+
+function loadPreview() {
+  Agent.call('/status/preview')
+    .then(function (d) {
+      prevEl.innerHTML =
+          block('숙소 미리보기 (서울)', d.stays, d.stayError)
+        + block('항공사 로고', d.flights, d.flightError);
+    })
+    .catch(function (e) {
+      prevEl.innerHTML = '<p class="note">미리보기 실패 — ' + esc(e.message) + '</p>';
+    });
+}
+
+document.getElementById('reload').addEventListener('click', function () {
+  loadLinks(); loadPreview();
+});
 loadLinks();
+loadPreview();
 </script>
 </body>
 </html>
