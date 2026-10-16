@@ -86,6 +86,24 @@ if (sap) {
   }
 }
 
+/* /status/* — 연결현황. 로컬에서 봐야 "로컬엔 키가 있는데 AWS 엔 없다" 같은
+   차이가 드러난다. 그게 이 화면의 쓸모다. */
+try {
+  const status = require('./lambda/status');
+  app.all('/status/*', async (req, res) => {
+    try {
+      const out = await status.route(
+        { resp: (code, obj) => ({ code, obj }) }, {}, req.path);
+      if (!out) return res.status(404).json({ error: '알 수 없는 경로' });
+      res.status(out.code).json(out.obj);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+} catch (e) {
+  console.warn('[status] 모듈을 불러오지 못했습니다 — ' + e.message);
+}
+
 /* /stay/* — 숙소 찾기. DynamoDB 를 쓰지 않으므로 sap 로드 여부와 무관하게 건다.
    앱 URL 과도 겹치지 않는다(apps/stay 는 없다). */
 try {
