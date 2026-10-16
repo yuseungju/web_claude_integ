@@ -25,6 +25,7 @@ const pgo = require('./pgo');
 const tennis = require('./tennis');
 const sap = require('./sap');
 const agent = require('./agent');
+const stay  = require('./stay');
 
 const DB_CONFIG = {
   host:     process.env.DB_HOST,
@@ -3200,6 +3201,17 @@ exports.handler = async (event) => {
   if (path.startsWith('/sap/')) {
     const sapRes = await sap.route({ pool, resp, getBody: getBodyAr }, event, method, path);
     if (sapRes) return sapRes;
+  }
+
+  // [숙소 찾기] 사진·정보만 가져오고 예약은 공급자 링크로 보낸다. DB 를 쓰지 않는다.
+  if (path.startsWith('/stay/')) {
+    try {
+      const stRes = await stay.route({ resp }, event, path, getBodyAr(event));
+      if (stRes) return stRes;
+    } catch (e) {
+      console.error('[stay] ' + method + ' ' + path + ' 실패:', e.name, e.message);
+      return resp(500, { error: e.message, name: e.name });
+    }
   }
 
   // [에이전트 관리 웹] agent_ 테이블만 다루는 독립 모듈.

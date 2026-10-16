@@ -15,6 +15,21 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
+/* .env 를 읽는다. 키를 셸에 매번 export 하다 보면 결국 명령줄에 비밀번호를
+   남기게 된다. dotenv 를 받기보다 열 줄로 끝내는 편이 의존성이 적다.
+   이미 환경에 있는 값은 덮지 않는다 — 배포 환경의 설정이 우선이다. */
+(function loadEnv() {
+  const f = path.join(__dirname, '.env');
+  if (!fs.existsSync(f)) return;
+  for (const line of fs.readFileSync(f, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m || line.trim().startsWith('#')) continue;
+    const v = m[2].trim().replace(/^(['"])([\s\S]*)\1$/, '$2');
+    if (!(m[1] in process.env)) process.env[m[1]] = v;
+  }
+  console.log('[env] .env 를 읽었습니다');
+})();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DIST = path.join(__dirname, 'dist');
@@ -69,6 +84,26 @@ if (sap) {
     app.all('/agent/*', bridge((ctx, ev, m, p) => agent.route(
       { ddb: sap.ddb, callAI: sap.callAI, resp: ctx.resp, getBody: ctx.getBody }, ev, m, p)));
   }
+}
+
+/* /stay/* — 숙소 찾기. DynamoDB 를 쓰지 않으므로 sap 로드 여부와 무관하게 건다.
+   앱 URL 과도 겹치지 않는다(apps/stay 는 없다). */
+try {
+  const stay = require('./lambda/stay');
+  app.use('/stay', express.json({ limit: '1mb' }));
+  app.all('/stay/*', async (req, res) => {
+    try {
+      const out = await stay.route(
+        { resp: (code, obj) => ({ code, obj }) }, {}, req.path, req.body || {});
+      if (!out) return res.status(404).json({ error: '알 수 없는 경로' });
+      res.status(out.code).json(out.obj);
+    } catch (e) {
+      console.error('[stay] ' + req.method + ' ' + req.path + ' 실패:', e.message);
+      res.status(500).json({ error: e.message, name: e.name });
+    }
+  });
+} catch (e) {
+  console.warn('[stay] 모듈을 불러오지 못했습니다 — ' + e.message);
 }
 
 app.get('/', (req, res) => {
