@@ -15,32 +15,6 @@ const SITE_HOST = 'www.xn--vk1b79znxd34c61h.kr';
 const CHECK_PATH = '/?act=info.page&pcode=check';
 const MAX_PAGE = 10;
 
-/* ── 비밀번호 암호화 ────────────────────────────────────────────
- * 예약 사이트 비밀번호는 우리가 대신 로그인해야 해서 되돌릴 수 있어야 한다.
- * 그래서 해시가 아니라 AES-256-GCM 으로 암호화해 둔다.
- * 키는 ACCOUNT_ENC_KEY 를 쓰고, 없으면 JWT_SECRET 에서 파생한다
- * (이 경우 JWT_SECRET 을 바꾸면 저장된 비밀번호를 못 읽으니 주의).
- */
-function encKey() {
-  const raw = process.env.ACCOUNT_ENC_KEY || process.env.JWT_SECRET;
-  if (!raw) throw new Error('ACCOUNT_ENC_KEY 또는 JWT_SECRET 이 필요합니다.');
-  return crypto.createHash('sha256').update('tn-account:' + raw).digest();
-}
-
-function encrypt(plain) {
-  const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv('aes-256-gcm', encKey(), iv);
-  const out = Buffer.concat([c.update(plain, 'utf8'), c.final()]);
-  return [iv.toString('base64'), c.getAuthTag().toString('base64'), out.toString('base64')].join(':');
-}
-
-function decrypt(stored) {
-  const [iv, tag, data] = String(stored).split(':');
-  const d = crypto.createDecipheriv('aes-256-gcm', encKey(), Buffer.from(iv, 'base64'));
-  d.setAuthTag(Buffer.from(tag, 'base64'));
-  return Buffer.concat([d.update(Buffer.from(data, 'base64')), d.final()]).toString('utf8');
-}
-
 /* ── 예약 사이트 HTTP ─────────────────────────────────────────
  * .kr 권한 네임서버가 가끔 늦어서 첫 조회가 ENOTFOUND 로 떨어진다.
  * 실제로 배포 직후 한 번 겪었고, 몇 초 뒤 재시도하면 정상이었다.
@@ -334,271 +308,81 @@ async function inspectBookingForm(cookie, { type, year, month }) {
   };
 }
 
-/* ── 라우팅 ────────────────────────────────────────────────── */
-// 이 웹의 로그인과는 무관하다. 포켓몬 보관함처럼 브라우저가 발급한
-// 기기 키로 목록을 구분한다 — 등록하는 건 대치유수지 계정일 뿐이다.
-const DEVICE_KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
+
+/* ── 라우팅 ──────────────────────────────────────────────────
+ * DB 가 없다. RDS 를 해지한 뒤로 이 모듈은 **아무것도 저장하지 않는다.**
+ *
+ * 계정·예약내역·체크·단가·설정은 전부 브라우저(localStorage)에 있고,
+ * 여기 남은 일은 하나뿐이다 — 예약 사이트에 대신 로그인해서 긁어오는 것.
+ * 브라우저가 직접 못 하는 이유는 남의 사이트라 CORS 를 우리가 못 열기 때문이다.
+ *
+ * 그래서 비밀번호도 보관하지 않는다. 호출할 때마다 브라우저가 들고 온다.
+ */
 
 async function route(ctx, event, method, path) {
-  const { pool, resp, getBody } = ctx;
+  const { resp, getBody } = ctx;
   if (!path.startsWith('/tennis/')) return null;
 
   const body = getBody(event);
-  const qs = event.queryStringParameters || {};
-  const uid = body.key || qs.key || '';
-  if (!DEVICE_KEY_RE.test(uid)) return resp(400, { error: '기기 키가 올바르지 않습니다.' });
+  const loginId = String(body.login_id || '').trim();
+  const password = String(body.password || '');
 
-  /* 계정 목록 — 비밀번호는 내려보내지 않는다 */
-  if (path === '/tennis/accounts' && method === 'GET') {
-    const { rows } = await pool.query(
-      `SELECT a.id, a.login_id, a.person, a.is_active, a.last_sync_at, a.last_sync_status,
-              (SELECT count(*)::int FROM tn_reservations r WHERE r.account_id = a.id) AS reservations
-         FROM tn_accounts a WHERE a.device_key = $1 ORDER BY a.id`, [uid]);
-    return resp(200, { accounts: rows });
+  if (method !== 'POST') return resp(405, { error: 'POST 로 부르세요.' });
+  if (!loginId || !password) {
+    return resp(400, { error: '아이디와 비밀번호가 필요합니다.' });
   }
 
-  /* 계정 추가 / 비밀번호 변경 */
-  if (path === '/tennis/accounts' && method === 'POST') {
-    const loginId = (body.login_id || '').trim();
-    const password = body.password || '';
-    const person = (body.person || '').trim().slice(0, 60);
-    if (!loginId || !password) return resp(400, { error: '아이디와 비밀번호를 입력하세요.' });
-
-    const { rows } = await pool.query(
-      `INSERT INTO tn_accounts (device_key, login_id, password_enc, person)
-            VALUES ($1, $2, $3, $4)
-       ON CONFLICT (device_key, login_id)
-       DO UPDATE SET password_enc = EXCLUDED.password_enc,
-                     person = EXCLUDED.person,
-                     updated_at = NOW()
-         RETURNING id, login_id, person, is_active`,
-      [uid, loginId, encrypt(password), person]);
-    return resp(200, { account: rows[0] });
-  }
-
-  const acctM = path.match(/^\/tennis\/accounts\/(\d+)$/);
-  if (acctM && method === 'DELETE') {
-    const r = await pool.query('DELETE FROM tn_accounts WHERE id=$1 AND device_key=$2', [acctM[1], uid]);
-    if (!r.rowCount) return resp(404, { error: '계정을 찾을 수 없습니다.' });
-    return resp(200, { ok: true });
-  }
-  if (acctM && method === 'PUT') {
-    const r = await pool.query(
-      'UPDATE tn_accounts SET is_active=$1, person=COALESCE($2,person), updated_at=NOW() WHERE id=$3 AND device_key=$4',
-      [body.is_active !== false, body.person ?? null, acctM[1], uid]);
-    if (!r.rowCount) return resp(404, { error: '계정을 찾을 수 없습니다.' });
-    return resp(200, { ok: true });
-  }
-
-  /* 한 계정 수집 — 로그인 → 1~4페이지 → 예약완료만 저장 */
-  if (path === '/tennis/sync' && method === 'POST') {
-    const accountId = body.account_id;
-    const debug = body.debug === true;
-    if (!accountId) return resp(400, { error: 'account_id 가 필요합니다.' });
-
-    const { rows: accs } = await pool.query(
-      'SELECT id, login_id, password_enc FROM tn_accounts WHERE id=$1 AND device_key=$2', [accountId, uid]);
-    if (!accs.length) return resp(404, { error: '계정을 찾을 수 없습니다.' });
-    const acc = accs[0];
-
-    const fail = async msg => {
-      await pool.query('UPDATE tn_accounts SET last_sync_at=NOW(), last_sync_status=$1 WHERE id=$2', [msg, acc.id]);
-      return resp(200, { ok: false, login_id: acc.login_id, message: msg });
-    };
-
+  /* 예약완료 내역 수집 — 긁어서 돌려주기만 한다 */
+  if (path === '/tennis/sync') {
     let session;
     try {
-      session = await login(acc.login_id, decrypt(acc.password_enc));
+      session = await login(loginId, password);
     } catch (e) {
-      return fail('접속 실패: ' + e.message);
+      return resp(200, { ok: false, login_id: loginId, message: '접속 실패: ' + e.message });
     }
-    if (!session.ok) return fail(session.message);
+    if (!session.ok) return resp(200, { ok: false, login_id: loginId, message: session.message });
 
     let result;
     try {
       result = await collect(session.cookie, session.firstPage);
     } catch (e) {
-      return fail('수집 실패: ' + e.message);
+      return resp(200, { ok: false, login_id: loginId, message: '수집 실패: ' + e.message });
     }
 
-    // 이 계정의 기존 내역을 지우고 방금 읽은 것으로 통째로 갈아끼운다.
-    // 덧붙이기만 하면 사이트에서 취소된 건이 우리 쪽에 계속 남는다.
-    // 한 트랜잭션 안에서 처리해, 중간에 실패하면 예전 내역이 그대로 남는다.
-    let saved = 0;
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const gone = await client.query('DELETE FROM tn_reservations WHERE account_id=$1', [acc.id]);
-      for (const r of result.rows) {
-        await client.query(
-          `INSERT INTO tn_reservations
-             (device_key, account_id, reserve_no, facility, use_date, use_time, status, amount, team, people, page_no, raw)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-           ON CONFLICT (account_id, reserve_no) DO NOTHING`,
-          [uid, acc.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
-           r.team, r.people, r.page_no, r.raw]);
-        saved++;
-      }
-      // 현재월 -2 보다 오래된 건은 화면에도 안 나오므로 그때그때 걷어낸다
-      const old = await client.query(
-        `DELETE FROM tn_reservations
-          WHERE device_key = $1
-            AND use_date IS NOT NULL
-            AND use_date < date_trunc('month', CURRENT_DATE) - INTERVAL '2 months'`, [uid]);
-      // 사라진 예약의 체크 기록도 같이 정리한다
-      await client.query(
-        `DELETE FROM tn_checks c
-          WHERE c.device_key = $1
-            AND NOT EXISTS (SELECT 1 FROM tn_reservations r
-                             WHERE r.device_key = c.device_key AND r.reserve_no = c.reserve_no)`, [uid]);
-      await client.query('COMMIT');
-      result.removed = gone.rowCount;
-      result.purged = old.rowCount;
-    } catch (e) {
-      await client.query('ROLLBACK');
-      client.release();
-      return fail('저장 실패: ' + e.message);
-    }
-    client.release();
-
-    // 사이트 접수번호를 못 읽어 지문으로 저장한 건수. 버리지는 않는다.
+    // 사이트 접수번호를 못 읽어 지문으로 대신한 건수. 버리지는 않는다.
     const noNumber = result.rows.filter(r => r.no_from === 'fingerprint').length;
-    const status = `예약완료 ${result.rows.length}건 저장 (이전 ${result.removed}건 교체)`;
-    await pool.query('UPDATE tn_accounts SET last_sync_at=NOW(), last_sync_status=$1 WHERE id=$2', [status, acc.id]);
-
     const out = {
-      ok: true, login_id: acc.login_id, found: result.rows.length,
-      saved, removed: result.removed, skipped: noNumber, message: status, diag: result.diag,
+      ok: true,
+      login_id: loginId,
+      found: result.rows.length,
+      skipped: noNumber,
+      message: '예약완료 ' + result.rows.length + '건',
+      rows: result.rows,          // ← 저장은 브라우저가 한다
+      diag: result.diag,
     };
-    // 파싱이 어긋났을 때 구조를 보려면 debug:true 로 부른다 (앞 3행만)
-    if (debug) out.sample = result.rows.slice(0, 3).map(r => ({
-      reserve_no: r.reserve_no, no_from: r.no_from, use_date: r.use_date,
-      use_time: r.use_time, facility: r.facility, amount: r.amount, cells: r.raw.cells,
-    }));
+    if (body.debug === true) {
+      out.sample = result.rows.slice(0, 3).map(r => ({
+        reserve_no: r.reserve_no, no_from: r.no_from, use_date: r.use_date,
+        use_time: r.use_time, facility: r.facility, amount: r.amount, cells: r.raw.cells,
+      }));
+    }
     return resp(200, out);
   }
 
   /* 예약 신청 폼 구조 확인 — 조회만 하고 제출은 하지 않는다 */
-  if (path === '/tennis/inspect' && method === 'POST') {
-    const { rows: accs } = await pool.query(
-      'SELECT id, login_id, password_enc FROM tn_accounts WHERE id=$1 AND device_key=$2',
-      [body.account_id, uid]);
-    if (!accs.length) return resp(404, { error: '계정을 찾을 수 없습니다.' });
-
-    const session = await login(accs[0].login_id, decrypt(accs[0].password_enc));
+  if (path === '/tennis/inspect') {
+    const session = await login(loginId, password);
     if (!session.ok) return resp(200, { ok: false, message: session.message });
 
     const now = new Date();
-    const out = await inspectBookingForm(session.cookie, {
+    return resp(200, await inspectBookingForm(session.cookie, {
       type: body.type || 8,
       year: body.year || now.getFullYear(),
       month: body.month || (now.getMonth() + 2),   // 보통 다음 달이 열려 있다
-    });
-    return resp(200, out);
+    }));
   }
 
-  /* 행별 체크 — 정산에 포함할지. 접수번호로 묶어 재수집해도 유지된다 */
-  if (path === '/tennis/check' && method === 'POST') {
-    const no = String(body.reserve_no || '');
-    if (!no) return resp(400, { error: 'reserve_no 가 필요합니다.' });
-
-    // 체크와 금액을 같은 곳에 둔다. 둘 다 접수번호로 묶이므로 재수집해도 남는다.
-    // 보낸 항목만 고친다 — 금액만 보냈는데 체크가 초기화되면 안 되기 때문이다.
-    // 금액이 비어 있으면(null) 시간대 단가를 쓰고, 값이 있으면 그 값이 이긴다.
-    const hasChecked = Object.prototype.hasOwnProperty.call(body, 'checked');
-    const hasAmount = Object.prototype.hasOwnProperty.call(body, 'amount');
-    const hasTransferee = Object.prototype.hasOwnProperty.call(body, 'transferee');
-    const amount = (hasAmount && body.amount !== null && body.amount !== '')
-      ? Math.max(0, Math.round(Number(body.amount) || 0))
-      : null;
-    const transferee = String(body.transferee || '').trim().slice(0, 60);
-
-    await pool.query(
-      `INSERT INTO tn_checks (device_key, reserve_no, checked, amount, transferee)
-            VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (device_key, reserve_no) DO UPDATE SET
-         checked    = CASE WHEN $6 THEN EXCLUDED.checked    ELSE tn_checks.checked    END,
-         amount     = CASE WHEN $7 THEN EXCLUDED.amount     ELSE tn_checks.amount     END,
-         transferee = CASE WHEN $8 THEN EXCLUDED.transferee ELSE tn_checks.transferee END,
-         updated_at = NOW()`,
-      [uid, no, body.checked !== false, amount, transferee,
-       hasChecked, hasAmount, hasTransferee]);
-    return resp(200, { ok: true });
-  }
-
-  /* 화면 설정값 (정산 인원 등) */
-  if (path === '/tennis/settings' && method === 'GET') {
-    const { rows } = await pool.query(
-      'SELECT name, value FROM tn_settings WHERE device_key=$1', [uid]);
-    const out = {};
-    rows.forEach(r => { out[r.name] = r.value; });
-    return resp(200, { settings: out });
-  }
-  if (path === '/tennis/settings' && method === 'POST') {
-    const items = body.settings && typeof body.settings === 'object' ? body.settings : {};
-    for (const [name, value] of Object.entries(items)) {
-      if (!/^[a-z_]{1,40}$/.test(name)) continue;
-      await pool.query(
-        `INSERT INTO tn_settings (device_key, name, value) VALUES ($1,$2,$3)
-         ON CONFLICT (device_key, name) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()`,
-        [uid, name, String(value).slice(0, 200)]);
-    }
-    return resp(200, { ok: true });
-  }
-
-  /* 시작 시간대별 단가 */
-  if (path === '/tennis/prices' && method === 'GET') {
-    const { rows } = await pool.query(
-      'SELECT start_hour, price FROM tn_prices WHERE device_key=$1 ORDER BY start_hour', [uid]);
-    return resp(200, { prices: rows });
-  }
-  if (path === '/tennis/prices' && method === 'POST') {
-    const list = Array.isArray(body.prices) ? body.prices : [];
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('DELETE FROM tn_prices WHERE device_key=$1', [uid]);
-      for (const p of list) {
-        const h = Number(p.hour);
-        const v = Number(p.price);
-        if (!Number.isInteger(h) || h < 0 || h > 23) continue;
-        await client.query(
-          'INSERT INTO tn_prices (device_key, start_hour, price) VALUES ($1,$2,$3) ' +
-          'ON CONFLICT (device_key, start_hour) DO UPDATE SET price=EXCLUDED.price, updated_at=NOW()',
-          [uid, h, Number.isFinite(v) ? Math.round(v) : 0]);
-      }
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      client.release();
-      return resp(500, { error: '단가 저장 실패: ' + e.message });
-    }
-    client.release();
-    const { rows } = await pool.query(
-      'SELECT start_hour, price FROM tn_prices WHERE device_key=$1 ORDER BY start_hour', [uid]);
-    return resp(200, { prices: rows });
-  }
-
-  /* 모든 계정의 예약완료 내역 취합 */
-  if (path === '/tennis/reservations' && method === 'GET') {
-    const { rows } = await pool.query(
-      // 이번 달 포함 최근 3개월(현재월 -2)부터. 앞으로 잡힌 예약은 모두 포함한다.
-      // 체크는 tn_checks 에 따로 있고, 기록이 없으면 기본 체크 상태로 본다.
-      `SELECT r.id, r.reserve_no, r.facility, r.use_date, r.use_time, r.status, r.amount,
-              r.team, r.people, r.raw, r.collected_at, a.login_id, a.person,
-              COALESCE(c.checked, TRUE) AS checked, c.amount AS amount_override,
-              COALESCE(c.transferee, '') AS transferee
-         FROM tn_reservations r
-         JOIN tn_accounts a ON a.id = r.account_id
-         LEFT JOIN tn_checks c ON c.device_key = r.device_key AND c.reserve_no = r.reserve_no
-        WHERE r.device_key = $1
-          AND (r.use_date IS NULL OR r.use_date >= date_trunc('month', CURRENT_DATE) - INTERVAL '2 months')
-        ORDER BY r.use_date ASC NULLS LAST, r.facility ASC, r.use_time ASC, r.id ASC
-        LIMIT 2000`, [uid]);
-    return resp(200, { reservations: rows, total: rows.length });
-  }
-
-  return null;
+  return resp(404, { error: 'Not found' });
 }
 
 module.exports = { route };

@@ -13,7 +13,9 @@ const DB_DIR = __dirname;
 const OUTPUT_FILE = path.join(DB_DIR, 'schema_all.sql');
 
 // common 을 먼저 깔고(users 등 공통), 그 다음 앱별 스키마
-const APP_ORDER = ['common', 'nol', 'pgo', 'workkit', 'tennis', 'sap'];
+// tennis 는 빠졌다 — 브라우저(localStorage)로 옮겨서 더 이상 테이블이 없다.
+// 스키마는 db/_archive/tennis_schema.sql 에 기록만 남겨 뒀다.
+const APP_ORDER = ['common', 'nol', 'pgo', 'workkit', 'sap'];
 
 /** 배포 때 돌면 안 되는 구문 — 있으면 빌드를 멈춘다 */
 const DESTRUCTIVE = /\b(DROP\s+(TABLE|SCHEMA|DATABASE|INDEX)|TRUNCATE|DELETE\s+FROM)\b/i;

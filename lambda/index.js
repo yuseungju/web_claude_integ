@@ -3218,10 +3218,10 @@ exports.handler = async (event) => {
   }
 
   try {
-    // [대치유수지 예약] tn_ 테이블만 다루는 독립 모듈 (lambda/tennis.js)
+    // [대치유수지 예약] 예약 사이트에 대신 로그인해 긁어오기만 한다.
+    // DB 를 쓰지 않는다 — 저장은 전부 브라우저(localStorage) 몫이다.
     if (path.startsWith('/tennis/')) {
-      const tnRes = await tennis.route(
-        { pool, resp, getBody: getBodyAr, verifyToken: verifyTokenAr }, event, method, path);
+      const tnRes = await tennis.route({ resp, getBody: getBodyAr }, event, method, path);
       if (tnRes) return tnRes;
     }
 

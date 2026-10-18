@@ -53,26 +53,54 @@
     if (note) { note.dataset.used = '1'; note.classList.add('hidden'); }
   }
 
-  function api(path, opts) {
-    opts = opts || {};
-    var body = opts.body || {};
-    var url = API + path;
-    var method = opts.method || 'GET';
-    if (method === 'GET' || method === 'DELETE') {
-      url += (path.indexOf('?') < 0 ? '?' : '&') + 'key=' + encodeURIComponent(LIST_KEY);
-    } else {
-      body.key = LIST_KEY;
-    }
-    return fetch(url, {
-      method: method,
+  /**
+   * 서버 호출은 하나만 남았다 — 예약 사이트 수집.
+   * 남의 사이트라 CORS 를 우리가 못 열어서 브라우저가 직접 긁을 수 없다.
+   * 로그인 정보를 들려 보내고 결과만 받아온다. 서버는 아무것도 저장하지 않는다.
+   */
+  function api(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: method === 'GET' ? undefined : JSON.stringify(body),
+      body: JSON.stringify(body || {}),
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (data) {
         if (!res.ok) throw new Error(data.error || ('요청 실패 (' + res.status + ')'));
         return data;
       });
     });
+  }
+
+  /* ── 저장소 ───────────────────────────────────────────────
+   * RDS 를 해지해서 전부 브라우저에 둔다. 이 크롬에서만 보이고,
+   * 브라우저 데이터를 지우면 같이 사라진다 — 혼자 쓰기로 한 선택이다.
+   *
+   * 비밀번호도 여기 들어간다. 우리가 대신 로그인해야 하므로 되돌릴 수 있어야
+   * 하고(해시 불가), localStorage 에는 암호화 수단이 없다. 본인 PC 의 본인
+   * 브라우저에만 남는다는 전제가 깨지면 위험하다.
+   */
+  var DB = {
+    key: function (name) { return 'tennis:' + name; },
+    get: function (name, dflt) {
+      try {
+        var v = localStorage.getItem(DB.key(name));
+        return v === null ? dflt : JSON.parse(v);
+      } catch (e) { return dflt; }
+    },
+    set: function (name, value) {
+      try { localStorage.setItem(DB.key(name), JSON.stringify(value)); return true; }
+      catch (e) {
+        // 용량(보통 5MB)을 넘기면 여기로 온다. 조용히 삼키면 다음에 열었을 때
+        // 왜 사라졌는지 알 수가 없으므로 그 자리에서 알린다.
+        alert('브라우저 저장 공간이 부족합니다. 오래된 예약내역을 지워주세요.\n' + e.message);
+        return false;
+      }
+    },
+  };
+
+  /** 계정 id. 서버가 매기던 것을 브라우저가 대신한다. */
+  function nextId(list) {
+    return list.reduce(function (m, a) { return Math.max(m, Number(a.id) || 0); }, 0) + 1;
   }
 
   // 다크 배경이라 성공/실패 색을 밝은 쪽으로 잡는다
@@ -123,8 +151,10 @@
    * 실패해도 화면은 그대로 쓸 수 있으므로 조용히 넘어간다.
    */
   function saveSettings(obj) {
-    return api('/tennis/settings', { method: 'POST', body: { settings: obj } })
-      .catch(function () { /* 저장 실패해도 계산은 화면에서 그대로 된다 */ });
+    var cur = DB.get('settings', {});
+    Object.keys(obj).forEach(function (k) { cur[k] = obj[k]; });
+    DB.set('settings', cur);
+    return Promise.resolve();
   }
 
   function saveRange() {
@@ -136,8 +166,8 @@
 
   /* ── 계정 ─────────────────────────────────────────────── */
   function loadAccounts() {
-    return api('/tennis/accounts').then(function (d) { renderAccounts(d.accounts || []); })
-      .catch(function (e) { msg($('acc-msg'), e.message, true); });
+    renderAccounts(DB.get('accounts', []));
+    return Promise.resolve();
   }
 
   function renderAccounts(list) {
@@ -175,14 +205,20 @@
     var person = ($('acc-person') || {}).value || '';
     if (!id.trim() || !pw) return msg($('acc-msg'), '아이디와 비밀번호를 입력하세요.', true);
     msg($('acc-msg'), '저장 중...');
-    api('/tennis/accounts', { method: 'POST', body: { login_id: id.trim(), password: pw, person: person.trim() } })
-      .then(function () {
-        $('acc-id').value = ''; $('acc-pw').value = '';
-        $('acc-id').focus();                       // 연달아 여러 개 넣기 쉽게
-        msg($('acc-msg'), '저장했습니다. 계속 추가할 수 있습니다.');
-        return loadAccounts();
-      })
-      .catch(function (e) { msg($('acc-msg'), e.message, true); });
+    var list = DB.get('accounts', []);
+    var same = list.filter(function (a) { return a.login_id === id.trim(); })[0];
+    if (same) {                                  // 같은 아이디면 비밀번호·이름만 갈아끼운다
+      same.password = pw;
+      if (person.trim()) same.person = person.trim();
+    } else {
+      list.push({ id: nextId(list), login_id: id.trim(), password: pw,
+                  person: person.trim(), last_sync_status: '' });
+    }
+    DB.set('accounts', list);
+    $('acc-id').value = ''; $('acc-pw').value = '';
+    $('acc-id').focus();                         // 연달아 여러 개 넣기 쉽게
+    msg($('acc-msg'), (same ? '갈아끼웠습니다.' : '저장했습니다.') + ' 계속 추가할 수 있습니다.');
+    loadAccounts();
   }
 
   /* ── 수집 ─────────────────────────────────────────────── */
@@ -195,10 +231,62 @@
     box.scrollTop = box.scrollHeight;
   }
 
+  /**
+   * 한 계정을 수집한다. 서버는 로그인해서 긁어주기만 하고, 저장은 여기서 한다.
+   *
+   * 이 계정의 기존 내역은 지우고 방금 읽은 것으로 통째로 갈아끼운다.
+   * 덧붙이기만 하면 사이트에서 취소된 건이 우리 쪽에 계속 남는다.
+   */
   function syncOne(id, loginId) {
-    return api('/tennis/sync', { method: 'POST', body: { account_id: id } })
-      .then(function (d) { log((d.ok ? '✓ ' : '✗ ') + (d.login_id || loginId || id) + ' — ' + d.message); return d; })
+    var acc = DB.get('accounts', []).filter(function (a) { return a.id === id; })[0];
+    if (!acc) { log('✗ ' + (loginId || id) + ' — 계정을 찾을 수 없습니다.'); return Promise.resolve(); }
+
+    return api('/tennis/sync', { login_id: acc.login_id, password: acc.password })
+      .then(function (d) {
+        log((d.ok ? '✓ ' : '✗ ') + (d.login_id || loginId || id) + ' — ' + d.message);
+        if (d.ok) {
+          var keep = DB.get('reservations', []).filter(function (r) { return r.account_id !== id; });
+          var fresh = (d.rows || []).map(function (r) {
+            return {
+              account_id: id, login_id: acc.login_id, reserve_no: r.reserve_no,
+              facility: r.facility, use_date: r.use_date, use_time: r.use_time,
+              status: r.status, amount: r.amount, team: r.team, people: r.people,
+            };
+          });
+          DB.set('reservations', purgeOld(keep.concat(fresh)));
+          markSynced(id, d.message);
+        } else {
+          markSynced(id, d.message);
+        }
+        return d;
+      })
       .catch(function (e) { log('✗ ' + (loginId || id) + ' — ' + e.message); });
+  }
+
+  /** 현재월 -2 보다 오래된 건은 화면에도 안 나오므로 그때그때 걷어낸다.
+      브라우저 저장은 용량이 작아서 쌓이면 곧 한도에 닿는다. */
+  function purgeOld(rows) {
+    var n = new Date();
+    var cut = ymd(new Date(n.getFullYear(), n.getMonth() - 2, 1));
+    var kept = rows.filter(function (r) {
+      return !r.use_date || String(r.use_date).slice(0, 10) >= cut;
+    });
+    // 사라진 예약의 체크 기록도 같이 정리한다
+    var live = {};
+    kept.forEach(function (r) { live[r.reserve_no] = 1; });
+    var checks = DB.get('checks', {});
+    var trimmed = {};
+    Object.keys(checks).forEach(function (k) { if (live[k]) trimmed[k] = checks[k]; });
+    DB.set('checks', trimmed);
+    return kept;
+  }
+
+  function markSynced(id, status) {
+    var list = DB.get('accounts', []);
+    list.forEach(function (a) {
+      if (a.id === id) { a.last_sync_at = new Date().toISOString(); a.last_sync_status = status; }
+    });
+    DB.set('accounts', list);
   }
 
   function syncAll() {
@@ -226,12 +314,11 @@
 
   /* ── 단가 ─────────────────────────────────────────────── */
   function loadPrices() {
-    return api('/tennis/prices').then(function (d) {
-      state.prices = (d.prices || []).map(function (p) {
-        return { hour: Number(p.start_hour), price: Number(p.price) };
-      });
-      renderPrices();
-    }).catch(function (e) { msg($('price-msg'), e.message, true); });
+    state.prices = DB.get('prices', []).map(function (p) {
+      return { hour: Number(p.hour), price: Number(p.price) };
+    });
+    renderPrices();
+    return Promise.resolve();
   }
 
   function renderPrices() {
@@ -261,11 +348,9 @@
   function savePrices() {
     state.prices = readPrices();
     msg($('price-msg'), '저장 중...');
-    api('/tennis/prices', { method: 'POST', body: { prices: state.prices } })
-      .then(function (d) {
-        state.prices = (d.prices || []).map(function (p) {
-          return { hour: Number(p.start_hour), price: Number(p.price) };
-        });
+    DB.set('prices', state.prices);
+    Promise.resolve()
+      .then(function () {
         renderPrices();
         renderReservations();          // 금액 열까지 다시 그린다 (여기서 stale 이 켜진다)
         renderSummary();               // 합계·정산은 이 버튼을 눌렀을 때만 계산한다
@@ -302,14 +387,31 @@
   }
 
   /* ── 내역 ─────────────────────────────────────────────── */
+  /**
+   * 예약내역 + 체크 기록을 합쳐 화면용 행을 만든다.
+   * 체크는 접수번호로 따로 보관한다 — 다시 수집해도 체크가 살아남아야 하기 때문이다.
+   */
   function loadReservations() {
-    return api('/tennis/reservations').then(function (d) {
-      state.rows = d.reservations || [];
-      renderReservations();
-    }).catch(function (e) {
-      var box = $('resv-table');
-      if (box) box.innerHTML = '<p class="error-msg">' + esc(e.message) + '</p>';
+    var checks = DB.get('checks', {});
+    state.rows = DB.get('reservations', []).map(function (r) {
+      var c = checks[r.reserve_no] || {};
+      return Object.assign({}, r, {
+        checked: c.checked !== false,              // 기본은 포함
+        amount_override: c.amount != null ? c.amount : null,
+        transferee: c.transferee || '',
+      });
     });
+    renderReservations();
+    return Promise.resolve();
+  }
+
+  /** 체크/금액/양도자 한 건 저장. 셋 중 넘긴 것만 바꾼다. */
+  function saveCheck(no, patch) {
+    var all = DB.get('checks', {});
+    var cur = all[no] || {};
+    Object.keys(patch).forEach(function (k) { cur[k] = patch[k]; });
+    all[no] = cur;
+    DB.set('checks', all);
   }
 
   function renderReservations() {
@@ -623,8 +725,7 @@
 
     // 표를 통째로 다시 그리면 입력 중 포커스가 튄다. 아래 계산만 낡음으로 표시한다.
     stale();
-    api('/tennis/check', { method: 'POST', body: { reserve_no: no, amount: value } })
-      .catch(function (e) { msg($('price-msg'), '금액 저장 실패: ' + e.message, true); });
+    saveCheck(no, { amount: value });
   }
 
   /** 체크를 해제한 건을 넘기고 돈을 받은 사람. 받은 만큼 정산에서 빠진다. */
@@ -638,7 +739,7 @@
 
     // 표를 다시 그리면 입력 중 포커스가 튄다. 아래 계산만 낡음으로 표시한다.
     stale();
-    api('/tennis/check', { method: 'POST', body: { reserve_no: no, transferee: row.transferee } })
+    Promise.resolve(saveCheck(no, { transferee: row.transferee }))
       .catch(function (e) { msg($('price-msg'), '양도자 저장 실패: ' + e.message, true); });
   }
 
@@ -651,7 +752,7 @@
     if (!row) return Promise.resolve();
     row.checked = on;                       // 먼저 화면을 바꾸고
     renderReservations();                   // 합계가 곧바로 반영된다
-    return api('/tennis/check', { method: 'POST', body: { reserve_no: no, checked: on } })
+    return Promise.resolve(saveCheck(no, { checked: on }))
       .catch(function (e) {                 // 실패하면 되돌린다
         row.checked = !on;
         renderReservations();
@@ -666,7 +767,7 @@
     // 한꺼번에 보내면 사이트가 아니라 우리 서버라 부담은 적지만, 순서대로 보낸다
     target.reduce(function (chain, r) {
       return chain.then(function () {
-        return api('/tennis/check', { method: 'POST', body: { reserve_no: r.reserve_no, checked: on } });
+        return Promise.resolve(saveCheck(r.reserve_no, { checked: on }));
       });
     }, Promise.resolve()).catch(function (e) {
       msg($('price-msg'), '체크 저장 실패: ' + e.message, true);
@@ -835,9 +936,10 @@
         syncOne(id, name).then(function () { loadAccounts(); loadReservations(); });
       } else if (e.target.classList.contains('acc-del')) {
         if (!confirm(name + ' 계정을 삭제할까요? 수집한 예약내역도 함께 지워집니다.')) return;
-        api('/tennis/accounts/' + id, { method: 'DELETE' })
-          .then(function () { loadAccounts(); loadReservations(); })
-          .catch(function (err) { msg($('acc-msg'), err.message, true); });
+        DB.set('accounts', DB.get('accounts', []).filter(function (a) { return a.id !== id; }));
+        DB.set('reservations', purgeOld(
+          DB.get('reservations', []).filter(function (r) { return r.account_id !== id; })));
+        loadAccounts(); loadReservations();
       }
     });
 
@@ -882,7 +984,7 @@
 
     // 저장해 둔 기간과 계산 여부를 먼저 읽고, 그 상태로 화면을 만든다
     var wasComputed = false;
-    api('/tennis/settings')
+    Promise.resolve({ settings: DB.get('settings', {}) })
       .then(function (d) {
         var st = d.settings || {};
         var range = nextMonthRange();       // 저장된 게 없으면 차월 1일~말일
